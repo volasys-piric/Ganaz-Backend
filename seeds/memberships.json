@@ -1,0 +1,18 @@
+[
+    {
+        "type": "free",
+        "title": "Basic",
+        "fee": 0,
+        "jobs": 1,
+        "recruits": 10,
+        "messages": 5
+    },
+    {
+        "type": "premium",
+        "title": "professional",
+        "fee": 249,
+        "jobs": 4,
+        "recruits": 500,
+        "messages": 50
+    }
+]

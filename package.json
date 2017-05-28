@@ -1,0 +1,49 @@
+{
+  "name": "ganaz",
+  "version": "2.0.0",
+  "engines": {
+    "node": "~5.12.0"
+  },
+  "description": "This is backend for Ganaz mobile app.",
+  "main": "index.js",
+  "scripts": {
+    "start": "babel-node index.js --presets es2015,stage-2",
+    "forever": "forever start -c babel-node index.js --presets es2015,stage-2",
+    "debugger": "babel-node debug index.js --presets es2015,stage-2",
+    "debug": "babel-node-debug index.js --presets env,es2015,stage-2",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "seed": "./node_modules/node-mongo-seeds/bin/seed"
+  },
+  "keywords": [
+    "mobile",
+    "backend",
+    "node",
+    "mongo"
+  ],
+  "author": "SmartGuy",
+  "license": "ISC",
+  "dependencies": {
+    "async": "^2.1.5",
+    "babel-cli": "^6.24.0",
+    "babel-preset-env": "^1.1.9",
+    "babel-preset-es2015": "^6.22.0",
+    "babel-preset-stage-2": "^6.22.0",
+    "bcrypt-nodejs": "0.0.3",
+    "body-parser": "^1.16.1",
+    "express": "^4.14.1",
+    "jwt-simple": "^0.5.1",
+    "mongoose": "^4.8.3",
+    "morgan": "^1.8.1",
+    "node-mongo-seeds": "^2.3.1",
+    "passport": "^0.3.2",
+    "passport-jwt": "^2.2.1",
+    "request": "^2.79.0",
+    "sendmail": "^1.1.1",
+    "stripe": "^4.19.0",
+    "twilio": "^2.11.1",
+    "underscore": "^1.8.3"
+  },
+  "devDependencies": {
+    "babel-node-debug": "^2.0.0"
+  }
+}

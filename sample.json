@@ -1,0 +1,446 @@
+{
+	"username": "abc@def.com",
+	"password": "asdf",
+	"firstname": "abc",
+	"lastname": "def",
+	"email_address": "sky@blue.com",
+	"type": "company",
+	"phone_number": {
+		"country": "US",
+		"country_code": "1",
+		"local_number": "04152341"
+	},
+	"company": {
+		"name": "Bleeding-cut",
+		"address": {
+			"address1": "Sky - 1",
+			"address2": "Ground - 2",
+			"city": "New York",
+			"State": "LA",
+			"country": "US"
+		},
+		"description": "hello boy ???"
+	},
+	"worker": {
+		"location": {
+			"lat": "31.432",
+			"lng": "43.1234",
+			"address": "Dyning Room"
+		}
+	},
+	"auth_type": "email",
+	"external_id": "babydragon",
+	"player_id": "drakan"
+}
+
+// job
+
+{
+	// "company_id": "58a812466b29a597b87a1f5a",
+	"title": "Farming 123",
+	"pay": {
+		"rate": "300 USD",
+		"unit": "lb"
+	},
+	"dates": {
+		"from": "2017-04-01",
+		"to": "2017-04-25"
+	},
+	"positions_available": 5,
+	"benefits": {
+		"training": true,
+		"health_checks": true,
+		"housing": true,
+		"transportation": false,
+		"bonus": true,
+		"scholarships": false
+	},
+	"locations": [
+		{
+			"lat": "43.14234",
+			"lng": "153.3421",
+			"address": "BlackSmith 3"
+		},
+		{
+			"lat": "45.14224",
+			"lng": "153.34314",
+			"address": "BlackSmith 5"
+		}
+	],
+	"comments": "This work is for wheat planting",
+	"auto_translate": false
+}
+
+// message
+
+{
+	"job_id": "58aa646a7ca46cfe197b8065",
+	"type": "job_new",
+	"receivers": [
+		"58a812466b29a597b87a1f5a",
+		"58a817658a6be79940c57dc9"
+	],
+	"message": "New Job Create Message",
+	"auto_translate": false
+}
+
+// Review 
+
+{
+	"company_user_id": "58a8122b6b29a597b87a1f54",
+	"reviewer_user_id": "58a817658a6be79940c57dc9",
+	"rating": {
+		"pay": 5,
+		"benefits": 3,
+		"supervisors": 4,
+		"safety": 5,
+		"trust": 5
+	}
+}
+
+// Phone Numbers
+
+{
+	"phone_numbers": [
+		"14152341",
+		"14152536"
+	]
+}
+
+localhost:8000/job?company_id=58a812466b29a597b87a1f5a&location[lat]=43.14234&location[lng]=153.3421
+
+// ++++++++++ Job search +++++++++++++
+
+{
+	"company_id": "58a812466b29a597b87a1f5a",
+	"location": {
+		"lat": 43.14234,
+		"lng": 153.3421
+	},
+	"distance": 5, 
+	"date": "2017-04-18",
+  "status": "open"
+}
+
+///////// response
+
+{
+  "success": true,
+  "jobs": [
+    {
+      "_id": "58aa646a7ca46cfe197b8065",
+      "company_id": "58a812466b29a597b87a1f5a",
+      "title": "Farming 456",
+      "pay": {
+        "rate": "100 USD",
+        "unit": "hr",
+        "_id": "58aa646a7ca46cfe197b806a"
+      },
+      "dates": {
+        "from": "2017-04-01T00:00:00.000Z",
+        "to": "2017-04-25T00:00:00.000Z",
+        "_id": "58aa646a7ca46cfe197b8069"
+      },
+      "positions_available": 5,
+      "benefits": {
+        "training": true,
+        "health_checks": true,
+        "housing": true,
+        "transportation": false,
+        "bonus": true,
+        "scholarships": false,
+        "_id": "58aa646a7ca46cfe197b8068"
+      },
+      "comments": "This work is for wheat planting",
+      "auto_translate": false,
+      "__v": 0,
+      "locations": [
+        {
+          "_id": "58abdb8a8dc7e04e076aa0ee",
+          "address": "BlackSmith 3",
+          "loc": [
+            153.3421,
+            43.14234
+          ]
+        },
+        {
+          "_id": "58abdb8a8dc7e04e076aa0ed",
+          "address": "BlackSmith 5",
+          "loc": [
+            153.34314,
+            45.14224
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "58acf20823c5707cfc76f3b2",
+      "company_id": "58a812466b29a597b87a1f5a",
+      "title": "Farming 456",
+      "pay": {
+        "rate": "100 USD",
+        "unit": "hr",
+        "_id": "58acf20823c5707cfc76f3b7"
+      },
+      "dates": {
+        "from": "2017-04-01T00:00:00.000Z",
+        "to": "2017-04-25T00:00:00.000Z",
+        "_id": "58acf20823c5707cfc76f3b6"
+      },
+      "positions_available": 5,
+      "benefits": {
+        "training": true,
+        "health_checks": true,
+        "housing": true,
+        "transportation": false,
+        "bonus": true,
+        "scholarships": false,
+        "_id": "58acf20823c5707cfc76f3b5"
+      },
+      "comments": "This work is for wheat planting",
+      "auto_translate": false,
+      "__v": 0,
+      "locations": [
+        {
+          "address": "BlackSmith 3",
+          "loc": [
+            153.3421,
+            43.14234
+          ],
+          "_id": "58acf20823c5707cfc76f3b4"
+        },
+        {
+          "address": "BlackSmith 5",
+          "loc": [
+            153.34314,
+            45.14224
+          ],
+          "_id": "58acf20823c5707cfc76f3b3"
+        }
+      ]
+    }
+  ]
+}
+
+// ++++++++ Company > My-Workers: Add +++++++
+
+{
+  "user_ids": [
+    "58d15628ab88586cad111893",
+    "58d1a05c90f19c72de5d65a3"
+  ]
+}
+
+// ++++++++ Recruit ++++++++++
+
+{
+	"job_ids": [
+		"58aa646a7ca46cfe197b8065",
+		"58aa94a5ac3c790d4b7bb61f"
+	],
+	"broadcast": 1,
+	"re_recruit_user_ids": [
+		"58c0bf3465deb8841c9716a8",
+		"58addb648ee3a51c738a8cd2"
+	]
+}
+
+// response
+
+{
+  "success": true,
+  "recruit": {
+    "__v": 0,
+    "request": {
+      "broadcast": 1,
+      "_id": "58d107c64e63e36197c90935",
+      "re_recruit_user_ids": [
+        "58c0bf3465deb8841c9716a8",
+        "58addb648ee3a51c738a8cd2"
+      ],
+      "job_ids": [
+        "58aa646a7ca46cfe197b8065",
+        "58aa94a5ac3c790d4b7bb61f"
+      ]
+    },
+    "_id": "58d107c64e63e36197c90934",
+    "received_user_ids": [
+      "58addb648ee3a51c738a8cd2",
+      "58c0bf3465deb8841c9716a8"
+    ]
+  }
+}
+
+// +++++++++ Invite ++++++++
+
+{
+	"phone_number": {
+		"country": "US",
+		"country_code": "1",
+		"local_number": "1234567890"
+	}
+}
+
+// response
+
+{
+  "success": true,
+  "invite": {
+    "__v": 0,
+    "company_user_id": "58a8122b6b29a597b87a1f54",
+    "phone_number": {
+      "country": "US",
+      "country_code": 1,
+      "local_number": 1234567890,
+      "_id": "58d1078b4e63e36197c90923"
+    },
+    "_id": "58d1078b4e63e36197c90922"
+  }
+}
+
+//+++++++++ User Patch +++++++++
+
+{
+  "account": {
+    "username": "changed@def.com",
+    "password": "asdfg",
+    "firstname": "AAA",
+    "lastname": "BBB",
+    "external_id": "babyTiger",
+    "player_id": "zell",
+    "worker": {
+          "is_newjob_lock": "false",
+          "location":             {
+              "address": "Bronx River Pkwy, Yonkers, NY 10707, USA",
+              "lat": "40.972446",
+              "lng": "-73.816360"
+          }
+    }
+  }
+}
+
+//+++++++++ Company > Create ++++++
+
+{
+  "name": {
+    "en": "GeniusGroup",
+    "es": "Grupo genial"
+  },
+  "description": {
+    "en": "Only invites and works with Geniuses",
+    "es": "Sólo invita y trabaja con Genios"
+  },
+  "auto_translate": true,
+  "code": "4137t23df4320",
+  "address": {
+    "address1": "WaterHill 35",
+    "address2": "Uran 17th",
+    "city": "New York",
+    "state": "NY",
+    "country": "US"
+  },
+  "plan": {
+    "type": "free",
+    "title": "Optimize farming plants",
+    "fee": 0.5,
+    "jobs": 2,
+    "recruits": 5,
+    "messages": 0,
+    "start_date": "2017-04-01T00:00:00.000Z",
+    "end_date": "2017-05-21T00:00:00.000Z",
+    "auto_renewal": true
+  }
+}
+
+//++++++ Company > Update +++++++
+
+{
+  "name": {
+    "en": "FantasyGroup",
+    "es": "Grupo de fantasía"
+  },
+  "description": {
+    "en": "Only invites and works with Geniuses",
+    "es": "Sólo invita y trabaja con Genios"
+  },
+  "auto_translate": false,
+  "code": "6344t54t6",
+  "address": {
+    "address1": "lovely bone 35",
+    "address2": "Wolves 17th",
+    "city": "Los Angeles",
+    "state": "CA",
+    "country": "US"
+  },
+  "plan": {
+    "type": "free",
+    "title": "Optimize farming plants",
+    "fee": 0.5,
+    "jobs": 2,
+    "recruits": 5,
+    "messages": 0,
+    "start_date": "2017-04-01T00:00:00.000Z",
+    "end_date": "2017-05-21T00:00:00.000Z",
+    "auto_renewal": true
+  }
+}
+
+//++++++++ Company > Update Membership Plan +++++++
+
+{
+  "plan": {
+    "type": "premium",
+    "title": "Optimize farming plants",
+    "fee": 2,
+    "jobs": 10,
+    "recruits": 50,
+    "messages": 10,
+    "start_date": "2017-04-01T00:00:00.000Z",
+    "end_date": "2017-05-21T00:00:00.000Z",
+    "auto_renewal": false
+  }
+}
+
+//++++++++ User > Update Company User Role +++++++
+
+/user/58d1a0da90f19c72de5d65a9/type
+
+{
+  "type": "company-admin"
+}
+
+//+++++++++ Company > Payment Method - Add ++++
+
+/company/591bb7fcb9d31d1d7ac38ab8/payment_methods
+( post )
+
+request: 
+{
+  "type": "CC",
+  "gateway": "stripe",
+  "stripe_token": "",
+  "billing_address": {
+    "name": "Richard Stoleman",
+    "address1": "Bermingham",
+    "address2": "New Jersery",
+    "city": "Washington",
+    "state": "Washington DC",
+    "country": "US"
+  }
+}
+
+//+++++++++ Send Mail ++++++
+
+/support/email
+
+{
+  "subject": "Test Mail",
+  "message": "Want to get lucky by efforts"
+}
+
+//+++++ Review Search ++++++
+
+{
+	"company_id": "58a8122b6b29a597b87a1f54",
+	"worker_user_id": "58a817658a6be79940c57dc9"
+}
