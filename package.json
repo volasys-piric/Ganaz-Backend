@@ -12,7 +12,8 @@
     "debugger": "babel-node debug index.js --presets es2015,stage-2",
     "debug": "babel-node-debug index.js --presets env,es2015,stage-2",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "seed": "./node_modules/node-mongo-seeds/bin/seed"
+    "seed": "./node_modules/node-mongo-seeds/bin/seed",
+    "dev": "nodemon index.js --exec babel-node --presets es2015,stage-2"
   },
   "keywords": [
     "mobile",
