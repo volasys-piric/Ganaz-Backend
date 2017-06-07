@@ -248,5 +248,31 @@ router.route('/', passport.authenticate('jwt', {session: false}))
     }
   });
 
+// router.post('/search', passport.authenticate('jwt', {session: false}), function (req, res) {
+router.route('/search', passport.authenticate('jwt', {session: false}))
+  .post(function (req, res) {
+    let query = {};
+    if (req.body.worker_user_id) {
+      query.recruited_worker_user_ids = req.body.worker_user_id;
+    }
+    if (req.body.company_id) {
+      query.company_id = req.body.company_id;
+    }
+    if (req.body.job_id) {
+      query["request.job_id"] = req.body.job_id;
+    }
+    Recruit.find(query).then(function (recruits) {
+      res.json({
+        success: true,
+        recruits: recruits
+      })
+    }).catch(function (error) {
+      console.error('Error:', error);
+      res.json({
+        success: false,
+        recruits: []
+      })
+    });
+  });
 
 export default router

@@ -4,6 +4,7 @@ import morgan from 'morgan';
 import mongoose from 'mongoose';
 import passport from 'passport';
 import config from './config/database';
+import Promise from 'bluebird';
 
 const app = express();
 const port = process.env.PORT || 8000;
@@ -15,6 +16,7 @@ app.use(bodyParser.json());
 app.use(morgan('dev'));
 app.use(passport.initialize());
 
+mongoose.Promise = Promise;
 mongoose.connect(config.database);
 
 require('./config/passport')(passport);
