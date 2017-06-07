@@ -1,0 +1,18 @@
+# Eclipse
+.classpath
+.project
+.settings/
+# Idea
+.idea/
+*.iml
+*.iws
+# Mac
+.DS_Store
+# Kubuntu
+.directory
+# App
+node_modules
+npm-debug.log
+app_config_overrides.json
+public/lib
+migrations/.migrate
