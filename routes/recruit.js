@@ -1,254 +1,161 @@
-import express from 'express';
-import jwt from 'jwt-simple';
-import async from 'async';
-import request from 'request';
-import passport from 'passport';
-import config from './../config/database';
-import http from './../utils/http';
-import Job from './../app/models/job';
-import User from './../app/models/user';
-import Recruit from './../app/models/recruit';
+import express from "express";
+import Promise from "bluebird";
+import request from "request";
+import passport from "passport";
+import config from "./../config/database";
+import Job from "./../app/models/job";
+import User from "./../app/models/user";
+import Recruit from "./../app/models/recruit";
 
 const router = express.Router();
+
 router.route('/', passport.authenticate('jwt', {session: false}))
   .post(function (req, res) {
-    let token = http.getToken(req.headers);
-    if (token) {
-      let decoded = jwt.decode(token, config.secret);
-      let conditions = {};
-      let asyncSuperTasks = [];
-      let received_user_ids_for_this_recruit = [];
-      let company_id = decoded.company.company_id;
-      let company_user_id = decoded._id;
+    const jobIdParam = req.body.job_ids;
+    const broadcastRadiusParam = parseFloat(req.body.broadcast_radius);
+    const reRecruitWorkerUserIdsParam = req.body.re_recruit_worker_user_ids;
+    const constDegreeInMiles = 1.609 / 111.12; // 1 mile = 1.609km, One degree (earth) = 111.12 km
+    Job.find({_id: {$in: jobIdParam}}).then(function (jobs) {
+      const jobIdJobMap = new Map();
+      for (let i = 0; i < jobs.length; i++) {
+        const job = jobs[i];
+        const jobId = job._id.toString();
+        jobIdJobMap.set(jobId, job);
+      }
 
-      let one_year_ago = new Date();
-      one_year_ago.setFullYear(one_year_ago.getFullYear() - 1);
+      let jobIdRecruitedWorkerUserIdSetMapPromise = null;
+      if (broadcastRadiusParam) {
+        const jobIdLocationArr = [];
+        for (let i = 0; i < jobs.length; i++) {
+          const job = jobs[i];
+          for (let j = 0; j < job.locations.length; j++) {
+            jobIdLocationArr.push({jobId: job._id.toString(), location: job.locations[j]})
+          }
+        }
+        let findUserPromises = [];
+        for (let i = 0; i < jobIdLocationArr.length; i++) {
+          findUserPromises.push(
+            User.find({
+              "worker.location.loc": {
+                "$near": jobIdLocationArr[i].location.loc,
+                "$maxDistance": constDegreeInMiles * broadcastRadiusParam
+              }
+            }, '_id')
+          )
+        }
 
-      conditions["newjob_lock"] = {
-        "$or": [
-          {
-            "worker.is_newjob_lock": false
-          },
-          {
-            "worker.is_newjob_lock": true,
-            "created_at": {
-              "$lt": one_year_ago
+        jobIdRecruitedWorkerUserIdSetMapPromise = Promise.all(findUserPromises).then(function (findUserPromiseResult) {
+          const jobIdRecruitedWorkerUserIdSetMap = new Map();
+          for (let i = 0; i < findUserPromiseResult.length; i++) {
+            const jobId = jobIdLocationArr[i].jobId;
+            let recruitedWorkerUserIdSet = jobIdRecruitedWorkerUserIdSetMap.get(jobId);
+            if (!recruitedWorkerUserIdSet) {
+              recruitedWorkerUserIdSet = new Set();
+              jobIdRecruitedWorkerUserIdSetMap.set(jobId, recruitedWorkerUserIdSet);
+            }
+            const userModels = findUserPromiseResult[i];
+            for (let i = 0; i < userModels.length; i++) {
+              const userId = userModels[i]._id.toString();
+              recruitedWorkerUserIdSet.add(userId);
             }
           }
-        ]
-      };
-
-      let re_recruit_users_id_array = [];
-      if (req.body.re_recruit_worker_user_ids) {
-        req.body.re_recruit_worker_user_ids.forEach(function (re_recruit_user_id) {
-          re_recruit_users_id_array.push(mongoose.Types.ObjectId(re_recruit_user_id));
+          return jobIdRecruitedWorkerUserIdSetMap;
+        });
+      } else {
+        jobIdRecruitedWorkerUserIdSetMapPromise = User.find({type: 'worker'}, '_id').then(function (userModels) {
+          const recruitedWorkerUserIdSet = new Set();
+          for (let i = 0; i < userModels.length; i++) {
+            const userId = userModels[i]._id.toString();
+            recruitedWorkerUserIdSet.add(userId);
+          }
+          const jobIdRecruitedWorkerUserIdSetMap = new Map();
+          for (let i = 0; i < jobs.length; i++) {
+            const job = jobs[i];
+            jobIdRecruitedWorkerUserIdSetMap.set(job._id.toString(), recruitedWorkerUserIdSet);
+          }
+          return jobIdRecruitedWorkerUserIdSetMap;
         });
       }
 
-      conditions["re_recruit_users"] = {
-        "_id": {
-          "$in": re_recruit_users_id_array
-        }
-      };
-
-      let asyncJobTasks = [];
-      req.body.job_ids.forEach(function (job_id) {
-        asyncJobTasks.push(function (parallel_job_callback) {
-          Job.findById(job_id, function (err, job) {
-            if (err) {
-              return parallel_job_callback(err);
-            }
-            // create recruit for the job.
-
-            let condition_final;
-            let condition_broadcast;
-            let condition_re_recruit;
-            let asyncRecruitTasks = [];
-
-            if (req.body.broadcast_radius) {
-              // get broad_cast condition on job
-
-              asyncRecruitTasks.push(function (parallel_recruit_callback) {
-                let asyncLocationTasks = [];
-                let near_users_array = [];
-
-                job.locations.forEach(function (location) {
-                  asyncLocationTasks.push(function (parallel_location_callback) {
-                    User.find({
-                      "worker.location.loc": {
-                        "$near": location.loc,
-                        "$maxDistance": constDegreeInMiles * req.body.broadcast_radius
-                      }
-                    }, function (err, users) {
-                      if (err) {
-                        return parallel_location_callback(err);
-                      }
-                      near_users_array = near_users_array.concat(users);
-                      parallel_location_callback();
-                    });
-                  });
-                });
-
-                async.parallel(asyncLocationTasks, function (err, results) {
-                  if (err) {
-                    return parallel_job_callback(err);
-                  }
-
-                  let near_user_ids = _.uniq(near_users_array, 'username').map(function (near_user) {
-                    return near_user._id;
-                  });
-
-                  conditions["near_user_ids"] = {
-                    "_id": {
-                      "$in": near_user_ids
-                    }
-                  };
-
-                  condition_broadcast = {
-                    "$and": [
-                      conditions["newjob_lock"],
-                      conditions["near_user_ids"]
-                    ]
-                  };
-
-                  parallel_recruit_callback();
-                });
-
-
-              });
-            }
-
-            if (req.body.re_recruit_worker_user_ids) {
-              asyncRecruitTasks.push(function (parallel_recruit_callback) {
-                condition_re_recruit = conditions["re_recruit_users"];
-                parallel_recruit_callback();
-              });
-
-            }
-
-            if (req.body.re_recruit_worker_user_ids == null && req.body.broadcast_radius == null) {
-              asyncRecruitTasks.push(function (parallel_recruit_callback) {
-                parallel_recruit_callback();
-              });
-            }
-            // Final Condition
-            async.parallel(asyncRecruitTasks, function (err, results) {
-              if (condition_re_recruit && condition_broadcast) {
-                condition_final = {
-                  "$or": [
-                    condition_broadcast,
-                    condition_re_recruit
-                  ]
-                };
-              }
-              else if (condition_re_recruit) {
-                condition_final = condition_re_recruit;
-              }
-              else if (condition_broadcast) {
-                condition_final = condition_broadcast;
-              }
-              else {
-
-              }
-
-              User.find(condition_final, '_id', function (err, user_ids) {
-                if (err) {
-                  return parallel_job_callback(err);
-                }
-                else {
-                  let recruited_worker_user_ids = user_ids.map(function (user_id_object) {
-                    return user_id_object._id.toString();
-                  });
-                  let newRecruit = new Recruit({
-                    company_id,
-                    company_user_id,
-                    request: {
-                      job_id: job._id,
-                      broadcast_radius: req.body.broadcast_radius,
-                      re_recruit_worker_user_ids: req.body.re_recruit_worker_user_ids
-                    },
-                    recruited_worker_user_ids
-                  });
-
-                  newRecruit.save(function (err, recruit) {
-                    if (err) {
-                      return parallel_job_callback(err);
-                    }
-
-                    let receivers = recruited_worker_user_ids.map(function (receiver_id) {
-                      return {
-                        'user_id': receiver_id,
-                        'company_id': ''
-                      };
-                    });
-
-                    let request_body = JSON.stringify({
-                      'job_id': job_id,
-                      'type': 'recruit',
-                      'sender': {
-                        'user_id': company_user_id,
-                        'company_id': company_id
-                      },
-                      'receivers': receivers,
-                      "message": {
-                        "en": "New work available",
-                        "es": "Nuevo trabajo disponible"
-                      },
-                      'auto_tranlate': "true",
-                      'datetime': new Date()
-                    });
-
-                    let headers = {
-                      'Content-Length': Buffer.byteLength(request_body),
-                      'authorization': req.headers.authorization,
-                      'content-type': 'application/json'
-                    };
-
-                    request.post({
-                      url: config.site_url + '/message',
-                      headers: headers,
-                      body: request_body
-                    }, function (error, response, body) {
-                      if (!error) {
-                        console.log(body);
-                        parallel_job_callback(null, recruit);
-                      } else {
-                        console.error('Error:', error);
-                        parallel_job_callback(error);
-                      }
-                      // res.end( );
-                    });
-
-                    // parallel_job_callback(null, recruit);
-                  });
-                }
-              });
-            });
+      return jobIdRecruitedWorkerUserIdSetMapPromise.then(function (jobIdRecruitedWorkerUserIdSetMap) {
+        const newRecruitsPromises = [];
+        for (const entry of jobIdRecruitedWorkerUserIdSetMap) {
+          const jobId = entry[0];
+          const recruitedWorkerUserIdSet = entry[1];
+          const job = jobIdJobMap.get(jobId);
+          const companyId = job.company_id;
+          const companyUserId = job.company_user_id;
+          const newRecruit = new Recruit({
+            company_id: companyId,
+            company_user_id: companyUserId,
+            request: {
+              job_id: jobId,
+              re_recruit_worker_user_ids: [...recruitedWorkerUserIdSet]
+            },
+            recruited_worker_user_ids: reRecruitWorkerUserIdsParam
           });
+          if (broadcastRadiusParam) {
+            newRecruit.request.broadcast_radius = broadcastRadiusParam;
+          }
+          newRecruitsPromises.push(newRecruit.save().then(function (model) {
+            return model;
+          }));
+        }
+        return Promise.all(newRecruitsPromises);
+      });
+    }).then(function (newRecruits) {
+      res.json({success: true, recruits: newRecruits});
 
+      for (let i = 0; i < newRecruits.length; i++) {
+        const newRecruit = newRecruits[i];
+        const companyId = newRecruit.company_id;
+        const companyUserId = newRecruit.company_user_id;
+        const recruitedWorkerUserIds = newRecruit.request.re_recruit_worker_user_ids;
+        const jobId = newRecruit.request.job_id;
+        // Send Message and ignore if successful or not
+        const receivers = recruitedWorkerUserIds.map(function (userId) {
+          return {'user_id': userId, 'company_id': ''};
         });
-
-      });
-
-      async.parallel(asyncJobTasks, function (err, results) {
-        if (err) {
-          res.json({
-            success: false, message: "Failed to recruit users"
-          });
-
-        }
-        else {
-          res.json({
-            success: true, recruits: results
-          });
-        }
-      });
-    } else {
-      return res.status(403).send({success: false, msg: 'No token provided.'});
-    }
+        const request_body = JSON.stringify({
+          'job_id': jobId,
+          'type': 'recruit',
+          'sender': {
+            'user_id': companyUserId,
+            'company_id': companyId
+          },
+          'receivers': receivers,
+          "message": {
+            "en": "New work available",
+            "es": "Nuevo trabajo disponible"
+          },
+          'auto_tranlate': "true",
+          'datetime': new Date()
+        });
+        const headers = {
+          'Content-Length': Buffer.byteLength(request_body),
+          'authorization': req.headers.authorization,
+          'content-type': 'application/json'
+        };
+        request.post({
+          url: config.site_url + '/message',
+          headers: headers,
+          body: request_body
+        }, function (error, response, body) {
+          if (!error) {
+            console.log(body);
+          } else {
+            console.error('Error:', error);
+          }
+        });
+      }
+    }).catch(function (error) {
+      console.log(error);
+      res.json({
+        success: false, message: "Failed to recruit users. Reason: " + error.message
+      })
+    });
   });
 
-// router.post('/search', passport.authenticate('jwt', {session: false}), function (req, res) {
 router.route('/search', passport.authenticate('jwt', {session: false}))
   .post(function (req, res) {
     let query = {};

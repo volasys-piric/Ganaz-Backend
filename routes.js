@@ -1096,26 +1096,34 @@ module.exports = function(app, passport) {
                                 if (err) {
                                     console.log(err);
                                 } else {
+                                    const jsonMessage = newMessage.toJSON();
+                                    let contents = null;
+                                    if(typeof jsonMessage.message === 'object') {
+                                        contents = jsonMessage.message
+                                    } else {
+                                        // Assumed to be string
+                                        contents = {'en': jsonMessage.message}
+                                    }
                                     let notification = {
-                                        contents: {'en': newMessage.message},
+                                        contents: contents,
                                         data: {
-                                            type: newMessage.type,
+                                            type: jsonMessage.type,
                                             contents: {
-                                                id: newMessage._id.toString()
+                                                id: jsonMessage._id.toString()
                                             }
                                         }
                                     };
 
-                                    if (newMessage.type == 'message') {
+                                    if (jsonMessage.type == 'message') {
                                         notification.data.contents.message = newMessage.message;
                                     }
-                                    if (newMessage.type == 'application') {
+                                    if (jsonMessage.type == 'application') {
                                         notification.data.contents.job_id = req.body.application_id;
                                     }
 
                                     sendNotification(user.player_ids, notification);
 
-                                    parallel_callback(null, newMessage);
+                                    parallel_callback(null, jsonMessage);
                                 }
                             });
                         });
