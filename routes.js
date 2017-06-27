@@ -800,7 +800,9 @@ module.exports = function(app, passport) {
                                 if (err) {
                                     return parallel_callback(err);
                                 }
-                                workers_json_array[workers.indexOf(worker)] = Object.assign({}, { worker_account: user.toJSON() }, worker.toJSON());
+                                if(user) {
+                                    workers_json_array[workers.indexOf(worker)] = Object.assign({}, { worker_account: user.toJSON() }, worker.toJSON());
+                                }
                                 parallel_callback();
                             });
                         });
