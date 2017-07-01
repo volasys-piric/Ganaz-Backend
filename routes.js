@@ -887,7 +887,9 @@ module.exports = function(app, passport) {
 
     router.route('/job', passport.authenticate('jwt', {session: false}))
         .get(function(req, res) {
-            let conditions = {};
+            let conditions = {
+                status: 'activated'
+            };
             if (req.query.company_id)
             {
                 conditions.company_id = req.query.company_id;
@@ -985,7 +987,9 @@ module.exports = function(app, passport) {
         .post(function(req, res) {
             // let token = getToken(req.headers);
             // if (token) {
-                let conditions = {};
+                let conditions = {
+                    status: 'activated'
+                };
                 if (req.body.company_id)
                 {
                     conditions.company_id = req.body.company_id;
@@ -1024,7 +1028,8 @@ module.exports = function(app, passport) {
             let token = getToken(req.headers);
             if (token) {
                 Job.findOne({
-                    _id: req.params.job_id
+                  _id: req.params.job_id,
+                  status: 'activated'
                 }, function(err, job) {
                     if (err) { return res.json({ success: false, err: err }); }
 
@@ -1059,14 +1064,14 @@ module.exports = function(app, passport) {
         .delete(function(req, res) {
             let token = getToken(req.headers);
             if (token) {
-                Job.findOneAndRemove({
-                    _id: req.params.job_id
-                }, function(err) {
-                    if (err) { return res.json({ success: false, err: err }); }
-                    else {
-                        res.json({success: true, msg: "Successfully job deleted."});
-                    }
+              Job.findById(req.params.job_id).then(function (jobModel) {
+                jobModel.setStatus('deactivated');
+                return jobModel.save().then(function () {
+                  res.json({success: true, msg: "Successfully job deleted."});
                 });
+              }).catch(function (err) {
+                res.json({success: false, err: err});
+              });
             } else {
                 return res.status(403).send({success: false, msg: 'No token provided.'});
             }

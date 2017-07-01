@@ -80,7 +80,9 @@ var JobSchema = new Schema({
     },
     auto_translate: {
         type: Boolean
-    }
+    },
+    created_at: Date,
+    status: String
 });
 
 // JobSchema.pre('save', function(next) {
@@ -94,6 +96,23 @@ var JobSchema = new Schema({
 //         return next();
 //     }
 // });
+
+JobSchema.pre('save', function (next) {
+  if (!this.created_at) {
+    this.created_at = Date.now();
+  }
+  if (!this.status) {
+    this.status = 'activated';
+  }
+  next();
+});
+
+JobSchema.methods.setStatus = function(status) {
+  if(status !== 'activated' && status !== 'deactivated') {
+      throw new Error('Invalid job status [' + status + ']. Accepted statuses are [activated, deactivated]');
+  }
+  this.status = status;
+};
 
 JobSchema.statics.adaptLocation = function(data) {
     if (data.locations)
