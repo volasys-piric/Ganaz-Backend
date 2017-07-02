@@ -12,8 +12,14 @@ router.use(function (req, res, next) {
    version: 1.1
    build: 1025 [optional]
    */
+  console.log('Version header: ' + req.header('version'));
   const version = parseFloat(req.header('version'));
-  if (version !== 1 && version !== 1.1) {
+  if (!version) {
+    res.status(403).json({
+      success: false,
+      message: 'No Header with name version found.'
+    })
+  } else if (version !== 1 && version !== 1.1) {
     res.status(403).json({
       success: false,
       message: 'Header version ' + version + ' not acceptable.'

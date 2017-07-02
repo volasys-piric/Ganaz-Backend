@@ -1307,7 +1307,8 @@ module.exports = function(app, passport) {
                                     let headers = {
                                         'Content-Length': Buffer.byteLength(request_body),
                                         'authorization': req.headers.authorization,
-                                        'content-type': 'application/json'
+                                        'content-type': 'application/json',
+                                        'version': req.header('version')
                                     };
                                     
                                     request.post({

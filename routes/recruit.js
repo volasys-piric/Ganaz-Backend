@@ -134,7 +134,8 @@ router.route('/', passport.authenticate('jwt', {session: false}))
         const headers = {
           'Content-Length': Buffer.byteLength(request_body),
           'authorization': req.headers.authorization,
-          'content-type': 'application/json'
+          'content-type': 'application/json',
+          'version': req.header('version')
         };
         request.post({
           url: config.site_url + '/message',
