@@ -24,6 +24,7 @@ import mongoose from 'mongoose';
 import sendmail from 'sendmail';
 import inviteRoutes from './routes/invite';
 import recruitRoutes from './routes/recruit';
+import headerChecker from './middlewares/headerChecker';
 
 let router = express.Router();
 let twilio_client = twilio(config.TWILIO_ACCOUNT_SID, config.TWILIO_AUTH_TOKEN);
@@ -1808,6 +1809,7 @@ module.exports = function(app, passport) {
         });
 
     const apiV1 = express();
+    apiV1.use('/', headerChecker);
     apiV1.use('/', router);
     apiV1.use('/invite', inviteRoutes);
     apiV1.use('/recruit', recruitRoutes);
