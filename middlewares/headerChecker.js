@@ -18,8 +18,9 @@ router.use(function (req, res, next) {
       success: false,
       message: 'Header version ' + version + ' not acceptable.'
     })
+  } else {
+    next()
   }
-  next()
 });
 
 export default router;
