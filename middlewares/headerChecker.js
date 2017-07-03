@@ -17,9 +17,9 @@ router.use(function (req, res, next) {
   if (!version) {
     res.status(403).json({
       success: false,
-      message: 'No Header with name version found.'
+      message: 'No Header with name "version" found.'
     })
-  } else if (version !== 1 && version !== 1.1) {
+  } else if (version < 1) {
     res.status(403).json({
       success: false,
       message: 'Header version ' + version + ' not acceptable.'
