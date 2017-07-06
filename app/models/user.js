@@ -162,7 +162,7 @@ UserSchema.pre('save', function(next) {
     }
   };
 
-  if(user.company.company_id) {
+  if(user.type && user.type.startsWith("company") && user.company && user.company.company_id) {
     Company.findById(user.company.company_id).then(function(company) {
       if(!company) {
         next(new Error('Company ' + user.company.company_id + ' does not exists in company collection.'))
@@ -197,7 +197,7 @@ UserSchema.pre('findOneAndUpdate', function (next) {
     }
   };
 
-  if (user.company.company_id) {
+  if(user.type && user.type.startsWith("company") && user.company && user.company.company_id) {
     Company.findById(user.company.company_id).then(function (company) {
       if (!company) {
         next(new Error('Company ' + user.company.company_id + ' does not exists in company collection.'))
