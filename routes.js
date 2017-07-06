@@ -277,8 +277,11 @@ module.exports = function(app, passport) {
                                 msg = "Email Address Duplicated";
                             } else if (/username/g.test(err.errmsg)) {
                                 msg = "Username Duplicated";
+                            } else if(typeof err === 'string') {
+                                msg = err
+                            } else {
+                                msg = err.message;
                             }
-                            
                             return res.json({success: false, msg: msg});
                         }
                         let token = jwt.encode(newUser, config.secret);
@@ -399,7 +402,13 @@ module.exports = function(app, passport) {
                 username: req.body.username
             }, function(err, user) {
                 if (err) {
-                    return res.json({success: false, msg: "There is no such a user"});
+                  var msg = null;
+                  if (typeof err === 'string') {
+                    msg = err
+                  } else {
+                    msg = err.message;
+                  }
+                  return res.json({success: false, msg: msg});
                 }
                 let pin = generate_pin_code();
                 let access_token = 'Bearer ' + jwt.encode(user, config.secret);

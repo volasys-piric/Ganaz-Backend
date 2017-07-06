@@ -1,7 +1,8 @@
 var mongoose = require('mongoose');
 var Schema = mongoose.Schema;
 var bcrypt = require('bcrypt-nodejs');
-
+var Promise = require('bluebird');
+var Company = require('./company');
 var PhoneNumberSchema = new Schema({
     country: {
         type: String
@@ -142,44 +143,71 @@ var UserSchema = new Schema({
 
 UserSchema.pre('save', function(next) {
 	var user = this;
-	if (this.isModified('password') || this.isNew) {
-		bcrypt.genSalt(10, function(err, salt) {
-			if (err) {
-				return next(err);
-			}
-			bcrypt.hash(user.password, salt, null, function(err, hash) {
-				if (err) {
-					return next(err);
-				}
-				user.password = hash;
-				next();
-			});
-		});
-	} else {
-		return next();
-	}
+	var validatePassword = function() {
+    if (user.isModified('password') || user.isNew) {
+      bcrypt.genSalt(10, function(err, salt) {
+        if (err) {
+          return next(err);
+        }
+        bcrypt.hash(user.password, salt, null, function(err, hash) {
+          if (err) {
+            return next(err);
+          }
+          user.password = hash;
+          next();
+        });
+      });
+    } else {
+      return next();
+    }
+  };
+
+  if(user.company.company_id) {
+    Company.findById(user.company.company_id).then(function(company) {
+      if(!company) {
+        next(new Error('Company ' + user.company.company_id + ' does not exists in company collection.'))
+      } else {
+        validatePassword();
+      }
+    });
+  } else {
+    validatePassword();
+  }
 });
 
-UserSchema.pre('findOneAndUpdate', function(next) {
-    var query = this;
-    var password = this.getUpdate().$set.password;
-
+UserSchema.pre('findOneAndUpdate', function (next) {
+  var query = this;
+  var validatePassword = function () {
+    var password = query.getUpdate().$set.password;
     if (password) {
-        bcrypt.genSalt(10, function(err, salt) {
-            if (err) {
-                return next(err);
-            }
-            bcrypt.hash(password, salt, null, function(err, hash) {
-                if (err) {
-                    return next(err);
-                }
-                query.findOneAndUpdate({}, { password: hash });
-                next();
-            });
+      bcrypt.genSalt(10, function (err, salt) {
+        if (err) {
+          return next(err);
+        }
+        bcrypt.hash(password, salt, null, function (err, hash) {
+          if (err) {
+            return next(err);
+          }
+          query.findOneAndUpdate({}, {password: hash});
+          next();
         });
+      });
     } else {
-        return next();
+      return next();
     }
+  };
+
+  if (user.company.company_id) {
+    Company.findById(user.company.company_id).then(function (company) {
+      if (!company) {
+        next(new Error('Company ' + user.company.company_id + ' does not exists in company collection.'))
+      } else {
+        validatePassword();
+      }
+    });
+  } else {
+    validatePassword();
+  }
 });
 
 UserSchema.methods.comparePassword = function(passw, cb) {
