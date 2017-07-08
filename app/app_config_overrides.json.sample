@@ -1,0 +1,6 @@
+{
+  "secret": "{app_secret}",
+  "dbUrl": "mongodb://localhost/ganaz",
+  "root": "/",
+  "port": 8000
+}
