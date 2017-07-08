@@ -1874,7 +1874,7 @@ module.exports = function(app, passport) {
     let calculateReviewStats = function(company_id) {
         return new Promise((resolve, reject) => {
             Review.find({
-                company_user_id: company_id
+                company_id: company_id
             }, function (err, reviews) {
                 if (err || !reviews.length) {
                     resolve({
