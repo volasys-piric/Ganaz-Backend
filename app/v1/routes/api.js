@@ -1,9 +1,9 @@
-var express = require('express');
-var app = express();
-var router = express.Router();
-var express_jwt = require('express-jwt');
+const express = require('express');
+const app = express();
+const router = express.Router();
+const express_jwt = require('express-jwt');
 
-var appConfig = require('./../../app_config');
+const appConfig = require('./../../app_config');
 
 app.use('/', express_jwt({
   secret: appConfig.secret,

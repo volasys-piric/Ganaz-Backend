@@ -1,7 +1,7 @@
-var mongoose = require('mongoose');
-var Schema = mongoose.Schema;
+const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
 
-var MessageSchema = new Schema({
+const MessageSchema = new Schema({
   job_id: {type: String, required: true},
   type: String,
   sender: {

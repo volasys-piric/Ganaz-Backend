@@ -1,17 +1,17 @@
-var mongoose = require('mongoose');
-var Schema = mongoose.Schema;
+const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
 
-var PaySchema = new Schema({
+const PaySchema = new Schema({
   rate: String,
   unit: String
 });
 
-var DatesSchema = new Schema({
+const DatesSchema = new Schema({
   from: Date,
   to: Date
 });
 
-var BenefitsSchema = new Schema({
+const BenefitsSchema = new Schema({
   training: Boolean,
   health_checks: Boolean,
   housing: Boolean,
@@ -20,7 +20,7 @@ var BenefitsSchema = new Schema({
   scholarships: Boolean
 });
 
-var LocationSchema = new Schema({
+const LocationSchema = new Schema({
   address: String,
   loc: {
     type: [Number],  // [<longitude>, <latitude>]
@@ -28,7 +28,7 @@ var LocationSchema = new Schema({
   }
 });
 
-var JobSchema = new Schema({
+const JobSchema = new Schema({
   company_id: {type: String, required: true},
   company_user_id: String,
   title: {

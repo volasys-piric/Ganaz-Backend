@@ -1,21 +1,21 @@
-var mongoose = require('mongoose');
-var Schema = mongoose.Schema;
-var bcrypt = require('bcrypt-nodejs');
-var Promise = require('bluebird');
-var Company = require('./company');
-var logger = require('./../../../utils/logger');
+const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
+const bcrypt = require('bcrypt-nodejs');
+const Promise = require('bluebird');
+const Company = require('./company');
+const logger = require('./../../../utils/logger');
 
-var PhoneNumberSchema = new Schema({
+const PhoneNumberSchema = new Schema({
   country: String,
   country_code: String,
   local_number: String
 });
 
-var CompanySchema = new Schema({
+const CompanySchema = new Schema({
   company_id: String
 });
 
-var LocationSchema = new Schema({
+const LocationSchema = new Schema({
   address: String,
   loc: {
     type: [Number],  // [<longitude>, <latitude>]
@@ -23,12 +23,12 @@ var LocationSchema = new Schema({
   }
 });
 
-var WorkerSchema = new Schema({
+const WorkerSchema = new Schema({
   location: {type: LocationSchema},
   is_newjob_lock: {type: Boolean, default: false},
 });
 
-var UserSchema = new Schema({
+const UserSchema = new Schema({
   username: {type: String, required: true, unique: true},
   password: String,
   firstname: String,
@@ -46,7 +46,7 @@ var UserSchema = new Schema({
 });
 
 
-var validateCompanyId = function (user) {
+const validateCompanyId = function (user) {
   if (user.type && user.type.startsWith("company") && user.company && user.company.company_id) {
     Company.findById(user.company.company_id).then(function (company) {
       if (!company) {

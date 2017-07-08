@@ -1,11 +1,11 @@
-var express = require('express');
-var logger = require('./utils/logger');
-var bodyParser = require('body-parser');
-var appConfig = require('./app_config');
+const express = require('express');
+const logger = require('./utils/logger');
+const bodyParser = require('body-parser');
+const appConfig = require('./app_config');
 logger.debug("Overriding 'Express' logger");
-var isProduction = process.env.NODE_ENV === 'production';
+const isProduction = process.env.NODE_ENV === 'production';
 
-var app = express();
+const app = express();
 app.use(require('morgan')(isProduction ? 'common' : 'dev', {'stream': logger.stream}));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: false}));
@@ -28,8 +28,8 @@ app.use(function (err, req, res, next) {
   }
 });
 
-var base = express();
-var root = appConfig.root;
+const base = express();
+let root = appConfig.root;
 root = root.endsWith('/') ? root.substring(0, root.length - 1) : root;
 base.use(root, app);
 module.exports = base;

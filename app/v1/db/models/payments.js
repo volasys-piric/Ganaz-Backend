@@ -1,7 +1,7 @@
-var mongoose = require('mongoose');
-var Schema = mongoose.Schema;
+const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
 
-var CardSchema = new Schema({
+const CardSchema = new Schema({
   id: String,
   object: String,
   address_city: String,
@@ -27,7 +27,7 @@ var CardSchema = new Schema({
   tokenization_method: String
 });
 
-var PaymentMethodSchema = new Schema({
+const PaymentMethodSchema = new Schema({
   type: String,
   gateway: String,
   stripe_card: CardSchema,
@@ -43,7 +43,7 @@ var PaymentMethodSchema = new Schema({
   company_id: String
 });
 
-var PaymentHistorySchema = new Schema({
+const PaymentHistorySchema = new Schema({
   success: Boolean,
   datetime: Date,
   payment_method: PaymentMethodSchema,

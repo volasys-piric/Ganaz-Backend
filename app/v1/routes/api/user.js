@@ -1,8 +1,8 @@
-var express = require('express');
-var router = express.Router();
+const express = require('express');
+const router = express.Router();
 
-var httpUtil = require('./../../../utils/http');
-var userService = require('./../service/user.service');
+const httpUtil = require('./../../../utils/http');
+const userService = require('./../service/user.service');
 
 router.post('/', function (req, res, next) {
   /** Expected req.body is
@@ -39,29 +39,18 @@ router.post('/', function (req, res, next) {
        }
    }
    */
-  var body = req.body;
-  var isValid = function (body) {
-    return body && body.username && body.firstname && body.lastname
-      && body.type && (
-        body.type === 'worker' || (
-          (body.type === 'company-regular' || body.type === 'company-admin')
-          && body.company && body.company.company_id
-        )
-      )
-      && body.auth_type && (
-        body.email !== 'email'
-        || body.password // Should have password if authentication by email
-      )
-  };
-  if (isValid(body)) {
-    userService.create(body).then(function (user) {
+  const body = req.body;
+  if (!body) {
+    res.json({success: false, msg: 'Request body not found.'});
+  } else {
+    userService.validate(body).then(function () {
+      return userService.create(body);
+    }).then(function (user) {
       res.json({
         success: true,
         account: user
       });
     }).catch(httpUtil.handleError(res));
-  } else {
-    res.json({success: false, msg: 'Please recheck if omitted things exist.'});
   }
 });
 
@@ -93,6 +82,20 @@ router.patch('/', function (req, res, next) {
        }
    }
    */
+  const body = req.body;
+  if (!body || !body.account) {
+    res.json({success: false, msg: 'Request body of form {"account": {... user body ...} } not found.'});
+  } else {
+    const userDataUpdate = body.account;
+    userService.validate(userDataUpdate).then(function () {
+      return userService.update(userDataUpdate);
+    }).then(function (user) {
+      res.json({
+        success: true,
+        account: user
+      });
+    }).catch(httpUtil.handleError(res));
+  }
 });
 
 router.post('/login', function (req, res, next) {
@@ -104,8 +107,8 @@ router.post('/login', function (req, res, next) {
        "external_id": ""                                   [optional]
    }
    */
-  var body = req.body;
-  var errorMessage = null;
+  const body = req.body;
+  let errorMessage = null;
   if (!body || !body.username || !body.auth_type) {
     errorMessage = 'Request body username, auth_type are required.';
   } else if (body.auth_type === 'email') {

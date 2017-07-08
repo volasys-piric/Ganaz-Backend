@@ -1,13 +1,13 @@
-var mongoose = require('mongoose');
-var Schema = mongoose.Schema;
+const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
 
-var RequestSchema = new Schema({
+const RequestSchema = new Schema({
   job_id: String,
   broadcast_radius: Number,
   re_recruit_worker_user_ids: [String]
 });
 
-var RecruitSchema = new Schema({
+const RecruitSchema = new Schema({
   company_id: String,
   company_user_id: String,
   request: {type: RequestSchema, required: true},

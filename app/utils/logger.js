@@ -1,9 +1,9 @@
 // See http://tostring.it/2014/06/23/advanced-logging-with-nodejs/
-var winston = require('winston');
+const winston = require('winston');
 winston.emitErrs = true;
 
-var isProduction = process.env.NODE_ENV === 'production';
-var transports = [
+const isProduction = process.env.NODE_ENV === 'production';
+const transports = [
   new winston.transports.File({
     level: 'info',
     filename: isProduction ? './logs/prod.log' : './logs/dev.log',
@@ -23,7 +23,7 @@ if (!isProduction) {
   }));
 }
 
-var logger = new winston.Logger({
+const logger = new winston.Logger({
   transports: transports,
   exitOnError: false
 });

@@ -5,18 +5,18 @@
      "worker_user_id": "{user object id}"
  }
  */
-var Promise = require('bluebird');
-var Job = require('./job');
-var User = require('./user');
-var mongoose = require('mongoose');
-var Schema = mongoose.Schema;
+const Promise = require('bluebird');
+const Job = require('./job');
+const User = require('./user');
+const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
 
-var ApplicationSchema = new Schema({
+const ApplicationSchema = new Schema({
   job_id: {type: String, required: true},
   worker_user_id: String
 });
 
-var validateJob = function (model) {
+const validateJob = function (model) {
   return Job.findById(model.job_id).then(function (job) {
     if (!job) {
       return Promise.reject('Job ' + model.job_id + ' does not exists in job collection.');
@@ -26,7 +26,7 @@ var validateJob = function (model) {
   });
 };
 
-var validateWorkerUserId = function (model) {
+const validateWorkerUserId = function (model) {
   if (model.worker_user_id) {
     User.findById(model.worker_user_id).then(function (user) {
       if (!job) {
@@ -41,7 +41,7 @@ var validateWorkerUserId = function (model) {
 };
 
 ApplicationSchema.pre('save', function (next) {
-  var model = this;
+  const model = this;
   validateJob(model).then(function (model) {
     return validateWorkerUserId(model);
   }).then(function () {

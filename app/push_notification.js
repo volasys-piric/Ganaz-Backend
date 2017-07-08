@@ -1,8 +1,8 @@
 import request from 'request';
 import configOneSignal from '../config/onesignal';
 
-var sendNotification = function(device, notification) {
-    var request_body = JSON.stringify({
+const sendNotification = function(device, notification) {
+    const request_body = JSON.stringify({
         'app_id': configOneSignal.appID,
         'contents': notification.contents,
         'data': notification.data,

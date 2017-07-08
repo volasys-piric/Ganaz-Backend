@@ -1,13 +1,13 @@
-var mongoose = require('mongoose');
-var Schema = mongoose.Schema;
+const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
 
-var PhoneNumberSchema = new Schema({
+const PhoneNumberSchema = new Schema({
   country: String,
   country_code: String,
   local_number: String
 });
 
-var InviteSchema = new Schema({
+const InviteSchema = new Schema({
   company_id: String,
   phone_number: {
     type: PhoneNumberSchema,

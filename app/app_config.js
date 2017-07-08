@@ -1,9 +1,9 @@
-var events = require('events');
-var fs = require('fs-extra-promise');
+const events = require('events');
+const fs = require('fs-extra-promise');
 
-var logger = require('./utils/logger');
+const logger = require('./utils/logger');
 
-var config = {
+const config = {
   emitter: new events.EventEmitter(),
   secret: "G@n4z-B4ck3nd",
   dbUrl: 'mongodb://localhost/ganaz',
@@ -12,13 +12,13 @@ var config = {
 };
 
 config.load = function () {
-  var overrideFile = __dirname + '/app_config_overrides.json';
+  const overrideFile = __dirname + '/app_config_overrides.json';
   fs.exists(overrideFile, function (exists) {
     if (exists) {
       logger.debug('Reading app_config_overrides.json');
       fs.readFileAsync(overrideFile, 'utf8').then(function (contents) {
-        var json = JSON.parse(contents);
-        var updateConfig = function (properties) {
+        const json = JSON.parse(contents);
+        const updateConfig = function (properties) {
           properties.forEach(function (property, index) {
             if (property in json) {
               config[property] = json[property]

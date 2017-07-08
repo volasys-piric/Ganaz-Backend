@@ -1,29 +1,44 @@
-var Promise = require('bluebird');
-var bcrypt = require('bcrypt-nodejs');
-var jwt = require('jsonwebtoken'); // used to create, sign, and verify tokens
+const Promise = require('bluebird');
+const bcrypt = require('bcrypt-nodejs');
+const jwt = require('jsonwebtoken'); // used to create, sign, and verify tokens
+const db = require('./../../db');
+const appConfig = require('./../../../app_config');
+const companyService = require('./company.service');
+const User = db.models.user;
 
-var db = require('./../../db');
-var appConfig = require('./../../../app_config');
-var companyService = require('./company.service');
+const validate = function (body) {
+  let result = null;
+  if (body && body.username && body.firstname && body.lastname
+    && body.type && body.auth_type) {
+    if (body.auth_type === 'email' && !body.password) {
+      result = Promise.reject('Password is required for auth_type email.')
+    } else if (body.type !== 'worker' && !(body.company && body.company.company_id)) {
+      result = Promise.reject('Request body username, firstname, lastname, type and auth_type are required.')
+    } else {
+      result = Promise.resolve();
+    }
+  } else {
+    result = Promise.reject('Request body username, firstname, lastname, type and auth_type are required.')
+  }
+  return result;
+};
 
-var User = db.models.user;
-
-var create = function (body) {
-  var findPromises = [User.findOne({username: body.username})];
+const create = function (body) {
+  const findPromises = [User.findOne({username: body.username})];
   if (body.auth_type === 'email') {
     findPromises.push(User.findOne({email_address: body.email_address}))
   } else {
     findPromises.push(Promise.resolve(null));
   }
   return Promise.all(findPromises).then(function (findPromises) {
-    var existingUser = findPromises[0];
-    var existingEmail = findPromises[1];
+    const existingUser = findPromises[0];
+    const existingEmail = findPromises[1];
     if (existingUser) {
       return Promise.reject('User with username ' + body.username + ' already exists.');
     } else if (existingEmail) {
       return Promise.reject('User with email ' + body.email_address + ' already exists.');
     } else {
-      var user = new User(User.adaptLocation(body));
+      const user = new User(User.adaptLocation(body));
       if (user.company && user.company.company_id) {
         return companyService.getCompany(user.company.company_id, true).then(function (company) {
           user.company.account = company;
@@ -41,9 +56,9 @@ var create = function (body) {
   });
 };
 
-var update = function (id, body) {
+const update = function (id, body) {
   User.findById(id).then(function (userModel) {
-    var user = Object.assign(userModel, User.adaptLocation(body));
+    const user = Object.assign(userModel, User.adaptLocation(body));
     return user.save().then(function () {
       return user;
     })
@@ -59,7 +74,7 @@ var update = function (id, body) {
   });
 };
 
-var login = function (body) {
+const login = function (body) {
   return User.findOne({username: body.username}).then(function (user) {
     if (!user) {
       return Promise.reject('Authentication failed. User with username ' + body.username + ' not found.');
@@ -102,6 +117,7 @@ var login = function (body) {
 
 
 module.exports = {
+  validate: validate,
   create: create,
   update: update,
   login: login

@@ -1,8 +1,8 @@
-var logger = require('./logger');
+const logger = require('./logger');
 module.exports = {
   handleError: function (res) {
     return function (error) {
-      var message = '';
+      const message = '';
       if (error instanceof Error) {
         logger.error(error);
         message = error.message;

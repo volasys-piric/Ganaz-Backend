@@ -1,7 +1,7 @@
-var Promise = require('bluebird');
-var appConfig = require('./../app_config');
+const Promise = require('bluebird');
+const appConfig = require('./../app_config');
 
-var mongoose = require('mongoose');
+const mongoose = require('mongoose');
 mongoose.Promise = Promise;
 mongoose.connect(appConfig.dbUrl);
 
