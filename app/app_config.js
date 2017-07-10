@@ -13,7 +13,9 @@ const config = {
   TWILIO_ACCOUNT_SID: 'ACbd8003709f13c4f1786be1ad41593e4e',
   TWILIO_AUTH_TOKEN: '3319f902715d78fd3df0a14f2e62b259',
   TWILIO_PHONE_NUMBER: '+1 510-694-2629',
-  support_mail: 'super.savych@yandex.com'
+  support_mail: 'super.savych@yandex.com',
+  STRIPE_SECRET_KEY: 'sk_test_RhXr4017wVdvnotlxgtS9gOq',
+  STRIPE_PUBLISHABLE_KEY: 'pk_test_JZqzrp7oWZSWPvfhZHoGvWH3'
 };
 
 config.load = function () {
@@ -32,7 +34,8 @@ config.load = function () {
         };
         // TODO: Make this dynamic
         updateConfig(['root', 'port', 'dbUrl', 'secret', 'appstore_url',
-          'TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_PHONE_NUMBER', 'support_mail']);
+          'TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_PHONE_NUMBER', 'support_mail',
+          'STRIPE_SECRETE_KEY', 'STRIPE_PUBLISHABLE_KEY']);
         config.emitter.emit('ready');
       }, function (error) {
         logger.warn('Error reading ' + overrideFile + '. Error: ' + error.message);

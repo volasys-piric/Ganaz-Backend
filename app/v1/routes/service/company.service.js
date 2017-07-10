@@ -1,4 +1,5 @@
 const Promise = require('bluebird');
+const stripeService = require('./stripe.service');
 const db = require('./../../db');
 
 const Company = db.models.company;
@@ -7,7 +8,57 @@ const Job = db.models.job;
 const Recruit = db.models.recruit;
 const Message = db.models.message;
 
-function calculateReviewStats(companyId) {
+const getCompany = function (companyId, includeStats) {
+  return Company.findById(companyId).then(function (company) {
+    if (company === null) {
+      return Promise.reject('Company ID ' + companyId + ' does not exists.');
+    } else if (includeStats) {
+      return _includeCompanyStats(company);
+    } else {
+      return company;
+    }
+  });
+};
+
+const create = function (body) {
+  return stripeService.createCustomer(body.name.end).then(function (stripeCustomer) {
+    body.payment_stripe_customer_id = stripeCustomer.id;
+    const company = new Company(body);
+    return company.save();
+  }).then(function (company) {
+    return _includeCompanyStats(company);
+  });
+};
+
+const findByCode = function (code) {
+  return Company.find({code: code}).then(function (companies) {
+    const promises = [];
+    for (let i = 0; i < companies.length; i++) {
+      promises.push(_includeCompanyStats(companies[i]));
+    }
+    return Promise.all(promises);
+  });
+};
+
+const update = function (id, updatedCompanyDetails) {
+  return Company.findById(id).then(function (company) {
+    const updatedCompany = Object.assign(company, updatedCompanyDetails);
+    return updatedCompany.save();
+  }).then(function (company) {
+    return _includeCompanyStats(company);
+  });
+};
+
+const updatePlan = function (id, plan) {
+  return Company.findById(id).then(function (company) {
+    company.plan = plan;
+    return company.save();
+  }).then(function (company) {
+    return _includeCompanyStats(company);
+  });
+};
+
+function _calculateReviewStats(companyId) {
   return Review.find({company_id: companyId}).then(function (reviews) {
     let totalScore = 0;
     for (let i = 0; i < reviews.length; i++) {
@@ -21,7 +72,7 @@ function calculateReviewStats(companyId) {
   });
 }
 
-function calculateActivityStats(companyId) {
+function _calculateActivityStats(companyId) {
   return Job.find({company_id: companyId}, '_id').then(function (jobs) {
     const result = {
       total_jobs: 0,
@@ -50,26 +101,21 @@ function calculateActivityStats(companyId) {
   });
 }
 
-function includeCompanyStats(company) {
+function _includeCompanyStats(company) {
   const companyId = company._id.toString();
-  return Promise.all([calculateReviewStats(companyId), calculateActivityStats(companyId)])
+  return Promise.all([_calculateReviewStats(companyId), _calculateActivityStats(companyId)])
     .then(function (statsArr) {
-      company.review_stats = statsArr[0];
-      company.activity_stats = statsArr[1];
-      return company;
+      const o = company.toObject();
+      o.review_stats = statsArr[0];
+      o.activity_stats = statsArr[1];
+      return o;
     })
 }
 
 module.exports = {
-  getCompany: function (companyId, includeStats) {
-    return Company.findById(companyId).then(function (company) {
-      if (company === null) {
-        return Promise.reject('Company ID ' + companyId + ' does not exists.');
-      } else if (includeStats) {
-        return includeCompanyStats(company);
-      } else {
-        return company;
-      }
-    });
-  }
+  getCompany: getCompany,
+  create: create,
+  findByCode, findByCode,
+  update: update,
+  updatePlan: updatePlan
 };

@@ -15,7 +15,8 @@ module.exports = {
     membership: require('./models/membership'),
     message: require('./models/message'),
     myworker: require('./models/myworker'),
-    payments: require('./models/payments'),
+    paymentMethod: require('./models/payments').PaymentMethod,
+    paymentHistory: require('./models/payments').PaymentHistory,
     recruit: require('./models/recruit'),
     review: require('./models/review'),
     user: require('./models/user')
