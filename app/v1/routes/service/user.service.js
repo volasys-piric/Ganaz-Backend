@@ -2,7 +2,6 @@ const Promise = require('bluebird');
 const bcrypt = require('bcrypt-nodejs');
 const jwt = require('jsonwebtoken'); // used to create, sign, and verify tokens
 const twilio = require('twilio');
-const sendMail = require('sendmail');
 const logger = require('./../../../utils/logger');
 const db = require('./../../db');
 const appConfig = require('./../../../app_config');
@@ -11,7 +10,6 @@ const companyService = require('./company.service');
 const User = db.models.user;
 
 const twilio_client = twilio(appConfig.TWILIO_ACCOUNT_SID, appConfig.TWILIO_AUTH_TOKEN);
-const sendmail_client = sendmail();
 
 const validate = function (body) {
   let result = null;
@@ -109,16 +107,9 @@ const login = function (body) {
     return populateCompany(user, true);
   }).then(function (user) {
     user.last_login = Date.now();
-    const access_token = 'Bearer ' + jwt.sign({
-        _id: user._id.toString(),
-        id: user._id.toString(),
-        username: user.username,
-        email_address: user.email_address
-      }, appConfig.secret);
-
     return user.save().then(function (user) {
       const o = _toObject(user);
-      o.access_token = access_token;
+      o.access_token = _generateToken(user);
       return o;
     });
   });
@@ -217,12 +208,7 @@ const recoverPassRequestPin = function (username) {
     } else {
       // generate_pin_code() in routes.js
       const pin = Math.floor(1000 + Math.random() * 9000).toString();
-      const access_token = 'Bearer ' + jwt.sign({
-          _id: user._id.toString(),
-          id: user._id.toString(),
-          username: user.username,
-          email_address: user.email_address
-        }, appConfig.secret);
+      const access_token = _generateToken(user);
       //  send twilio message ignoring any errors in sending twilio messages
       _sendMessageWithPin(user, pin);
       return {pin, access_token};
@@ -240,6 +226,21 @@ const updatePassword = function (id, newPassword) {
       return _toObject(user);
     });
 };
+
+function _generateToken(user) {
+  const o = {
+    _id: user._id.toString(),
+    id: user._id.toString(),
+    username: user.username,
+    email_address: user.email_address
+  };
+  if (user.company && user.company.company_id) {
+    o.company = {
+      company_id: user.company.company_id
+    }
+  }
+  return 'Bearer ' + jwt.sign(o, appConfig.secret);
+}
 
 function _toObject(user) {
   const o = user.toObject();

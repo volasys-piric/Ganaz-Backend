@@ -21,4 +21,11 @@ const MessageSchema = new Schema({
   datetime: Date
 });
 
+MessageSchema.pre('save', function (next) {
+  if (!this.datetime) {
+    this.datetime = Date.now();
+  }
+  next();
+});
+
 module.exports = mongoose.model('Message', MessageSchema);

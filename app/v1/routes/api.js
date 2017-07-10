@@ -23,7 +23,12 @@ router.get('/', function (req, res) {
 });
 app.use('/', router);
 app.use('/user', require('./api/user'));
-app.use('/projects', require('./api/project'));
-app.use('/worksheet/weekly', require('./api/worksheetweekly'));
-
+app.use('/company', require('./api/company'));
+app.use('/job', require('./api/job'));
+app.use('/message', require('./api/message'));
+app.use('/application', require('./api/application'));
+app.use('/recruit', require('./api/recruit'));
+app.use('/plans', require('./api/membership'));
+app.use('/invite', require('./api/invite'));
+app.use('/review', require('./api/review'));
 module.exports = app;
