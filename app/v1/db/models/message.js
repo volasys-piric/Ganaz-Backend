@@ -17,6 +17,9 @@ const MessageSchema = new Schema({
     es: String
   },
   status: String,
+  metadata: {
+    suggest_id: String
+  },
   auto_translate: Boolean,
   datetime: Date
 });

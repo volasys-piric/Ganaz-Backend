@@ -32,8 +32,13 @@ const create = function (body) {
   // TODO: Add validation such that job_id (if not null) and sender/receiver iuser_id and company_id (if not null) should be existing.
   const receivers = body.receivers;
   const saveMessagePromises = [];
-  for (let i = 0; i < receivers.length; i++) {
-    body.receiver = receivers[i];
+  if (receivers.length > 0) {
+    for (let i = 0; i < receivers.length; i++) {
+      body.receiver = receivers[i];
+      const message = new Message(body);
+      saveMessagePromises.push(message.save());
+    }
+  } else {
     const message = new Message(body);
     saveMessagePromises.push(message.save());
   }

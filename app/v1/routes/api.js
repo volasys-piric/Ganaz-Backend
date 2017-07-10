@@ -13,7 +13,30 @@ app.use('/', express_jwt({
     path: [
       /\/status/,
       /\/user$/,
-      /\/user\/login$/
+      /\/user\/login$/,
+      /\/user\/password_recovery\/pin$/,
+      {
+        url: /\/user$/,
+        methods: 'POST'
+      },
+      {
+        url: /\/user\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+        methods: 'GET'
+      },
+      {
+        url: /\/company$/,
+        methods: 'POST'
+      },
+      {
+        url: /\/company\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+        methods: 'GET'
+      },
+      {
+        url: /\/company\/search$/,
+        methods: 'GET'
+      },
+      /\/job\/search$/,
+      /\/plans$/
     ]
   }
 ));
@@ -32,4 +55,5 @@ app.use('/plans', require('./api/membership'));
 app.use('/invite', require('./api/invite'));
 app.use('/review', require('./api/review'));
 app.use('/support', require('./api/support'));
+app.use('/suggest', require('./api/suggest'));
 module.exports = app;

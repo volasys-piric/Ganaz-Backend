@@ -19,6 +19,7 @@ module.exports = {
     paymentHistory: require('./models/payments').PaymentHistory,
     recruit: require('./models/recruit'),
     review: require('./models/review'),
-    user: require('./models/user')
+    user: require('./models/user'),
+    suggest: require('./models/suggest')
   }
 };
