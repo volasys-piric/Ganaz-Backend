@@ -31,4 +31,5 @@ app.use('/recruit', require('./api/recruit'));
 app.use('/plans', require('./api/membership'));
 app.use('/invite', require('./api/invite'));
 app.use('/review', require('./api/review'));
+app.use('/support', require('./api/support'));
 module.exports = app;
