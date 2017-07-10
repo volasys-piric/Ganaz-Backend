@@ -9,8 +9,8 @@ const Message = db.models.message;
 
 function calculateReviewStats(companyId) {
   return Review.find({company_id: companyId}).then(function (reviews) {
-    const totalScore = 0;
-    for (const i = 0; i < reviews.length; i++) {
+    let totalScore = 0;
+    for (let i = 0; i < reviews.length; i++) {
       const rating = reviews[i].rating;
       totalScore += rating.pay + rating.benefits + rating.supervisors + rating.safety + rating.trust;
     }
@@ -30,7 +30,7 @@ function calculateActivityStats(companyId) {
     };
     if (jobs.length > 0) {
       const jobIds = [];
-      for (const i = 0; i < jobs.length; i++) {
+      for (let i = 0; i < jobs.length; i++) {
         jobIds.push(jobs[i]._id.toString());
       }
       return Promise.all([
@@ -50,7 +50,7 @@ function calculateActivityStats(companyId) {
   });
 }
 
-function attachAdditionalFields(company) {
+function includeCompanyStats(company) {
   const companyId = company._id.toString();
   return Promise.all([calculateReviewStats(companyId), calculateActivityStats(companyId)])
     .then(function (statsArr) {
@@ -61,12 +61,12 @@ function attachAdditionalFields(company) {
 }
 
 module.exports = {
-  getCompany: function (companyId, includeAdditionalFields) {
+  getCompany: function (companyId, includeStats) {
     return Company.findById(companyId).then(function (company) {
       if (company === null) {
         return Promise.reject('Company ID ' + companyId + ' does not exists.');
-      } else if (includeAdditionalFields) {
-        return attachAdditionalFields(company);
+      } else if (includeStats) {
+        return includeCompanyStats(company);
       } else {
         return company;
       }

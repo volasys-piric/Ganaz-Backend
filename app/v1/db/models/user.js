@@ -4,6 +4,7 @@ const bcrypt = require('bcrypt-nodejs');
 const Promise = require('bluebird');
 const Company = require('./company');
 const logger = require('./../../../utils/logger');
+const validation = require('./../../../utils/validation');
 
 const PhoneNumberSchema = new Schema({
   country: String,
@@ -48,7 +49,7 @@ const UserSchema = new Schema({
 
 const validateCompanyId = function (user) {
   if (user.type && user.type.startsWith("company") && user.company && user.company.company_id) {
-    Company.findById(user.company.company_id).then(function (company) {
+    return Company.findById(user.company.company_id).then(function (company) {
       if (!company) {
         return Promise.reject('Company ' + user.company.company_id + ' does not exists in company collection.');
       } else {
@@ -61,14 +62,29 @@ const validateCompanyId = function (user) {
 };
 
 UserSchema.pre('save', function (next) {
-  if (!this.created_at) {
-    this.created_at = Date.now();
-  }
-  next();
-});
-
-UserSchema.pre('findOneAndUpdate', function (next) {
-  validateCompanyId(this).then(function () {
+  validateCompanyId(this)
+    .then(function (user) {
+      if (user.phone_number && user.phone_number.local_number) {
+        if (validation.isUSPhoneNumber(user.phone_number.local_number)) {
+          if (!user.phone_number.country) {
+            user.phone_number.country = 'US';
+          }
+          if (!user.phone_number.country_code) {
+            user.phone_number.country_code = '1';
+          }
+          // Convert to plain xxxxxxxxxx
+          user.phone_number.local_number = user.phone_number.local_number.replace(new RegExp('[()\\s-]', 'g'), '');
+          return user;
+        } else {
+          return Promise.reject('Phone number ' + user.phone_number.local_number + ' is an invalid US Phone number.');
+        }
+      } else {
+        return user;
+      }
+    }).then(function () {
+    if (!this.created_at) {
+      this.created_at = Date.now();
+    }
     next();
   }).catch(function (error) {
     if (error instanceof Error) {
@@ -95,6 +111,6 @@ UserSchema.statics.adaptLocation = function (data) {
     data.worker.location.loc = [data.worker.location.lng, data.worker.location.lat];
   }
   return data;
-}
+};
 
 module.exports = mongoose.model('User', UserSchema);
