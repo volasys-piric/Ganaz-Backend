@@ -27,7 +27,7 @@ router.post('/search', function (req, res) {
       $or.push({worker_user_id: body.worker_user_id});
     }
     if (body.job_ids && body.job_ids.length > 0) {
-      $or.push({job_id: {$in: body.jobIds}});
+      $or.push({job_id: {$in: body.job_ids}});
     }
   }
   const dbQ = {};

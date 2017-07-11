@@ -135,6 +135,10 @@ const create = function (body) {
 const search = function (searchBody) {
   let query = {};
   if (searchBody.worker_user_id) {
+    query.$or = [
+      {recruited_worker_user_ids: searchBody.worker_user_id},
+      {'request.re_recruit_worker_user_ids': searchBody.worker_user_id}
+    ];
     query.recruited_worker_user_ids = searchBody.worker_user_id;
   }
   if (searchBody.company_id) {

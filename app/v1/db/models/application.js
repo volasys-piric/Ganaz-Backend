@@ -30,8 +30,10 @@ const validateJob = function (model) {
 const validateWorkerUserId = function (model) {
   if (model.worker_user_id) {
     User.findById(model.worker_user_id).then(function (user) {
-      if (!job) {
+      if (!user) {
         return Promise.reject('User ' + model.worker_user_id + ' does not exists in user collection.');
+      } else if (user.type !== 'worker') {
+        return Promise.reject('User ' + model.worker_user_id + ' is not a worker.');
       } else {
         return model;
       }

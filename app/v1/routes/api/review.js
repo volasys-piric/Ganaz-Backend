@@ -6,7 +6,7 @@ const httpUtil = require('./../../../utils/http');
 
 const Review = db.models.review;
 const Company = db.models.company;
-const User = db.models.company;
+const User = db.models.user;
 
 router.post('/search', function (req, res) {
   /** Expected req.body
@@ -47,7 +47,7 @@ router.post('/', function (req, res) {
    */
   const body = req.body;
   User.findById(body.worker_user_id).then(function (user) {
-    if (user === null) {
+    if (!user) {
       return Promise.reject('User with id ' + body.worker_user_id + ' does not exists.');
     } else {
       return body;
