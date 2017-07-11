@@ -28,6 +28,9 @@ MessageSchema.pre('save', function (next) {
   if (!this.datetime) {
     this.datetime = Date.now();
   }
+  if (!this.status) {
+    this.status = 'new';
+  }
   next();
 });
 

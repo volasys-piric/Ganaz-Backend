@@ -85,4 +85,33 @@ router.post('/:id/status', function (req, res) {
   }
 });
 
+router.post('/status-update', function (req, res) {
+  /** Expected req.body
+   {
+       "message_ids": [
+           "{message id}",
+           "{message id}",
+           ...
+       ],
+       "status": "read/new"
+   }
+   */
+  const body = req.body;
+  if (!body || !body.status) {
+    res.json({
+      success: false,
+      msg: 'Request body status is required.'
+    });
+  } else {
+    messageService.updateStatusByBulk(body.message_ids, body.status).then(function (messages) {
+      res.json({
+        success: true,
+        messages: messages.map(function (message) {
+          return message._id.toString()
+        })
+      });
+    }).catch(httpUtil.handleError(res));
+  }
+});
+
 module.exports = router;

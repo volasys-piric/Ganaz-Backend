@@ -45,8 +45,9 @@ const create = function (body) {
   return Promise.all(saveMessagePromises).then(function (savedMessages) {
     for (let i = 0; i < savedMessages.length; i++) {
       // Send message to user/receiver ignoring result
-      User.findById(savedMessages.receiver.user_id).then(function (user) {
-        const jsonMessage = savedMessages[i].toObject();
+      const savedMessage = savedMessages[i];
+      User.findById(savedMessage.receiver.user_id).then(function (user) {
+        const jsonMessage = savedMessage.toObject();
         let contents = null;
         if (typeof jsonMessage.message === 'object') {
           contents = jsonMessage.message
@@ -74,10 +75,9 @@ const create = function (body) {
 };
 
 const updateStatus = function (id, status) {
-  const messageId = req.params.id;
-  Message.findById(messageId).then(function (message) {
+  return Message.findById(id).then(function (message) {
     if (message === null) {
-      return Promise.reject('Message with id ' + messageId + ' does not exists.');
+      return Promise.reject('Message with id ' + id + ' does not exists.');
     } else {
       return message;
     }
@@ -87,9 +87,22 @@ const updateStatus = function (id, status) {
   });
 };
 
+const updateStatusByBulk = function (messageIds, status) {
+  return Message.find({_id: {$in: messageIds}}).then(function (messages) {
+    const saveMessagePromises = [];
+    for (let i = 0; i < messages.length; i++) {
+      const message = messages[i];
+      message.status = status;
+      saveMessagePromises.push(message.save());
+    }
+    return Promise.all(saveMessagePromises);
+  });
+};
+
 module.exports = {
   find: find,
   findById: findById,
   create: create,
-  updateStatus: updateStatus
+  updateStatus: updateStatus,
+  updateStatusByBulk: updateStatusByBulk
 };
