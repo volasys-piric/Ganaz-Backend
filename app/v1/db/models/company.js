@@ -18,7 +18,8 @@ const CompanySchema = new Schema({
     address2: String,
     city: String,
     state: String,
-    country: String
+    country: String,
+    zipcode: String
   },
   plan: {
     type: String,

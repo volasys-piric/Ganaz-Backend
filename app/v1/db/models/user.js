@@ -30,7 +30,7 @@ const WorkerSchema = new Schema({
 });
 
 const UserSchema = new Schema({
-  username: {type: String, required: true, unique: true},
+  username: String,
   password: String,
   firstname: String,
   lastname: String,

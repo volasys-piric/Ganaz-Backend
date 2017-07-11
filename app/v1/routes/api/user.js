@@ -55,7 +55,7 @@ router.post('/', function (req, res) {
            "country_code": "1",
            "local_number": "{local number}"
        },
-       "auth_type": "email/facebook/twitter/google",
+       "auth_type": "email/facebook/twitter/google/phone",
        "external_id": "{facebook_user_id/twitter_user_id/google_user_id}",
        "player_ids": [
            "{onesignal_player_id}",

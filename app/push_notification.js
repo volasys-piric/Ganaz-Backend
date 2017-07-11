@@ -2,13 +2,21 @@ const request = require('request');
 const appConfig = require('./app_config');
 
 const sendNotification = function (device, notification) {
+  let includePlayerIds = [];
+  if (device) {
+    if (Array.isArray(device)) {
+      includePlayerIds = device;
+    } else {
+      includePlayerIds.push(device);
+    }
+  }
   const request_body = JSON.stringify({
     'app_id': appConfig.ONE_SIGNAL_API_ID,
     'contents': notification.contents,
     'data': notification.data,
     'ios_badgeType': 'Increase',
     'ios_badgeCount': 1,
-    'include_player_ids': Array.isArray(device) ? device : [device]
+    'include_player_ids': includePlayerIds
   });
 
   request.post({

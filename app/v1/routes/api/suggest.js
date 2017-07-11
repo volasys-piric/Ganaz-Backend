@@ -28,11 +28,31 @@ router.post('/', function (req, res) {
     } else {
       return job;
     }
-  }).then(function (job) {
+  }).then(function () {
     const suggest = new Suggest(body);
     return suggest.save();
   }).then(function (suggest) {
-    // TODO: Send Message but cannot do it since there's no way to retrieve player ids
+    const senderId = req.user._id;
+    const senderCompanyId = req.user.company ? req.user.company.company_id : null;
+    const messageBody = {
+      job_id: body.job_id,
+      type: 'application',
+      sender: {
+        user_id: senderId,
+        company_id: senderCompanyId
+      },
+      receivers: suggest.worker_user_id,
+      message: {
+        'en': 'This worker might be interested in this job.',
+        'es': 'Este trabajador podría estar interesado en este trabajo.'
+      },
+      auto_translate: false,
+      datetime: Date.now()
+    };
+    return messageService.create(messageBody).then(function () {
+      return suggest;
+    });
+  }).then(function (suggest) {
     res.json({
       success: true,
       suggest: suggest

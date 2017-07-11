@@ -13,8 +13,16 @@ const validate = function (body) {
   let result = null;
   if (body && body.username && body.firstname && body.lastname
     && body.type && body.auth_type) {
-    if (body.auth_type === 'email' && !body.password) {
+    if (body.auth_type !== 'email' &&
+      body.auth_type !== 'facebook' &&
+      body.auth_type !== 'twitter' &&
+      body.auth_type !== 'google' &&
+      body.auth_type !== 'phone') {
+      result = Promise.reject('Invalid auth_type ' + body.auth_type + '. Acceptable auth_type(s) are email/facebook/twitter/google/phone.')
+    } else if (body.auth_type === 'email' && !body.password) {
       result = Promise.reject('Password is required for auth_type email.')
+    } else if (body.auth_type === 'phone' && (!body.password || !/\d{4}$/.test(body.password) )) {
+      result = Promise.reject('Password is required for auth_type phone and must be 4 digits.')
     } else if (body.type !== 'worker' && body.type !== 'company-admin' && body.type !== 'company-regular') {
       result = Promise.reject('Request type ' + body.type + ' is not acceptable.')
     } else if (body.type !== 'worker' && !(body.company && body.company.company_id)) {
@@ -84,13 +92,29 @@ const update = function (id, body) {
 };
 
 const login = function (body) {
-  return User.findOne({username: body.username}).then(function (user) {
-    if (!user) {
-      return Promise.reject('Authentication failed. User with username ' + body.username + ' not found.');
-    } else if (body.auth_type !== user.auth_type) {
-      return Promise.reject('Authentication failed. Auth type ' + +' not matched.');
+  let findUserPromise = null;
+  if (body.auth_type === 'phone') {
+    findUserPromise = User.findOne({'phone_number.local_number': body.phone_number}).then(function (user) {
+      if (!user) {
+        return Promise.reject('Authentication failed. User with phone_number.local_number ' + body.phone_number + ' does not exists..')
+      } else {
+        return user;
+      }
+    });
+  } else {
+    findUserPromise = User.findOne({username: body.username}).then(function (user) {
+      if (!user) {
+        return Promise.reject('Authentication failed. User with username ' + body.username + ' does not exists..')
+      } else {
+        return user;
+      }
+    });
+  }
+  return findUserPromise.then(function (user) {
+    if (body.auth_type !== user.auth_type) {
+      return Promise.reject('Authentication failed. Auth type ' + body.auth_type + ' not matched.');
     } else {
-      if (body.auth_type === 'email') {
+      if (body.auth_type === 'email' || body.auth_type === 'phone') {
         // check if password matches
         if (!bcrypt.compareSync(body.password, user.password)) {
           return Promise.reject('Authentication failed. Wrong password.');
