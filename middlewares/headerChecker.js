@@ -1,5 +1,4 @@
-import express from "express";
-const app = express();
+const express = require('express');
 const router = express.Router();
 
 // a middleware function with no mount path. This code is executed for every request to the router
@@ -29,4 +28,4 @@ router.use(function (req, res, next) {
   }
 });
 
-export default router;
+module.exports = router;

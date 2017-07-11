@@ -126,9 +126,7 @@ router.patch('/', function (req, res) {
     res.json({success: false, msg: 'Request body of form {"account": {... user body ...} } not found.'});
   } else {
     const userDataUpdate = body.account;
-    userService.validate(userDataUpdate).then(function () {
-      return userService.update(req.user._id, userDataUpdate);
-    }).then(function (user) {
+    userService.update(req.user._id, userDataUpdate).then(function (user) {
       res.json({
         success: true,
         account: user
@@ -149,12 +147,25 @@ router.get('/:id', function (req, res) {
 
 // https://bitbucket.org/volasys-ss/ganaz-backend/wiki/1.5%20User%20-%20Update%20Company%20User%20Role
 router.patch('/:id/type', function (req, res) {
-  userService.updateType(req.user._id, req.params.id, req.body.type).then(function (user) {
+  /** Expected req.body
+   {
+       "type": "company-admin/company-regular"
+   }
+   */
+  const body = req.body;
+  if (body.type !== 'company-admin' && body.type !== 'company-regular') {
     res.json({
-      success: true,
-      account: user
+      success: false,
+      msg: 'Request body type is not acceptable.'
     });
-  }).catch(httpUtil.handleError(res));
+  } else {
+    userService.updateType(req.user._id, req.params.id, body.type).then(function (user) {
+      res.json({
+        success: true,
+        account: user
+      });
+    }).catch(httpUtil.handleError(res));
+  }
 });
 
 // https://bitbucket.org/volasys-ss/ganaz-backend/wiki/1.6%20User%20-%20Search

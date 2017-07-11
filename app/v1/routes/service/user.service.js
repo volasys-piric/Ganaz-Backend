@@ -1,15 +1,13 @@
 const Promise = require('bluebird');
 const bcrypt = require('bcrypt-nodejs');
 const jwt = require('jsonwebtoken'); // used to create, sign, and verify tokens
-const twilio = require('twilio');
+const twilioService = require('./../service/twilio.service');
 const logger = require('./../../../utils/logger');
 const db = require('./../../db');
 const appConfig = require('./../../../app_config');
 const companyService = require('./company.service');
 
 const User = db.models.user;
-
-const twilio_client = twilio(appConfig.TWILIO_ACCOUNT_SID, appConfig.TWILIO_AUTH_TOKEN);
 
 const validate = function (body) {
   let result = null;
@@ -31,18 +29,16 @@ const validate = function (body) {
   return result;
 };
 
-const populateCompany = function (user, includeStats) {
-  if (user.company && user.company.company_id) {
+const populateCompany = function (userJsonO, includeStats) {
+  if (userJsonO.company && userJsonO.company.company_id) {
     // Only include company stats if user is company-regular or company-admin
-    const includeCompanyStats = includeStats && (
-        user.type.startsWith('company-regular') || user.type.startsWith('company-admin')
-      );
-    return companyService.getCompany(user.company.company_id, includeCompanyStats).then(function (company) {
-      user.company.account = company;
-      return user;
+    const includeCompanyStats = includeStats && (userJsonO.type === 'company-regular' || userJsonO.type === 'company-admin');
+    return companyService.getCompany(userJsonO.company.company_id, includeCompanyStats).then(function (company) {
+      userJsonO.company.account = company;
+      return userJsonO;
     })
   } else {
-    return Promise.resolve(user);
+    return Promise.resolve(userJsonO);
   }
 };
 
@@ -61,28 +57,29 @@ const create = function (body) {
     } else if (existingEmail) {
       return Promise.reject('User with email ' + body.email_address + ' already exists.');
     } else {
-      const user = new User(User.adaptLocation(body));
-      // According to existing routes.js, company stats should be included.
-      return populateCompany(user, true);
+      return new User(User.adaptLocation(body));
     }
   }).then(function (user) {
     user.password = bcrypt.hashSync(body.password);
     return user.save();
   }).then(function (user) {
     return _toObject(user);
+  }).then(function (userO) {
+    // According to existing routes.js, company stats should be included.
+    return populateCompany(userO, true);
   });
 };
 
 const update = function (id, body) {
-  User.findById(id).then(function (userModel) {
+  return User.findById(id).then(function (userModel) {
     const user = Object.assign(userModel, User.adaptLocation(body));
     return user.save().then(function () {
       return user;
     })
   }).then(function (user) {
-    return populateCompany(user);
-  }).then(function (user) {
     return _toObject(user);
+  }).then(function (userO) {
+    return populateCompany(userO);
   });
 };
 
@@ -107,21 +104,21 @@ const login = function (body) {
       }
     }
   }).then(function (user) {
-    // According to existing routes.js, company stats should be included.
-    return populateCompany(user, true);
-  }).then(function (user) {
     user.last_login = Date.now();
     return user.save().then(function (user) {
       const o = _toObject(user);
       o.access_token = _generateToken(user);
       return o;
     });
+  }).then(function (userO) {
+    // According to existing routes.js, company stats should be included.
+    return populateCompany(userO, true);
   });
 };
 
 const findById = function (id) {
   return User.findById(id).then(function (user) {
-    return _toObject(user);
+    return populateCompany(_toObject(user));
   })
 };
 
@@ -169,11 +166,13 @@ const search = function (sParams) {
       {'phone_number.local_number': sParams.any}
     ];
   } else {
-    const addCondition = function (fieldName, crit, isRegex) {
-      if (isRegex) {
-        dbQ[fieldName] = new RegExp(crit, 'i');
-      } else {
-        dbQ[fieldName] = crit;
+    const addCondition = function (fieldName, conditionValue, isRegex) {
+      if (conditionValue) {
+        if (isRegex) {
+          dbQ[fieldName] = new RegExp(conditionValue, 'i');
+        } else {
+          dbQ[fieldName] = conditionValue;
+        }
       }
     };
     addCondition('email_address', sParams.email_address, true);
@@ -195,10 +194,10 @@ const searchPhones = function (phoneNumbers) {
       if (phoneNumber.length == 11) {
         const countryCode = phoneNumber.charAt(0);
         const localNumber = phoneNumber.substr(1, 11);
-        dbQ.$or.push({country_code: countryCode, local_number: localNumber});
+        dbQ.$or.push({'phone_number.country_code': countryCode, 'phone_number.local_number': localNumber});
       } else {
         // Assumed to be 10 digit local number
-        dbQ.$or.push({local_number: localNumber});
+        dbQ.$or.push({'phone_number.local_number': phoneNumber});
       }
     }
   }
@@ -207,15 +206,17 @@ const searchPhones = function (phoneNumbers) {
 
 const recoverPassRequestPin = function (username) {
   return User.findOne({username: username}).then(function (user) {
-    if (user) {
+    if (!user) {
       return Promise.reject('User with username ' + username + ' does not exists.');
     } else {
       // generate_pin_code() in routes.js
       const pin = Math.floor(1000 + Math.random() * 9000).toString();
       const access_token = _generateToken(user);
       //  send twilio message ignoring any errors in sending twilio messages
-      _sendMessageWithPin(user, pin);
-      return {pin, access_token};
+      const toFullNumber = '+' + user.phone_number.country_code + user.phone_number.local_number;
+      return twilioService.sendMessage(toFullNumber, 'Ganaz Pin Code: ' + pin).then(function () {
+        return {pin, access_token};
+      });
     }
   })
 };
@@ -254,40 +255,15 @@ function _toObject(user) {
   return o;
 }
 
-function _toObjects(users) {
-  const result = [];
-  for (let i = 0; i < users.length; i++) {
-    result.push(_toObject(users[i]));
-  }
-  return result;
-}
-
 function _findUsers(dbQ) {
   return User.find(dbQ).then(function (users) {
+    const populateCompanyPromises = [];
     for (let i = 0; i < users.length; i++) {
       const user = users[i];
-      users[i] = populateCompany(user);
+      populateCompanyPromises.push(populateCompany(_toObject(user)));
     }
-    return users;
-  }).then(function (users) {
-    return _toObjects(users);
+    return Promise.all(populateCompanyPromises);
   });
-}
-
-function _sendMessageWithPin(user, pin) {
-  twilio_client.messages.create({
-      from: appConfig.TWILIO_PHONE_NUMBER,
-      to: '+' + user.phone_number.country_code + user.phone_number.local_number,
-      body: 'Ganaz Pin Code: ' + pin
-    },
-    function (err, message) {
-      if (err) {
-        logger.error('[Twilio] Send invite fail. Reason: ' + err.message);
-      } else {
-        logger.log('[Twilio] Send invite success. Response: ' + message);
-      }
-    }
-  )
 }
 
 module.exports = {

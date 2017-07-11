@@ -5,6 +5,8 @@ const express_jwt = require('express-jwt');
 
 const appConfig = require('./../../app_config');
 
+const headerCheckerMiddleware = require('./../../../middlewares/headerChecker');
+
 app.use('/', express_jwt({
   secret: appConfig.secret,
   credentialsRequired: true
@@ -12,7 +14,6 @@ app.use('/', express_jwt({
   {
     path: [
       /\/status/,
-      /\/user$/,
       /\/user\/login$/,
       /\/user\/password_recovery\/pin$/,
       {
@@ -20,7 +21,7 @@ app.use('/', express_jwt({
         methods: 'POST'
       },
       {
-        url: /\/user\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+        url: /\/user\/[0-9a-f]{8,}$/,
         methods: 'GET'
       },
       {
@@ -28,7 +29,7 @@ app.use('/', express_jwt({
         methods: 'POST'
       },
       {
-        url: /\/company\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+        url: /\/company\/[0-9a-f]{8,}$/,
         methods: 'GET'
       },
       {
@@ -40,6 +41,7 @@ app.use('/', express_jwt({
     ]
   }
 ));
+app.use('/', headerCheckerMiddleware);
 
 router.get('/', function (req, res) {
   res.send('Hello! The API is now working');
