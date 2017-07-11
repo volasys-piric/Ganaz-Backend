@@ -32,10 +32,7 @@ app.use('/', express_jwt({
         url: /\/company\/[0-9a-f]{8,}$/,
         methods: 'GET'
       },
-      {
-        url: /\/company\/search$/,
-        methods: 'GET'
-      },
+      /\/company\/search$/,
       /\/job\/search$/,
       /\/plans$/
     ]

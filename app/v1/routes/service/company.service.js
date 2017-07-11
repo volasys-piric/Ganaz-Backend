@@ -1,4 +1,5 @@
 const Promise = require('bluebird');
+const logger = require('./../../../utils/logger');
 const stripeService = require('./stripe.service');
 const db = require('./../../db');
 
@@ -21,8 +22,10 @@ const getCompany = function (companyId, includeStats) {
 };
 
 const create = function (body) {
-  return stripeService.createCustomer(body.name.end).then(function (stripeCustomer) {
+  return stripeService.createCustomer(body.name.en).then(function (stripeCustomer) {
+    logger.info('Customer ' + body.name.en + ' generated stripe customer id: ' + stripeCustomer.id);
     body.payment_stripe_customer_id = stripeCustomer.id;
+
     const company = new Company(body);
     return company.save();
   }).then(function (company) {

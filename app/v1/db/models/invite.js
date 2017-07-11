@@ -12,7 +12,15 @@ const InviteSchema = new Schema({
   phone_number: {
     type: PhoneNumberSchema,
     required: true
+  },
+  created_at: Date
+});
+
+InviteSchema.pre('save', function (next) {
+  if (!this.created_at) {
+    this.created_at = Date.now();
   }
+  next();
 });
 
 module.exports = mongoose.model('Invite', InviteSchema);

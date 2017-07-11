@@ -31,7 +31,15 @@ const CompanySchema = new Schema({
     end_date: Date,
     auto_renewal: Boolean
   },
-  payment_stripe_customer_id: String
+  payment_stripe_customer_id: String,
+  created_at: Date
+}, {typeKey: '$type'});
+
+CompanySchema.pre('save', function (next) {
+  if (!this.created_at) {
+    this.created_at = Date.now();
+  }
+  next();
 });
 
 module.exports = mongoose.model('Company', CompanySchema);

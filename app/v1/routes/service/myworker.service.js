@@ -45,7 +45,7 @@ module.exports = {
       if (nonExistingUserIds.length > 0) {
         errorMsg += 'Non existing user ids: ' + nonExistingUserIds.join(', ') + '. ';
       }
-      if (nonExistingUserIds.length > 0) {
+      if (notWorkerIds.length > 0) {
         errorMsg += 'Not worker user ids: ' + notWorkerIds.join(', ') + '.';
       }
       if (errorMsg) {

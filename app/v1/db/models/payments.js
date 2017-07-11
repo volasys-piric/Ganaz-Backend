@@ -40,7 +40,8 @@ const PaymentMethodSchema = new Schema({
     zipcode: String,
     country: String
   },
-  company_id: String
+  company_id: String,
+  created_at: Date
 });
 
 const PaymentHistorySchema = new Schema({
@@ -95,7 +96,22 @@ const PaymentHistorySchema = new Schema({
     statement_descriptor: String,
     status: String,
     transfer_group: String
+  },
+  created_at: Date
+});
+
+PaymentMethodSchema.pre('save', function (next) {
+  if (!this.created_at) {
+    this.created_at = Date.now();
   }
+  next();
+});
+
+PaymentHistorySchema.pre('save', function (next) {
+  if (!this.created_at) {
+    this.created_at = Date.now();
+  }
+  next();
 });
 
 module.exports = {

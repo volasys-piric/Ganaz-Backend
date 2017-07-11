@@ -13,7 +13,8 @@ const Schema = mongoose.Schema;
 
 const ApplicationSchema = new Schema({
   job_id: {type: String, required: true},
-  worker_user_id: String
+  worker_user_id: String,
+  created_at: Date
 });
 
 const validateJob = function (model) {
@@ -45,6 +46,9 @@ ApplicationSchema.pre('save', function (next) {
   validateJob(model).then(function (model) {
     return validateWorkerUserId(model);
   }).then(function () {
+    if (!this.created_at) {
+      this.created_at = Date.now();
+    }
     next();
   }).catch(function (err) {
     return err instanceof Error ? next(err) : next(new Error(err));

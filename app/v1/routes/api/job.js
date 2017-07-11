@@ -104,8 +104,8 @@ router.post('/', function (req, res) {
        "positions_available": {number of positions}
    }
    */
-  const body = req.body;
-  _validate(body.company_id, _validate.company_user_id, req.user).then(function (user) {
+  const body = Job.adaptLocation(req.body);
+  _validate(body.company_id, body.company_user_id, req.user).then(function (user) {
     body.company_id = user.company.company_id;
     body.company_user_id = user._id;
     const job = new Job(body);
@@ -159,7 +159,7 @@ router.patch('/:id', function (req, res) {
        "positions_available": {number of positions}
    }
    */
-  const body = req.body;
+  const body = Job.adaptLocation(req.body);
   const jobId = req.params.id;
   Job.findById(jobId).then(function (job) {
     if (job === null) {
@@ -168,7 +168,7 @@ router.patch('/:id', function (req, res) {
       return job;
     }
   }).then(function (job) {
-    return _validate(body.company_id, _validate.company_user_id, req.user).then(function (user) {
+    return _validate(body.company_id, body.company_user_id, req.user).then(function (user) {
       body.company_id = user.company.company_id;
       body.company_user_id = user._id;
       const updatedJob = Object.assign(job, body);

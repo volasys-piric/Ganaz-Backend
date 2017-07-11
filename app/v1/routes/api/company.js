@@ -80,7 +80,7 @@ router.post('/search', function (req, res) {
 });
 
 // https://bitbucket.org/volasys-ss/ganaz-backend/wiki/2.4%20Company%20-%20Update%20Profile
-router.post('/:id/profile', function (req, res) {
+router.patch('/:id/profile', function (req, res) {
   /** Expected req.body
    {
        "name": {                                                    [optional],
@@ -111,7 +111,7 @@ router.post('/:id/profile', function (req, res) {
 });
 
 // https://bitbucket.org/volasys-ss/ganaz-backend/wiki/2.5%20Company%20-%20Update%20Membership%20Plan
-router.post('/:id/plan', function (req, res) {
+router.patch('/:id/plan', function (req, res) {
   /** Expected req.body
    {
        "plan": {
