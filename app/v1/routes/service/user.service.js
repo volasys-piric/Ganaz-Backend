@@ -17,6 +17,8 @@ const validate = function (body) {
     && body.type && body.auth_type) {
     if (body.auth_type === 'email' && !body.password) {
       result = Promise.reject('Password is required for auth_type email.')
+    } else if (body.type !== 'worker' && body.type !== 'company-admin' && body.type !== 'company-regular') {
+      result = Promise.reject('Request type ' + body.type + ' is not acceptable.')
     } else if (body.type !== 'worker' && !(body.company && body.company.company_id)) {
       result = Promise.reject('Request body company.company_id is required for type ' + body.type + '.')
     } else {
@@ -95,6 +97,8 @@ const login = function (body) {
         // check if password matches
         if (!bcrypt.compareSync(body.password, user.password)) {
           return Promise.reject('Authentication failed. Wrong password.');
+        } else {
+          return user;
         }
       } else if (body.external_id !== user.external_id) {
         return Promise.reject('Authentication failed. External id not matched.');
