@@ -15,7 +15,9 @@ const config = {
   TWILIO_PHONE_NUMBER: '+1 510-694-2629',
   support_mail: 'super.savych@yandex.com',
   STRIPE_SECRET_KEY: 'sk_test_RhXr4017wVdvnotlxgtS9gOq',
-  STRIPE_PUBLISHABLE_KEY: 'pk_test_JZqzrp7oWZSWPvfhZHoGvWH3'
+  STRIPE_PUBLISHABLE_KEY: 'pk_test_JZqzrp7oWZSWPvfhZHoGvWH3',
+  ONE_SIGNAL_API_KEY: 'MTJmZWEyMGEtNWE2NS00NWUxLTlmZjgtZTVmNDQwZmRmNmM4',
+  ONE_SIGNAL_API_ID: '160b5387-8178-46e2-b194-ad193dc5efac'
 };
 
 config.load = function () {

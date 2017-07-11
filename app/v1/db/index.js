@@ -1,9 +1,9 @@
 const Promise = require('bluebird');
-const appConfig = require('./../app_config');
+const appConfig = require('./../../app_config');
 
 const mongoose = require('mongoose');
 mongoose.Promise = Promise;
-mongoose.connect(appConfig.dbUrl);
+mongoose.connect(appConfig.dbUrl, {useMongoClient: true});
 
 module.exports = {
   models: {
