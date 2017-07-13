@@ -9,6 +9,10 @@ const companyService = require('./company.service');
 
 const User = db.models.user;
 
+const validPhonePassword = function (password) {
+  return /\d{4}$/.test(password);
+};
+
 const validate = function (body) {
   let result = null;
   if (body && body.username && body.firstname && body.lastname
@@ -21,7 +25,7 @@ const validate = function (body) {
       result = Promise.reject('Invalid auth_type ' + body.auth_type + '. Acceptable auth_type(s) are email/facebook/twitter/google/phone.')
     } else if (body.auth_type === 'email' && !body.password) {
       result = Promise.reject('Password is required for auth_type email.')
-    } else if (body.auth_type === 'phone' && (!body.password || !/\d{4}$/.test(body.password) )) {
+    } else if (body.auth_type === 'phone' && (!body.password || !validPhonePassword(body.password) )) {
       result = Promise.reject('Password is required for auth_type phone and must be 4 digits.')
     } else if (body.type !== 'worker' && body.type !== 'company-admin' && body.type !== 'company-regular') {
       result = Promise.reject('Request type ' + body.type + ' is not acceptable.')
@@ -80,6 +84,26 @@ const create = function (body) {
 
 const update = function (id, body) {
   return User.findById(id).then(function (userModel) {
+    if (userModel.auth_type === 'email') {
+      if (!body.email_address) {
+        return Promise.reject('Email address is required for auth_type email.');
+      }
+    } else if (userModel.auth_type === 'phone') {
+      if (!body.phone_number || !body.phone_number.local_number) {
+        return Promise.reject('Phone number is required for auth_type phone.');
+      }
+    }
+    const deleteProperty = function (propertyName) {
+      if (body[propertyName]) { // In case front end pass this
+        body[propertyName] = null;
+        delete body[propertyName];
+      }
+    };
+    deleteProperty('type');
+    deleteProperty('password');
+    deleteProperty('company');
+    deleteProperty('external_id');
+
     const user = Object.assign(userModel, User.adaptLocation(body));
     return user.save().then(function () {
       return user;
@@ -245,15 +269,19 @@ const recoverPassRequestPin = function (username) {
   })
 };
 
-const updatePassword = function (id, newPassword) {
-  return User.findById(id)
-    .then(function (user) {
-      user.password = bcrypt.hashSync(newPassword);
-      user.auth_type = 'email';
-      return user.save();
-    }).then(function (user) {
-      return _toObject(user);
-    });
+const phonePasswordReset = function (id, newPassword) {
+  if (!validPhonePassword(newPassword)) {
+    return Promise.reject('Invalid phone password. Must be 4 digits.');
+  } else {
+    return User.findById(id)
+      .then(function (user) {
+        user.password = bcrypt.hashSync(newPassword);
+        user.auth_type = 'phone';
+        return user.save();
+      }).then(function (user) {
+        return _toObject(user);
+      });
+  }
 };
 
 function _generateToken(user) {
@@ -300,5 +328,6 @@ module.exports = {
   search: search,
   searchPhones: searchPhones,
   recoverPassRequestPin: recoverPassRequestPin,
-  updatePassword: updatePassword
+  phonePasswordReset: phonePasswordReset,
+  validPhonePassword: validPhonePassword
 };

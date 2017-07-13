@@ -231,13 +231,20 @@ router.post('/password_recovery/reset', function (req, res) {
        "password": "{new password}"
    }
    */
-  const body = req.body;
-  userService.updatePassword(req.user._id, body.password).then(function (user) {
+  const newPassword = req.body.password;
+  if (userService.validPhonePassword(newPassword)) {
+    userService.phonePasswordReset(req.user._id, newPassword).then(function (user) {
+      res.json({
+        success: true,
+        account: user
+      });
+    }).catch(httpUtil.handleError(res));
+  } else {
     res.json({
-      success: true,
-      account: user
+      success: false,
+      msg: 'Invalid phone password. Must be 4 digits.'
     });
-  }).catch(httpUtil.handleError(res));
+  }
 });
 
 module.exports = router;
