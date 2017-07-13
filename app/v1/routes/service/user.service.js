@@ -84,15 +84,6 @@ const create = function (body) {
 
 const update = function (id, body) {
   return User.findById(id).then(function (userModel) {
-    if (userModel.auth_type === 'email') {
-      if (!body.email_address) {
-        return Promise.reject('Email address is required for auth_type email.');
-      }
-    } else if (userModel.auth_type === 'phone') {
-      if (!body.phone_number || !body.phone_number.local_number) {
-        return Promise.reject('Phone number is required for auth_type phone.');
-      }
-    }
     const deleteProperty = function (propertyName) {
       if (body[propertyName]) { // In case front end pass this
         body[propertyName] = null;
@@ -239,7 +230,7 @@ const searchPhones = function (phoneNumbers) {
     dbQ.$or = [];
     for (let i = 0; i < phoneNumbers.length; i++) {
       const phoneNumber = phoneNumbers[i];
-      if (phoneNumber.length == 11) {
+      if (phoneNumber.length === 11) {
         const countryCode = phoneNumber.charAt(0);
         const localNumber = phoneNumber.substr(1, 11);
         dbQ.$or.push({'phone_number.country_code': countryCode, 'phone_number.local_number': localNumber});
