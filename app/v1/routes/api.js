@@ -15,6 +15,8 @@ app.use('/', express_jwt({
     path: [
       /\/status/,
       /\/user\/login$/,
+      /\/user\/search$/,
+      /\/user\/search\/phones$/,
       /\/user\/password_recovery\/pin$/,
       {
         url: /\/user$/,
