@@ -14,31 +14,59 @@ const validPhonePassword = function (password) {
 };
 
 const validate = function (body) {
-  let result = null;
-  if (body && body.username && body.firstname && body.lastname
+  let errorMessage = '';
+  if (body && body.firstname && body.lastname
     && body.type && body.auth_type) {
     if (body.auth_type !== 'email' &&
       body.auth_type !== 'facebook' &&
       body.auth_type !== 'twitter' &&
       body.auth_type !== 'google' &&
       body.auth_type !== 'phone') {
-      result = Promise.reject('Invalid auth_type ' + body.auth_type + '. Acceptable auth_type(s) are email/facebook/twitter/google/phone.')
-    } else if (body.auth_type === 'email' && !body.password) {
-      result = Promise.reject('Password is required for auth_type email.')
-    } else if (body.auth_type === 'phone' && (!body.password || !validPhonePassword(body.password) )) {
-      result = Promise.reject('Password is required for auth_type phone and must be 4 digits.')
-    } else if (body.type !== 'worker' && body.type !== 'company-admin' && body.type !== 'company-regular') {
-      result = Promise.reject('Request type ' + body.type + ' is not acceptable.')
+      errorMessage = 'Invalid auth_type ' + body.auth_type + '. Acceptable auth_type(s) are email/facebook/twitter/google/phone. ';
+    } else if (body.auth_type === 'email') {
+      if (!body.username || !body.password) {
+        errorMessage += 'Username and password are required for auth_type email. ';
+      }
+    } else if (body.auth_type === 'phone') {
+      if (!body.phone_number || !body.phone_number.local_number
+        || !body.password || !validPhonePassword(body.password)) {
+        errorMessage += 'Password and phone_number.local_number are required for auth_type phone and password must be 4 digits. ';
+      }
+    } else if (!body.external_id) {
+      errorMessage += 'Request body external_id is required for auth_type ' + body.auth_type + '. ';
+    }
+
+    body.type = body.type.toLowerCase();
+    if (body.type !== 'worker' && body.type !== 'company-admin' && body.type !== 'company-regular') {
+      errorMessage += 'Request type ' + body.type + ' is not acceptable. ';
     } else if (body.type !== 'worker' && !(body.company && body.company.company_id)) {
-      result = Promise.reject('Request body company.company_id is required for type ' + body.type + '.')
-    } else {
-      body.type = body.type.toLowerCase();
-      result = Promise.resolve();
+      errorMessage += 'Request body company.company_id is required for type ' + body.type + '. '
     }
   } else {
-    result = Promise.reject('Request body username, firstname, lastname, type and auth_type are required.')
+    errorMessage = 'Request body firstname, lastname, type and auth_type are required.';
   }
-  return result;
+  if (errorMessage) {
+    return Promise.reject(errorMessage);
+  } else {
+    const errorIfUserExists = function (user, errMsg) {
+      if (user) {
+        return Promise.reject(errMsg);
+      } else {
+        return Promise.resolve();
+      }
+    };
+    if (body.auth_type === 'email') {
+      return User.findOne({username: body.username}).then(function (user) {
+        return errorIfUserExists(user, 'Username ' + body.username + ' already exists.');
+      });
+    } else if (body.auth_type === 'phone') {
+      return User.findOne({'phone_number.local_number': body.phone_number.local_number}).then(function (user) {
+        return errorIfUserExists(user, 'Phone_number.local_number ' + body.body.phone_number.local_number + ' already exists.');
+      });
+    } else {
+      return Promise.resolve();
+    }
+  }
 };
 
 const populateCompany = function (userJsonO, includeStats) {
