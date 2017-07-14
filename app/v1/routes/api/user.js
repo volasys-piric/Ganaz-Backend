@@ -16,11 +16,15 @@ router.post('/login', function (req, res) {
    */
   const body = req.body;
   let errorMessage = null;
-  if (!body || !body.username || !body.auth_type) {
-    errorMessage = 'Request body username, auth_type are required.';
+  if (!body || !body.auth_type) {
+    errorMessage = 'Request body auth_type is required.';
   } else if (body.auth_type === 'email') {
     if (!body.password) {
       errorMessage = 'Request body password is required for auth_type email.';
+    }
+  } else if (body.auth_type === 'phone') {
+    if (!body.phone_number) {
+      errorMessage = 'Request body phone_number is required for auth_type phone.';
     }
   } else if (!body.external_id) {
     errorMessage = 'Request body external_id is required for auth_type ' + body.auth_type + '.';
