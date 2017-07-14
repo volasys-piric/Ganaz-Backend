@@ -83,31 +83,11 @@ const populateCompany = function (userJsonO, includeStats) {
 };
 
 const create = function (body) {
-  const findPromises = [User.findOne({username: body.username})];
-  if (body.auth_type === 'email') {
-    findPromises.push(User.findOne({email_address: body.email_address}))
-  } else {
-    findPromises.push(Promise.resolve(null));
-  }
-  return Promise.all(findPromises).then(function (findPromises) {
-    const existingUser = findPromises[0];
-    const existingEmail = findPromises[1];
-    if (existingUser) {
-      return Promise.reject('User with username ' + body.username + ' already exists.');
-    } else if (existingEmail) {
-      return Promise.reject('User with email ' + body.email_address + ' already exists.');
-    } else {
-      return new User(User.adaptLocation(body));
-    }
-  }).then(function (user) {
-    user.password = bcrypt.hashSync(body.password);
-    return user.save();
-  }).then(function (user) {
-    return _toObject(user);
-  }).then(function (userO) {
-    // According to existing routes.js, company stats should be included.
-    return populateCompany(userO, true);
-  });
+  const user = new User(User.adaptLocation(body));
+  user.password = bcrypt.hashSync(body.password);
+  return user.save().then(function (user) {
+    return populateCompany(_toObject(user), true);
+  })
 };
 
 const update = function (id, body) {
@@ -128,9 +108,7 @@ const update = function (id, body) {
       return user;
     })
   }).then(function (user) {
-    return _toObject(user);
-  }).then(function (userO) {
-    return populateCompany(userO);
+    return populateCompany(_toObject(user), true);
   });
 };
 
