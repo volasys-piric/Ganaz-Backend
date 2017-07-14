@@ -61,7 +61,7 @@ const validate = function (body) {
       });
     } else if (body.auth_type === 'phone') {
       return User.findOne({'phone_number.local_number': body.phone_number.local_number}).then(function (user) {
-        return errorIfUserExists(user, 'Phone_number.local_number ' + body.body.phone_number.local_number + ' already exists.');
+        return errorIfUserExists(user, 'Phone number local number ' + body.phone_number.local_number + ' already exists.');
       });
     } else {
       return Promise.resolve();
