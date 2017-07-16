@@ -49,7 +49,10 @@ router.post('/', function (req, res) {
             'es': 'Este trabajador podría estar interesado en este trabajo.'
           },
           auto_translate: false,
-          datetime: Date.now()
+          datetime: Date.now(),
+          metadata: {
+            suggest_id: suggest._id.toString()
+          }
         };
         return messageService.create(messageBody).then(function () {
           return suggest;
