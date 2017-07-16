@@ -42,7 +42,7 @@ router.post('/search', function (req, res) {
       dbQ["dates.from"] = {$gte: date};
       dbQ["dates.to"] = {$lt: nextDay};
     }
-    if (body.status == "open") {
+    if (body.status === "open") {
       dbQ["dates.from"] = {$gt: new Date()};
     }
   }

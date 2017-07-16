@@ -26,32 +26,36 @@ router.post('/', function (req, res) {
     if (job === null) {
       return Promise.reject('Job with id ' + body.job_id + ' does not exists.');
     } else {
-      return job;
+      if (!body.worker_user_id) {
+        body.worker_user_id = req.user._id;
+      }
+      const suggest = new Suggest(body);
+      return suggest.save().then(function (suggest) {
+        const senderId = req.user._id;
+        const senderCompanyId = req.user.company ? req.user.company.company_id : null;
+        const messageBody = {
+          job_id: body.job_id,
+          type: 'application',
+          sender: {
+            user_id: senderId,
+            company_id: senderCompanyId
+          },
+          receivers: [{
+            user_id: job.company_user_id,
+            company_id: job.company_id
+          }],
+          message: {
+            'en': 'This worker might be interested in this job.',
+            'es': 'Este trabajador podría estar interesado en este trabajo.'
+          },
+          auto_translate: false,
+          datetime: Date.now()
+        };
+        return messageService.create(messageBody).then(function () {
+          return suggest;
+        });
+      });
     }
-  }).then(function () {
-    const suggest = new Suggest(body);
-    return suggest.save();
-  }).then(function (suggest) {
-    const senderId = req.user._id;
-    const senderCompanyId = req.user.company ? req.user.company.company_id : null;
-    const messageBody = {
-      job_id: body.job_id,
-      type: 'application',
-      sender: {
-        user_id: senderId,
-        company_id: senderCompanyId
-      },
-      receivers: suggest.worker_user_id,
-      message: {
-        'en': 'This worker might be interested in this job.',
-        'es': 'Este trabajador podría estar interesado en este trabajo.'
-      },
-      auto_translate: false,
-      datetime: Date.now()
-    };
-    return messageService.create(messageBody).then(function () {
-      return suggest;
-    });
   }).then(function (suggest) {
     res.json({
       success: true,

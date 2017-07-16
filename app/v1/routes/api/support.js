@@ -21,7 +21,7 @@ router.post('/email', function (req, res) {
   const user = req.user;
 
   const getCompanyPartOfMail = function () {
-    if (user.type == 'company-regular' || user.type == 'company-admin') {
+    if (user.type === 'company-regular' || user.type === 'company-admin') {
       return Company.findById(user.company.company_id).then(function (company) {
         return '<p>Company Name: ' + company.name.es + '</p>'
           + '<p>Company Code: ' + company.code + '</p>';

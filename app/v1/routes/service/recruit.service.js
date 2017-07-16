@@ -107,7 +107,7 @@ const create = function (body) {
       const recruitedWorkerUserIds = newRecruit.request.re_recruit_worker_user_ids;
       // Send Message and ignore if successful or not
       const receivers = recruitedWorkerUserIds.map(function (userId) {
-        return {'user_id': userId, 'company_id': ''};
+        return {user_id: userId, company_id: ''};
       });
       const messageBody = {
         job_id: newRecruit.request.job_id,

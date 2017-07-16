@@ -62,10 +62,10 @@ const create = function (body) {
             contents: {id: jsonMessage._id.toString()}
           }
         };
-        if (jsonMessage.type == 'message') {
+        if (jsonMessage.type === 'message') {
           notification.data.contents.message = jsonMessage.message;
-        } else if (jsonMessage.type == 'application') {
-          notification.data.contents.job_id = req.body.application_id;
+        } else if (jsonMessage.type === 'application') {
+          notification.data.contents.job_id = body.application_id;
         }
         sendNotification(user.player_ids, notification);
       });
