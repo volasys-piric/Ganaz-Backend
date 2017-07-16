@@ -35,7 +35,7 @@ router.post('/', function (req, res) {
         const senderCompanyId = req.user.company ? req.user.company.company_id : null;
         const messageBody = {
           job_id: body.job_id,
-          type: 'application',
+          type: 'suggest',
           sender: {
             user_id: senderId,
             company_id: senderCompanyId

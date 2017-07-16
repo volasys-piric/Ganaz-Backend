@@ -3,7 +3,7 @@ const Schema = mongoose.Schema;
 
 const MessageSchema = new Schema({
   job_id: {type: String, required: true},
-  type: String,
+  type: String, // "message/recruit/application/suggest"
   sender: {
     user_id: String,
     company_id: String
