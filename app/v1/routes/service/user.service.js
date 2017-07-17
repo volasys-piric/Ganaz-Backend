@@ -85,8 +85,11 @@ const populateCompany = function (userJsonO, includeStats) {
 const create = function (body) {
   const user = new User(User.adaptLocation(body));
   user.password = bcrypt.hashSync(body.password);
+  user.last_login = Date.now();
   return user.save().then(function (user) {
-    return populateCompany(_toObject(user), true);
+    const o = _toObject(user);
+    o.access_token = _generateToken(user);
+    return populateCompany(o, true);
   })
 };
 
