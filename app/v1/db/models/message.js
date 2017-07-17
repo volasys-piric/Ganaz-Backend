@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
+const MetadataSchema = new Schema({}, {strict: false});
+
 const MessageSchema = new Schema({
   job_id: {type: String, required: true},
   type: String, // "message/recruit/application/suggest"
@@ -17,9 +19,7 @@ const MessageSchema = new Schema({
     es: String
   },
   status: String,
-  metadata: {
-    suggest_id: String
-  },
+  metadata: {type: MetadataSchema},
   auto_translate: Boolean,
   datetime: Date
 });
