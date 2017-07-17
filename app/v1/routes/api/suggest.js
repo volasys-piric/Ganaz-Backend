@@ -45,13 +45,14 @@ router.post('/', function (req, res) {
             company_id: job.company_id
           }],
           message: {
-            'en': 'This worker might be interested in this job.',
-            'es': 'Este trabajador podría estar interesado en este trabajo.'
+            'en': 'New Job Inquiry for Referring a worker: ' + job.title.en,
+            'es': 'Nueva solicitud de empleo para referir a un trabajador: ' + (job.title.es ? job.title.es : job.title.en)
           },
           auto_translate: false,
           datetime: Date.now(),
           metadata: {
-            suggest_id: suggest._id.toString()
+            suggest_id: suggest._id.toString(),
+            suggested_phone_number: body.suggested_worker.phone_number.local_number
           }
         };
         return messageService.create(messageBody).then(function () {

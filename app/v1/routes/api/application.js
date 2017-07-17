@@ -95,10 +95,13 @@ router.post('/', function (req, res) {
           receivers: receivers,
           message: {
             'en': 'New job inquiry',
-            'es': 'New job inquiry'
+            'es': 'Nueva solicitud de empleo'
           },
           auto_translate: false,
-          datetime: Date.now()
+          datetime: Date.now(),
+          metadata: {
+            application_id: application._id.toString()
+          }
         };
         return messageService.create(messageBody).then(function () {
           return application;

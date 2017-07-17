@@ -50,24 +50,35 @@ const create = function (body) {
         const jsonMessage = savedMessage.toObject();
         let contents = null;
         if (typeof jsonMessage.message === 'object') {
-          contents = jsonMessage.message
+          contents = jsonMessage.message;
         } else {
           // Assumed to be string
-          contents = {'en': jsonMessage.message}
+          contents = {en: jsonMessage.message}
         }
-        let notification = {
-          contents: contents,
-          data: {
-            type: jsonMessage.type,
-            contents: {id: jsonMessage._id.toString()}
-          }
+        const messageId = jsonMessage._id.toString();
+        const data = {type: jsonMessage.type};
+        data.contents = {
+          id: messageId,
+          message_id: messageId,
+          message: contents.en,
         };
-        if (jsonMessage.type === 'message') {
-          notification.data.contents.message = jsonMessage.message;
-        } else if (jsonMessage.type === 'application') {
-          notification.data.contents.job_id = body.application_id;
+        if (body.job_id) {
+          // For backward compatibility
+          data.contents.job_id = body.job_id
         }
-        sendNotification(user.player_ids, notification);
+
+        if (jsonMessage.type === 'message') {
+          data.contents.message = jsonMessage.message;
+        } else if (jsonMessage.type === 'application') {
+          data.contents.application_id = body.metadata.application_id;
+        } else if (jsonMessage.type === 'recruit') {
+          data.contents.recruit_id = body.metadata.recruit_id;
+        } else if (jsonMessage.type === 'suggest') {
+          data.contents.suggest_id = body.metadata.suggest_id;
+          data.contents.suggested_phone_number = body.metadata.suggested_phone_number;
+        }
+
+        sendNotification(user.player_ids, {contents: contents, data: data});
       });
     }
     return savedMessages;

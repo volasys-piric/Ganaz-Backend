@@ -122,7 +122,10 @@ const create = function (body) {
           es: 'Nuevo trabajo disponible'
         },
         auto_translate: true,
-        datetime: now
+        datetime: now,
+        metadata: {
+          recruit_id: newRecruit._id.toString()
+        }
       };
       createMessagePromises.push(messageService.create(messageBody));
     }
