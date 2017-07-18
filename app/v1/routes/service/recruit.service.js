@@ -100,6 +100,10 @@ const create = function (body) {
       return Promise.all(newRecruitsPromises);
     });
   }).then(function (newRecruits) {
+    if (newRecruits.length < 1) {
+      return Promise.resolve([]);
+    }
+
     const now = Date.now();
     const createMessagePromises = [];
     for (let i = 0; i < newRecruits.length; i++) {
