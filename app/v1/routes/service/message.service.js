@@ -48,28 +48,26 @@ const create = function (body) {
       const savedMessage = savedMessages[i];
       User.findById(savedMessage.receiver.user_id).then(function (user) {
         const jsonMessage = savedMessage.toObject();
-        let contents = null;
+        let messageString = null;
         if (typeof jsonMessage.message === 'object') {
-          contents = jsonMessage.message;
+          messageString = jsonMessage.message.en;
         } else {
           // Assumed to be string
-          contents = {en: jsonMessage.message}
+          messageString = jsonMessage.message;
         }
         const messageId = jsonMessage._id.toString();
         const data = {type: jsonMessage.type};
         data.contents = {
           id: messageId,
           message_id: messageId,
-          message: contents.en,
+          message: messageString,
         };
         if (body.job_id) {
           // For backward compatibility
           data.contents.job_id = body.job_id
         }
 
-        if (jsonMessage.type === 'message') {
-          data.contents.message = jsonMessage.message;
-        } else if (jsonMessage.type === 'application') {
+        if (jsonMessage.type === 'application') {
           data.contents.application_id = body.metadata.application_id;
         } else if (jsonMessage.type === 'recruit') {
           data.contents.recruit_id = body.metadata.recruit_id;
@@ -78,7 +76,7 @@ const create = function (body) {
           data.contents.suggested_phone_number = body.metadata.suggested_phone_number;
         }
 
-        sendNotification(user.player_ids, {contents: contents, data: data});
+        sendNotification(user.player_ids, {contents: {en: messageString}, data: data});
       });
     }
     return savedMessages;

@@ -7,7 +7,21 @@ const User = db.models.user;
 
 module.exports = {
   findByCompanyId: function (companyId) {
-    return Myworker.find({company_id: companyId});
+    return Myworker.find({company_id: companyId}).then(function (myworkers) {
+      const userPromises = [];
+      for (let i = 0; i < myworkers.length; i++) {
+        userPromises.push(User.findById(myworkers[i].worker_user_id));
+      }
+      return Promise.all(userPromises).then(function (users) {
+        const result = [];
+        for (let i = 0; i < myworkers.length; i++) {
+          const o = myworkers[i].toObject();
+          o.worker_account = users[i];
+          result.push(o);
+        }
+        return result;
+      });
+    });
   },
   create: function (companyId, body) {
     const workerIds = body.worker_user_ids;
