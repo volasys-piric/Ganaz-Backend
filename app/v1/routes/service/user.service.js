@@ -13,58 +13,91 @@ const validPhonePassword = function (password) {
   return /\d{4}$/.test(password);
 };
 
-const validate = function (body) {
+const validate = function (id, body) {
   let errorMessage = '';
-  if (body && body.firstname && body.lastname
-    && body.type && body.auth_type) {
-    if (body.auth_type !== 'email' &&
-      body.auth_type !== 'facebook' &&
-      body.auth_type !== 'twitter' &&
-      body.auth_type !== 'google' &&
-      body.auth_type !== 'phone') {
-      errorMessage = 'Invalid auth_type ' + body.auth_type + '. Acceptable auth_type(s) are email/facebook/twitter/google/phone. ';
-    } else if (body.auth_type === 'email') {
-      if (!body.username || !body.password) {
-        errorMessage += 'Username and password are required for auth_type email. ';
+  if (body) {
+    if (!id) {
+      if (!body.firstname || !body.lastname || !body.type || !body.auth_type) {
+        errorMessage = 'Request body firstname, lastname, type and auth_type are required for new users.';
+      } else {
+        if (body.auth_type !== 'email' &&
+          body.auth_type !== 'facebook' &&
+          body.auth_type !== 'twitter' &&
+          body.auth_type !== 'google' &&
+          body.auth_type !== 'phone') {
+          errorMessage = 'Invalid auth_type ' + body.auth_type + '. Acceptable auth_type(s) are email/facebook/twitter/google/phone. ';
+        } else if (body.auth_type === 'email') {
+          if (!body.username || !body.password) {
+            errorMessage += 'Username and password are required for auth_type email. ';
+          }
+        } else if (body.auth_type === 'phone') {
+          if (!body.phone_number || !body.phone_number.local_number
+            || !body.password || !validPhonePassword(body.password)) {
+            errorMessage += 'Password and phone_number.local_number are required for auth_type phone and password must be 4 digits. ';
+          }
+        } else if (!body.external_id) {
+          errorMessage += 'Request body external_id is required for auth_type ' + body.auth_type + '. ';
+        }
+        body.type = body.type.toLowerCase();
+        if (body.type !== 'worker' && body.type !== 'company-admin' && body.type !== 'company-regular') {
+          errorMessage += 'Request type ' + body.type + ' is not acceptable. ';
+        } else if (body.type !== 'worker' && !(body.company && body.company.company_id)) {
+          errorMessage += 'Request body company.company_id is required for type ' + body.type + '. '
+        }
       }
-    } else if (body.auth_type === 'phone') {
-      if (!body.phone_number || !body.phone_number.local_number
-        || !body.password || !validPhonePassword(body.password)) {
-        errorMessage += 'Password and phone_number.local_number are required for auth_type phone and password must be 4 digits. ';
-      }
-    } else if (!body.external_id) {
-      errorMessage += 'Request body external_id is required for auth_type ' + body.auth_type + '. ';
-    }
-
-    body.type = body.type.toLowerCase();
-    if (body.type !== 'worker' && body.type !== 'company-admin' && body.type !== 'company-regular') {
-      errorMessage += 'Request type ' + body.type + ' is not acceptable. ';
-    } else if (body.type !== 'worker' && !(body.company && body.company.company_id)) {
-      errorMessage += 'Request body company.company_id is required for type ' + body.type + '. '
     }
   } else {
-    errorMessage = 'Request body firstname, lastname, type and auth_type are required.';
+    errorMessage = 'Request body is required.';
   }
   if (errorMessage) {
     return Promise.reject(errorMessage);
   } else {
-    const errorIfUserExists = function (user, errMsg) {
-      if (user) {
-        return Promise.reject(errMsg);
+    const checkIfUsernameExists = function (existingUser) {
+      if (!existingUser || existingUser.username !== body.username) {
+        return User.findOne({username: body.username}).then(function (user) {
+          if (user) {
+            return Promise.reject('User with username ' + body.username + ' already exists');
+          } else {
+            return Promise.resolve();
+          }
+        });
       } else {
-        return Promise.resolve();
+        return Promise.resolve(existingUser);
       }
     };
-    if (body.auth_type === 'email') {
-      return User.findOne({username: body.username}).then(function (user) {
-        return errorIfUserExists(user, 'Username ' + body.username + ' already exists.');
-      });
-    } else if (body.auth_type === 'phone') {
-      return User.findOne({'phone_number.local_number': body.phone_number.local_number}).then(function (user) {
-        return errorIfUserExists(user, 'Phone number local number ' + body.phone_number.local_number + ' already exists.');
+    const checkIfPhoneNumberExists = function (existingUser) {
+      if (!existingUser || (
+        body.phone_number && body.phone_number.local_number &&
+        existingUser.phone_number.local_number !== body.phone_number.local_number)
+      ) {
+        return User.findOne({'phone_number.local_number': body.phone_number.local_number}).then(function (user) {
+          if (user) {
+            return Promise.reject('Phone number local number ' + body.phone_number.local_number + ' already exists.');
+          } else {
+            return Promise.resolve();
+          }
+        });
+      } else {
+        return Promise.resolve(existingUser);
+      }
+    };
+
+    if (id) {
+      return User.findById(id).then(function (existingUser) {
+        if (existingUser === null) {
+          return Promise.reject('User ' + id + ' does not exists.');
+        } else {
+          return checkIfUsernameExists(existingUser).then(function () {
+            return checkIfPhoneNumberExists(existingUser);
+          }).then(function () {
+            return existingUser;
+          })
+        }
       });
     } else {
-      return Promise.resolve();
+      return checkIfUsernameExists(null).then(function () {
+        return checkIfPhoneNumberExists(null);
+      });
     }
   }
 };
@@ -83,18 +116,20 @@ const populateCompany = function (userJsonO, includeStats) {
 };
 
 const create = function (body) {
-  const user = new User(User.adaptLocation(body));
-  user.password = bcrypt.hashSync(body.password);
-  user.last_login = Date.now();
-  return user.save().then(function (user) {
-    const o = _toObject(user);
-    o.access_token = _generateToken(user);
-    return populateCompany(o, true);
-  })
+  return validate(null, body).then(function () {
+    const user = new User(User.adaptLocation(body));
+    user.password = bcrypt.hashSync(body.password);
+    user.last_login = Date.now();
+    return user.save().then(function (user) {
+      const o = _toObject(user);
+      o.access_token = _generateToken(user);
+      return populateCompany(o, true);
+    })
+  });
 };
 
 const update = function (id, body) {
-  return User.findById(id).then(function (userModel) {
+  return validate(id, body).then(function (existingUser) {
     const deleteProperty = function (propertyName) {
       if (body[propertyName]) { // In case front end pass this
         body[propertyName] = null;
@@ -106,7 +141,7 @@ const update = function (id, body) {
     deleteProperty('company');
     deleteProperty('external_id');
 
-    const user = Object.assign(userModel, User.adaptLocation(body));
+    const user = Object.assign(existingUser, User.adaptLocation(body));
     return user.save().then(function () {
       return user;
     })

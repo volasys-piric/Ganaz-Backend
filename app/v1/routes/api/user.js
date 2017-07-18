@@ -85,9 +85,7 @@ router.post('/', function (req, res) {
   if (!body) {
     res.json({success: false, msg: 'Request body not found.'});
   } else {
-    userService.validate(body).then(function () {
-      return userService.create(body);
-    }).then(function (user) {
+    return userService.create(body).then(function (user) {
       res.json({
         success: true,
         account: user
