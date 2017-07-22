@@ -4,6 +4,7 @@ const Myworker = db.models.myworker;
 const Company = db.models.company;
 const Crew = db.models.crew;
 const User = db.models.user;
+const userService = require('./user.service');
 
 module.exports = {
   findByCompanyId: function (companyId) {
@@ -16,7 +17,7 @@ module.exports = {
         const result = [];
         for (let i = 0; i < myworkers.length; i++) {
           const o = myworkers[i].toObject();
-          o.worker_account = users[i];
+          o.worker_account = userService.toObject(users[i]);
           result.push(o);
         }
         return result;
@@ -47,12 +48,10 @@ module.exports = {
       const notWorkerIds = [];
       for (let i = 0; i < users.length; i++) {
         const user = users[i];
-        if (user) {
-          if (user.type !== 'worker') {
-            notWorkerIds.push(workerIds[i]);
-          }
-        } else {
+        if (!user) {
           nonExistingUserIds.push(workerIds[i]);
+        } else if (user.type !== 'worker') {
+          notWorkerIds.push(workerIds[i]);
         }
       }
       let errorMsg = '';
@@ -74,7 +73,15 @@ module.exports = {
           });
           saveMyworkerPromises.push(myworker.save());
         }
-        return Promise.all(saveMyworkerPromises);
+        return Promise.all(saveMyworkerPromises).then(function (savedMyworkers) {
+          const result = [];
+          for (let i = 0; i < savedMyworkers.length; i++) {
+            const o = savedMyworkers[i].toObject();
+            o.worker_account = userService.toObject(users[i]);
+            result.push(o);
+          }
+          return result;
+        })
       }
     });
   },
@@ -87,7 +94,13 @@ module.exports = {
         return Promise.reject('Myworker with id ' + id + ' does not exists.');
       } else {
         myworker.nickname = nickname;
-        return myworker.save();
+        return myworker.save().then(function (myworker) {
+          return User.findById(myworker.worker_user_id).then(function (user) {
+            const o = myworker.toObject();
+            o.worker_account = userService.toObject(user);
+            return o;
+          });
+        });
       }
     })
   }

@@ -102,6 +102,14 @@ const validate = function (id, body) {
   }
 };
 
+const toObject = function (user) {
+  const o = user.toObject();
+  // Remove password to avoid security risk
+  o.password = null;
+  delete o.password;
+  return o;
+};
+
 const populateCompany = function (userJsonO, includeStats) {
   if (userJsonO.company && userJsonO.company.company_id) {
     // Only include company stats if user is company-regular or company-admin
@@ -121,7 +129,7 @@ const create = function (body) {
     user.password = bcrypt.hashSync(body.password);
     user.last_login = Date.now();
     return user.save().then(function (user) {
-      const o = _toObject(user);
+      const o = toObject(user);
       o.access_token = _generateToken(user);
       return populateCompany(o, true);
     })
@@ -146,7 +154,7 @@ const update = function (id, body) {
       return user;
     })
   }).then(function (user) {
-    return populateCompany(_toObject(user), true);
+    return populateCompany(toObject(user), true);
   });
 };
 
@@ -189,7 +197,7 @@ const login = function (body) {
   }).then(function (user) {
     user.last_login = Date.now();
     return user.save().then(function (user) {
-      const o = _toObject(user);
+      const o = toObject(user);
       o.access_token = _generateToken(user);
       return o;
     });
@@ -201,7 +209,7 @@ const login = function (body) {
 
 const findById = function (id) {
   return User.findById(id).then(function (user) {
-    return populateCompany(_toObject(user));
+    return populateCompany(toObject(user));
   })
 };
 
@@ -222,7 +230,7 @@ const updateType = function (currentUserId, userIdToUpdate, type) {
               return userToUpdate.save();
             }
           }).then(function (user) {
-            return _toObject(user);
+            return toObject(user);
           });
       }
     });
@@ -315,7 +323,7 @@ const phonePasswordReset = function (id, newPassword) {
         user.auth_type = 'phone';
         return user.save();
       }).then(function (user) {
-        return _toObject(user);
+        return toObject(user);
       });
   }
 };
@@ -335,20 +343,12 @@ function _generateToken(user) {
   return 'Bearer ' + jwt.sign(o, appConfig.secret);
 }
 
-function _toObject(user) {
-  const o = user.toObject();
-  // Remove password to avoid security risk
-  o.password = null;
-  delete o.password;
-  return o;
-}
-
 function _findUsers(dbQ) {
   return User.find(dbQ).then(function (users) {
     const populateCompanyPromises = [];
     for (let i = 0; i < users.length; i++) {
       const user = users[i];
-      populateCompanyPromises.push(populateCompany(_toObject(user)));
+      populateCompanyPromises.push(populateCompany(toObject(user)));
     }
     return Promise.all(populateCompanyPromises);
   });
@@ -365,5 +365,6 @@ module.exports = {
   searchPhones: searchPhones,
   recoverPassRequestPin: recoverPassRequestPin,
   phonePasswordReset: phonePasswordReset,
-  validPhonePassword: validPhonePassword
+  validPhonePassword: validPhonePassword,
+  toObject: toObject
 };
