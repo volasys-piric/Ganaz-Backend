@@ -313,18 +313,28 @@ const recoverPassRequestPin = function (username) {
   })
 };
 
-const phonePasswordReset = function (id, newPassword) {
-  if (!validPhonePassword(newPassword)) {
-    return Promise.reject('Invalid phone password. Must be 4 digits.');
-  } else {
+const phonePasswordReset = function (id, newPassword, apiVersion) {
+  if (apiVersion < 1.3) { // For backward compatibility
     return User.findById(id)
       .then(function (user) {
         user.password = bcrypt.hashSync(newPassword);
-        user.auth_type = 'phone';
         return user.save();
       }).then(function (user) {
         return toObject(user);
       });
+  } else {
+    if (!validPhonePassword(newPassword)) {
+      return Promise.reject('Invalid phone password. Must be 4 digits.');
+    } else {
+      return User.findById(id)
+        .then(function (user) {
+          user.password = bcrypt.hashSync(newPassword);
+          user.auth_type = 'phone';
+          return user.save();
+        }).then(function (user) {
+          return toObject(user);
+        });
+    }
   }
 };
 

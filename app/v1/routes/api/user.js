@@ -235,7 +235,7 @@ router.post('/password_recovery/reset', function (req, res) {
    */
   const newPassword = req.body.password;
   if (userService.validPhonePassword(newPassword)) {
-    userService.phonePasswordReset(req.user._id, newPassword).then(function (user) {
+    userService.phonePasswordReset(req.user._id, newPassword, req.api_version).then(function (user) {
       res.json({
         success: true,
         account: user

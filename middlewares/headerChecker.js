@@ -24,6 +24,7 @@ router.use(function (req, res, next) {
       message: 'Header version ' + version + ' not acceptable.'
     })
   } else {
+    req.api_version = version;
     next()
   }
 });
