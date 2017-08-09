@@ -9,6 +9,7 @@ const Recruit = db.models.recruit;
 const User = db.models.user;
 const Job = db.models.job;
 const MyWorker = db.models.myworker;
+const Company = db.models.company;
 
 const isNotNullOrEmpty = function (arr) {
   return arr && arr.length > 0;
@@ -196,14 +197,17 @@ const create = function (body, currentUser) {
       });
   }).then(function (newRecruits) {
     if (isNotNullOrEmpty(phoneNumbersParam)) {
-      for (let i = 0; i < phoneNumbersParam.length; i++) {
-        const phoneNumber = phoneNumbersParam[i];
-        if (!registeredUserPhoneNumbers.has(phoneNumber)) {
-          const toFullNumber = "+1" + phoneNumber;
-          const body = currentUser.company.company_name + ' quisiera recomendar que ud baje la aplicación Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. http://www.GanazApp.com/download';
-          twilioService.sendMessage(toFullNumber, body);
+      Company.findById(currentUser.company_id).then(function (company) {
+        const companyName = company.name.en;
+        for (let i = 0; i < phoneNumbersParam.length; i++) {
+          const phoneNumber = phoneNumbersParam[i];
+          if (!registeredUserPhoneNumbers.has(phoneNumber)) {
+            const toFullNumber = "+1" + phoneNumber;
+            const body = companyName + ' quisiera recomendar que ud baje la aplicación Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. http://www.GanazApp.com/download';
+            twilioService.sendMessage(toFullNumber, body);
+          }
         }
-      }
+      });
     }
 
     if (newRecruits.length < 1) {
