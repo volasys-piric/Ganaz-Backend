@@ -249,4 +249,26 @@ router.post('/password_recovery/reset', function (req, res) {
   }
 });
 
+// https://bitbucket.org/volasys-ss/ganaz-backend/wiki/1.6.1%20User%20-%20Bulk%20Search
+router.post('/bulksearch', function (req, res) {
+  /** Expected req.body is
+   {
+       "type": "worker/company-admin/company-regular", [optional]
+       "area": {
+           "loc": [
+               {longitude},
+               {latitude}
+           ],
+           "radius": {radius in miles}
+       }
+   }
+   */
+  userService.countByArea(req.body).then(function (counts) {
+    res.json({
+      success: true,
+      counts: counts
+    });
+  }).catch(httpUtil.handleError(res));
+});
+
 module.exports = router;

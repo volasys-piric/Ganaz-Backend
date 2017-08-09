@@ -6,6 +6,7 @@ const logger = require('./../../../utils/logger');
 const db = require('./../../db');
 const appConfig = require('./../../../app_config');
 const companyService = require('./company.service');
+const constants = require('./../../../utils/constants');
 
 const User = db.models.user;
 
@@ -342,6 +343,19 @@ const phonePasswordReset = function (id, newPassword, apiVersion) {
   }
 };
 
+const countByArea = function (searchBody) {
+  const dbQ = {
+    "worker.location.loc": {
+      "$near": searchBody.area.loc,
+      "$maxDistance": constants.degreeInMiles * searchBody.area.radius
+    }
+  };
+  if (searchBody.type) {
+    dbQ.type = searchBody.type;
+  }
+  return User.count(dbQ);
+};
+
 function _generateToken(userO) {
   const o = {
     _id: userO._id.toString(),
@@ -383,5 +397,6 @@ module.exports = {
   recoverPassRequestPin: recoverPassRequestPin,
   phonePasswordReset: phonePasswordReset,
   validPhonePassword: validPhonePassword,
-  toObject: toObject
+  toObject: toObject,
+  countByArea: countByArea
 };
