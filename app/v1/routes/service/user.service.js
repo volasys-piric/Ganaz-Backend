@@ -130,8 +130,10 @@ const create = function (body) {
     user.last_login = Date.now();
     return user.save().then(function (user) {
       const o = toObject(user);
-      o.access_token = _generateToken(user);
-      return populateCompany(o, true);
+      return populateCompany(o, true).then(function (o) {
+        o.access_token = _generateToken(o);
+        return o;
+      });
     })
   });
 };
@@ -196,14 +198,13 @@ const login = function (body) {
     }
   }).then(function (user) {
     user.last_login = Date.now();
-    return user.save().then(function (user) {
-      const o = toObject(user);
-      o.access_token = _generateToken(user);
+    return user.save();
+  }).then(function (user) {
+    const o = toObject(user);
+    return populateCompany(o, true).then(function (o) {
+      o.access_token = _generateToken(o);
       return o;
     });
-  }).then(function (userO) {
-    // According to existing routes.js, company stats should be included.
-    return populateCompany(userO, true);
   });
 };
 
@@ -303,11 +304,14 @@ const recoverPassRequestPin = function (username) {
     } else {
       // generate_pin_code() in routes.js
       const pin = Math.floor(1000 + Math.random() * 9000).toString();
-      const access_token = _generateToken(user);
-      //  send twilio message ignoring any errors in sending twilio messages
-      const toFullNumber = '+' + user.phone_number.country_code + user.phone_number.local_number;
-      return twilioService.sendMessage(toFullNumber, 'Ganaz Pin Code: ' + pin).then(function () {
-        return {pin, access_token};
+      const o = toObject(user);
+      return populateCompany(o, true).then(function (o) {
+        const access_token = _generateToken(o);
+        //  send twilio message ignoring any errors in sending twilio messages
+        const toFullNumber = '+' + o.phone_number.country_code + o.phone_number.local_number;
+        return twilioService.sendMessage(toFullNumber, 'Ganaz Pin Code: ' + pin).then(function () {
+          return {pin, access_token};
+        });
       });
     }
   })
@@ -338,16 +342,19 @@ const phonePasswordReset = function (id, newPassword, apiVersion) {
   }
 };
 
-function _generateToken(user) {
+function _generateToken(userO) {
   const o = {
-    _id: user._id.toString(),
-    id: user._id.toString(),
-    username: user.username,
-    email_address: user.email_address
+    _id: userO._id.toString(),
+    id: userO._id.toString(),
+    username: userO.username,
+    email_address: userO.email_address
   };
-  if (user.company && user.company.company_id) {
+  if (userO.company && userO.company.company_id) {
     o.company = {
-      company_id: user.company.company_id
+      company_id: userO.company.company_id
+    };
+    if (userO.company.account) {
+      o.company.company_name = userO.company.account.name.en
     }
   }
   return 'Bearer ' + jwt.sign(o, appConfig.secret);

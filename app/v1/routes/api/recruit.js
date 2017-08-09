@@ -21,7 +21,7 @@ router.post('/', function (req, res) {
    }
    */
   const body = req.body;
-  recruitService.create(body).then(function (newRecruits) {
+  recruitService.create(body, req.user).then(function (newRecruits) {
     res.json({success: true, recruits: newRecruits});
   }).catch(httpUtil.handleError(res));
 });
