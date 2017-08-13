@@ -30,11 +30,16 @@ router.post('/', function (req, res) {
     return invite.save().then(function (invite) {
       const toFullNumber = "+" + invite.phone_number.country_code + invite.phone_number.local_number;
       const body = company.name.en + ' quisiera recomendar que ud baje la aplicación Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. http://www.GanazApp.com/download';
-      return twilioService.sendMessage(toFullNumber, body).then(function () {
-        return invite;
-      });
+      twilioService.sendMessage(toFullNumber, body);
+      return invite;
     });
-  }).catch(httpUtil.handleError(res));
+  }).then(function (invite) {
+    res.json({
+      success: true,
+      invite: invite
+    })
+  })
+  .catch(httpUtil.handleError(res));
 });
 
 module.exports = router;

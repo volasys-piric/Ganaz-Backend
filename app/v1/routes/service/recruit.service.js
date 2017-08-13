@@ -151,10 +151,12 @@ const create = function (body, currentUser) {
                 company_user_id: currentUser.id,
                 request: {
                   job_id: jobId,
-                  broadcast_radius: broadcastRadiusParam,
                   re_recruit_worker_user_ids: reRecruitedWorkerUserIds
                 }
               });
+              if(broadcastRadiusParam) {
+                  recruit.request.broadcast_radius = broadcastRadiusParam;
+              }
               if (userIdUserMap) {
                 const recruitedWorkerUserIdSet = [];
                 for (let userId of userIdUserMap.keys()) {
