@@ -310,9 +310,8 @@ const recoverPassRequestPin = function (username) {
         const access_token = _generateToken(o);
         //  send twilio message ignoring any errors in sending twilio messages
         const toFullNumber = '+' + o.phone_number.country_code + o.phone_number.local_number;
-        return twilioService.sendMessage(toFullNumber, 'Ganaz Pin Code: ' + pin).then(function () {
-          return {pin, access_token};
-        });
+        twilioService.sendMessage(toFullNumber, 'Ganaz Pin Code: ' + pin);
+        return {pin, access_token};
       });
     }
   })
