@@ -154,8 +154,8 @@ const create = function (body, currentUser) {
                   re_recruit_worker_user_ids: reRecruitedWorkerUserIds
                 }
               });
-              if(broadcastRadiusParam) {
-                  recruit.request.broadcast_radius = broadcastRadiusParam;
+              if (broadcastRadiusParam) {
+                recruit.request.broadcast_radius = broadcastRadiusParam;
               }
               if (userIdUserMap) {
                 const recruitedWorkerUserIdSet = [];
