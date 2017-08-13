@@ -168,27 +168,31 @@ const create = function (body, currentUser) {
           });
         } else if (reRecruitedWorkerUserIdsConditions) {
           return User.find(reRecruitedWorkerUserIdsConditions).then(function (users) {
-            const saveRecruitPromises = [];
-            const reRecruitedWorkerUserIds = [];
-            for (let i = 0; i < users.length; i++) {
-              const user = users[i];
-              reRecruitedWorkerUserIds.push(user._id.toString());
-              addNumberToRegistedUsersPhoneNumber(user);
+            if (users.length > 0) {
+              const saveRecruitPromises = [];
+              const reRecruitedWorkerUserIds = [];
+              for (let i = 0; i < users.length; i++) {
+                const user = users[i];
+                reRecruitedWorkerUserIds.push(user._id.toString());
+                addNumberToRegistedUsersPhoneNumber(user);
+              }
+              for (let i = 0; i < jobs.length; i++) {
+                const job = jobs[i];
+                const jobId = job._id.toString();
+                const recruit = new Recruit({
+                  company_id: currentUser.company.company_id,
+                  company_user_id: currentUser.id,
+                  request: {
+                    job_id: jobId,
+                    re_recruit_worker_user_ids: reRecruitedWorkerUserIds
+                  }
+                });
+                saveRecruitPromises.push(recruit.save());
+              }
+              return Promise.all(saveRecruitPromises);
+            } else {
+              return Promise.resolve([]);
             }
-            for (let i = 0; i < jobs.length; i++) {
-              const job = jobs[i];
-              const jobId = job._id.toString();
-              const recruit = new Recruit({
-                company_id: currentUser.company.company_id,
-                company_user_id: currentUser.id,
-                request: {
-                  job_id: jobId,
-                  re_recruit_worker_user_ids: reRecruitedWorkerUserIds
-                }
-              });
-              saveRecruitPromises.push(recruit.save());
-            }
-            return Promise.all(saveRecruitPromises);
           });
         } else {
           return Promise.resolve([]);
@@ -196,7 +200,7 @@ const create = function (body, currentUser) {
       });
   }).then(function (newRecruits) {
     if (isNotNullOrEmpty(phoneNumbersParam)) {
-      Company.findById(currentUser.company_id).then(function (company) {
+      Company.findById(currentUser.company.company_id).then(function (company) {
         const companyName = company.name.en;
         for (let i = 0; i < phoneNumbersParam.length; i++) {
           const phoneNumber = phoneNumbersParam[i];
