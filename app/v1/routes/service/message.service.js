@@ -47,7 +47,7 @@ const create = function (body) {
     for (let i = 0; i < savedMessages.length; i++) {
       // Send message to user/receiver ignoring result
       const savedMessage = savedMessages[i];
-      if (savedMessage.receiver && savedMessage.receiver.user) {
+      if (savedMessage.receiver && savedMessage.receiver.user_id) {
         User.findById(savedMessage.receiver.user_id).then(function (user) {
           if (user) {
             if (user.player_ids) {
@@ -86,6 +86,8 @@ const create = function (body) {
             logger.warn('Not sending push notification. User with id ' + savedMessage.receiver.user_id + ' not found.');
           }
         });
+      } else {
+        logger.info('Not sending push notification. Message id ' + savedMessage._id.toString() + ' has no receiver.');
       }
     }
     return savedMessages;

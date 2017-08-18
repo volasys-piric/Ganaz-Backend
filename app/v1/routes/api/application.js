@@ -81,7 +81,7 @@ router.post('/', function (req, res) {
         const receivers = [];
         for (let i = 0; i < users.length; i++) {
           const user = users[i];
-          receivers.push({user_id: user._id, company_id: job.company_id})
+          receivers.push({user_id: user._id.toString(), company_id: job.company_id})
         }
         const senderId = req.user._id;
         const senderCompanyId = req.user.company ? req.user.company.company_id : null;
