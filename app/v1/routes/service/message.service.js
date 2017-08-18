@@ -80,14 +80,14 @@ const create = function (body) {
               }
               sendNotification(user.player_ids, {contents: {en: messageString}, data: data});
             } else {
-              logger.warn('Not sending push notification. User with id ' + savedMessage.receiver.user_id + ' has no player_ids.');
+              logger.warn('[Message Service] Not sending push notification. User with id ' + savedMessage.receiver.user_id + ' has no player_ids.');
             }
           } else {
-            logger.warn('Not sending push notification. User with id ' + savedMessage.receiver.user_id + ' not found.');
+            logger.warn('[Message Service] Not sending push notification. User with id ' + savedMessage.receiver.user_id + ' not found.');
           }
         });
       } else {
-        logger.info('Not sending push notification. Message id ' + savedMessage._id.toString() + ' has no receiver.');
+        logger.info('[Message Service] Not sending push notification. Message id ' + savedMessage._id.toString() + ' has no receiver.');
       }
     }
     return savedMessages;

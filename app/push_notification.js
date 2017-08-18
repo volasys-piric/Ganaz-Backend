@@ -19,7 +19,7 @@ const sendNotification = function (device, notification) {
       'include_player_ids': includePlayerIds
     });
 
-    logger.info('Sending push notification with body ----> ' + request_body);
+    logger.info('[Push Notification] Sending body ----> ' + request_body);
     request.post({
         url: 'https://onesignal.com/api/v1/notifications',
         headers: {
@@ -30,14 +30,14 @@ const sendNotification = function (device, notification) {
         body: request_body
       }, function (error, response, body) {
         if (!error) {
-          console.log(body);
+          logger.info('[Push Notification] Success Response: ' + body);
         } else {
-          console.error('Error:', error);
+          logger.warn('[Push Notification] Error Response: ' + error);
         }
       }
     )
   } else {
-    logger.info('Not sending push notification. Cause: Empty player ids. Body ----> ' + JSON.stringify(notification));
+    logger.info('[Push Notification] Not sending. Cause: Empty player ids. Body ----> ' + JSON.stringify(notification));
   }
 };
 
