@@ -35,9 +35,9 @@ config.load = function () {
           });
         };
         // TODO: Make this dynamic
-        updateConfig(['root', 'port', 'dbUrl', 'secret', 'appstore_url',
+        updateConfig(['secret', 'dbUrl', 'root', 'port', 'appstore_url',
           'TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_PHONE_NUMBER', 'support_mail',
-          'STRIPE_SECRETE_KEY', 'STRIPE_PUBLISHABLE_KEY']);
+          'STRIPE_SECRET_KEY', 'STRIPE_PUBLISHABLE_KEY', 'ONE_SIGNAL_API_KEY', 'ONE_SIGNAL_API_ID']);
         config.emitter.emit('ready');
       }, function (error) {
         logger.warn('Error reading ' + overrideFile + '. Error: ' + error.message);
