@@ -1,3 +1,4 @@
+const os = require('os');
 const events = require('events');
 const fs = require('fs-extra-promise');
 
@@ -24,12 +25,15 @@ config.load = function () {
   const overrideFile = __dirname + '/app_config_overrides.json';
   fs.exists(overrideFile, function (exists) {
     if (exists) {
-      logger.debug('Reading app_config_overrides.json');
+      logger.info('Reading app_config_overrides.json');
       fs.readFileAsync(overrideFile, 'utf8').then(function (contents) {
         const json = JSON.parse(contents);
         const updateConfig = function (properties) {
           properties.forEach(function (property, index) {
             if (property in json) {
+              logger.info('Overriding Config Name: ' + property +
+                ', Default Value: ' + config[property] +
+                ', New Value: ' + json[property]);
               config[property] = json[property]
             }
           });
