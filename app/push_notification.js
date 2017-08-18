@@ -1,5 +1,6 @@
 const request = require('request');
 const appConfig = require('./app_config');
+const logger = require('./utils/logger');
 
 const sendNotification = function (device, notification) {
   let includePlayerIds = [];
@@ -19,6 +20,7 @@ const sendNotification = function (device, notification) {
     'include_player_ids': includePlayerIds
   });
 
+  logger.info('Sending push notification to https://onesignal.com/api/v1/notifications with body ----> ' + request_body);
   request.post({
       url: 'https://onesignal.com/api/v1/notifications',
       headers: {
