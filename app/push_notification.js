@@ -4,12 +4,12 @@ const logger = require('./utils/logger');
 
 const sendNotification = function (device, notification) {
   let includePlayerIds = [];
-  if (device) {
-    if (Array.isArray(device)) {
-      includePlayerIds = device;
-    } else {
-      includePlayerIds.push(device);
-    }
+  if (Array.isArray(device)) {
+    includePlayerIds = device;
+  } else if (device && typeof device === 'string') {
+    includePlayerIds.push(device);
+  }
+  if (includePlayerIds.length > 0) {
     const request_body = JSON.stringify({
       'app_id': appConfig.ONE_SIGNAL_API_ID,
       'contents': notification.contents,
@@ -37,7 +37,7 @@ const sendNotification = function (device, notification) {
       }
     )
   } else {
-    logger.info('Sending push notification with notification body ----> ' + JSON.stringify(notification));
+    logger.info('Not sending push notification. Cause: Empty player ids. Body ----> ' + JSON.stringify(notification));
   }
 };
 
