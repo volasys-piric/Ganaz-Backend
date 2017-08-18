@@ -1,6 +1,7 @@
 const Promise = require('bluebird');
 const db = require('./../../db');
 const sendNotification = require('./../../../push_notification');
+const logger = require('./../../../utils/logger');
 
 const Message = db.models.message;
 const User = db.models.user;
@@ -46,38 +47,42 @@ const create = function (body) {
     for (let i = 0; i < savedMessages.length; i++) {
       // Send message to user/receiver ignoring result
       const savedMessage = savedMessages[i];
-      User.findById(savedMessage.receiver.user_id).then(function (user) {
-        const jsonMessage = savedMessage.toObject();
-        let messageString = null;
-        if (typeof jsonMessage.message === 'object') {
-          messageString = jsonMessage.message.en;
-        } else {
-          // Assumed to be string
-          messageString = jsonMessage.message;
-        }
-        const messageId = jsonMessage._id.toString();
-        const data = {type: jsonMessage.type};
-        data.contents = {
-          id: messageId,
-          message_id: messageId,
-          message: messageString,
-        };
-        if (body.job_id) {
-          // For backward compatibility
-          data.contents.job_id = body.job_id
-        }
-
-        if (jsonMessage.type === 'application') {
-          data.contents.application_id = body.metadata.application_id;
-        } else if (jsonMessage.type === 'recruit') {
-          data.contents.recruit_id = body.metadata.recruit_id;
-        } else if (jsonMessage.type === 'suggest') {
-          data.contents.suggest_id = body.metadata.suggest_id;
-          data.contents.suggested_phone_number = body.metadata.suggested_phone_number;
-        }
-
-        sendNotification(user.player_ids, {contents: {en: messageString}, data: data});
-      });
+      if (savedMessage.receiver && savedMessage.receiver.user) {
+        User.findById(savedMessage.receiver.user_id).then(function (user) {
+          if (user) {
+            const jsonMessage = savedMessage.toObject();
+            let messageString = null;
+            if (typeof jsonMessage.message === 'object') {
+              messageString = jsonMessage.message.en;
+            } else {
+              // Assumed to be string
+              messageString = jsonMessage.message;
+            }
+            const messageId = jsonMessage._id.toString();
+            const data = {type: jsonMessage.type};
+            data.contents = {
+              id: messageId,
+              message_id: messageId,
+              message: messageString,
+            };
+            if (body.job_id) {
+              // For backward compatibility
+              data.contents.job_id = body.job_id
+            }
+            if (jsonMessage.type === 'application') {
+              data.contents.application_id = body.metadata.application_id;
+            } else if (jsonMessage.type === 'recruit') {
+              data.contents.recruit_id = body.metadata.recruit_id;
+            } else if (jsonMessage.type === 'suggest') {
+              data.contents.suggest_id = body.metadata.suggest_id;
+              data.contents.suggested_phone_number = body.metadata.suggested_phone_number;
+            }
+            sendNotification(user.player_ids, {contents: {en: messageString}, data: data});
+          } else {
+            logger.warn('Not sending push notification. User with id ' + savedMessage.receiver.user_id + ' not found');
+          }
+        });
+      }
     }
     return savedMessages;
   })
