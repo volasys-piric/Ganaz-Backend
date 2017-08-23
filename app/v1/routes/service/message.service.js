@@ -37,10 +37,16 @@ const create = function (body) {
   if (body.receivers) {
     const receivers = body.receivers;
     if (receivers.length) {
+      const userIds = [];
       for (let i = 0; i < receivers.length; i++) {
-        body.receiver = receivers[i];
-        const message = new Message(body);
-        saveMessagePromises.push(message.save());
+        const receiver = receivers[i];
+        if (userIds.indexOf(receiver.user_id) === -1) {
+          // Avoid duplicate creation of messaqge for same user id
+          userIds.push(receiver.user_id);
+          body.receiver = receiver;
+          const message = new Message(body);
+          saveMessagePromises.push(message.save());
+        }
       }
     } else {
       const message = new Message(body);

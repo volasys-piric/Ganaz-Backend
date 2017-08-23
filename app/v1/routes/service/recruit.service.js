@@ -220,30 +220,42 @@ const create = function (body, currentUser) {
     const createMessagePromises = [];
     for (let i = 0; i < newRecruits.length; i++) {
       const newRecruit = newRecruits[i];
-      const recruitedWorkerUserIds = newRecruit.request.re_recruit_worker_user_ids;
-      // Send Message and ignore if successful or not
-      const receivers = recruitedWorkerUserIds.map(function (userId) {
-        return {user_id: userId, company_id: ''};
-      });
-      const messageBody = {
-        job_id: newRecruit.request.job_id,
-        type: 'recruit',
-        sender: {
-          user_id: newRecruit.company_user_id,
-          company_id: newRecruit.company_id
-        },
-        receivers: receivers,
-        message: {
-          en: 'New work available',
-          es: 'Nuevo trabajo disponible'
-        },
-        auto_translate: true,
-        datetime: now,
-        metadata: {
-          recruit_id: newRecruit._id.toString()
+      const receivers = [];
+      if (newRecruit.request.re_recruit_worker_user_ids) {
+        const userIds = newRecruit.request.re_recruit_worker_user_ids;
+        for (let i = 0; i < userIds.length; i++) {
+          receivers.push({user_id: userIds[i], company_id: ''})
         }
-      };
-      createMessagePromises.push(messageService.create(messageBody));
+      }
+      if (newRecruit.recruited_worker_user_ids) {
+        const userIds = newRecruit.recruited_worker_user_ids;
+        for (let i = 0; i < userIds.length; i++) {
+          receivers.push({user_id: userIds[i], company_id: ''})
+        }
+      }
+      if (receivers.length > 0) {
+        const messageBody = {
+          job_id: newRecruit.request.job_id,
+          type: 'recruit',
+          sender: {
+            user_id: newRecruit.company_user_id,
+            company_id: newRecruit.company_id
+          },
+          receivers: receivers,
+          message: {
+            en: 'New work available',
+            es: 'Nuevo trabajo disponible'
+          },
+          auto_translate: true,
+          datetime: now,
+          metadata: {
+            recruit_id: newRecruit._id.toString()
+          }
+        };
+        createMessagePromises.push(messageService.create(messageBody));
+      } else {
+        logger.warn("[Recruit Service] Recruit " + newRecruit._id.toString() + " doesn't have receivers");
+      }
     }
     return Promise.all(createMessagePromises).then(function () {
       return newRecruits;
