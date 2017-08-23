@@ -81,9 +81,9 @@ UserSchema.pre('save', function (next) {
       } else {
         return user;
       }
-    }).then(function () {
-    if (!this.created_at) {
-      this.created_at = Date.now();
+    }).then(function (user) {
+    if (!user.created_at) {
+      user.created_at = Date.now();
     }
     next();
   }).catch(function (error) {

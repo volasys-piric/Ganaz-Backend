@@ -27,29 +27,29 @@ const validateJob = function (model) {
   });
 };
 
-const validateWorkerUserId = function (model) {
-  if (model.worker_user_id) {
-    User.findById(model.worker_user_id).then(function (user) {
+const validateWorkerUserId = function (application) {
+  if (application.worker_user_id) {
+    return User.findById(application.worker_user_id).then(function (user) {
       if (!user) {
-        return Promise.reject('User ' + model.worker_user_id + ' does not exists in user collection.');
+        return Promise.reject('User ' + application.worker_user_id + ' does not exists in user collection.');
       } else if (user.type !== 'worker') {
-        return Promise.reject('User ' + model.worker_user_id + ' is not a worker.');
+        return Promise.reject('User ' + application.worker_user_id + ' is not a worker.');
       } else {
-        return model;
+        return application;
       }
     });
   } else {
-    return Promise.resolve(model);
+    return Promise.resolve(application);
   }
 };
 
 ApplicationSchema.pre('save', function (next) {
-  const model = this;
-  validateJob(model).then(function (model) {
-    return validateWorkerUserId(model);
-  }).then(function () {
-    if (!this.created_at) {
-      this.created_at = Date.now();
+  const application = this;
+  validateJob(application).then(function (application) {
+    return validateWorkerUserId(application);
+  }).then(function (application) {
+    if (!application.created_at) {
+      application.created_at = Date.now();
     }
     next();
   }).catch(function (err) {
