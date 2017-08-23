@@ -29,10 +29,12 @@ const create = function (body, currentUser) {
 
   const getUnregisteredPhoneNumbers = function () {
     const unregisteredPhoneNumbers = [];
-    for (let i = 0; i < phoneNumbersParam.length; i++) {
-      const phoneNumber = phoneNumbersParam[i];
-      if (!registeredUserPhoneNumbers.has(phoneNumber)) {
-        unregisteredPhoneNumbers.push(phoneNumber);
+    if (phoneNumbersParam) {
+      for (let i = 0; i < phoneNumbersParam.length; i++) {
+        const phoneNumber = phoneNumbersParam[i];
+        if (!registeredUserPhoneNumbers.has(phoneNumber)) {
+          unregisteredPhoneNumbers.push(phoneNumber);
+        }
       }
     }
     return unregisteredPhoneNumbers;
