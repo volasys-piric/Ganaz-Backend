@@ -27,6 +27,17 @@ const create = function (body, currentUser) {
     }
   };
 
+  const getUnregisteredPhoneNumbers = function () {
+    const unregisteredPhoneNumbers = [];
+    for (let i = 0; i < phoneNumbersParam.length; i++) {
+      const phoneNumber = phoneNumbersParam[i];
+      if (!registeredUserPhoneNumbers.has(phoneNumber)) {
+        unregisteredPhoneNumbers.push(phoneNumber);
+      }
+    }
+    return unregisteredPhoneNumbers;
+  };
+
   return Job.find({_id: {$in: jobIdParam}}).then(function (jobs) {
     const jobIdJobMap = new Map();
     for (let i = 0; i < jobs.length; i++) {
@@ -142,6 +153,8 @@ const create = function (body, currentUser) {
                 addNumberToRegistedUsersPhoneNumber(user);
               }
             }
+
+            const unregisteredPhoneNumbers = getUnregisteredPhoneNumbers();
             for (let i = 0; i < jobs.length; i++) {
               const job = jobs[i];
               const jobId = job._id.toString();
@@ -154,7 +167,7 @@ const create = function (body, currentUser) {
               }
               for (let i = 0; i < reRecruitedAndPhoneMatchWorkerIds.length; i++) {
                 const userId = reRecruitedAndPhoneMatchWorkerIds[i];
-                if (recruitedWorkerUserIdSet.indexOf(userId) !== -1) {
+                if (recruitedWorkerUserIdSet.indexOf(userId) === -1) {
                   recruitedWorkerUserIdSet.push(userId);
                 }
               }
@@ -164,9 +177,11 @@ const create = function (body, currentUser) {
                 request: {
                   job_id: jobId,
                   broadcast_radius: broadcastRadiusParam,
-                  re_recruit_worker_user_ids: reRecruitWorkerUserIdsParam
+                  re_recruit_worker_user_ids: reRecruitWorkerUserIdsParam,
+                  phone_numbers: phoneNumbersParam
                 },
-                recruited_worker_user_ids: recruitedWorkerUserIdSet
+                recruited_worker_user_ids: recruitedWorkerUserIdSet,
+                nonregistered_phone_numbers: unregisteredPhoneNumbers
               });
               saveRecruitPromises.push(recruit.save());
             }
@@ -182,6 +197,8 @@ const create = function (body, currentUser) {
                 reRecruitedAndPhoneMatchWorkerIds.push(user._id.toString());
                 addNumberToRegistedUsersPhoneNumber(user);
               }
+
+              const unregisteredPhoneNumbers = getUnregisteredPhoneNumbers();
               for (let i = 0; i < jobs.length; i++) {
                 const job = jobs[i];
                 const jobId = job._id.toString();
@@ -190,9 +207,11 @@ const create = function (body, currentUser) {
                   company_user_id: currentUser.id,
                   request: {
                     job_id: jobId,
-                    re_recruit_worker_user_ids: reRecruitWorkerUserIdsParam
+                    re_recruit_worker_user_ids: reRecruitWorkerUserIdsParam,
+                    phone_numbers: phoneNumbersParam
                   },
-                  recruited_worker_user_ids: reRecruitedAndPhoneMatchWorkerIds
+                  recruited_worker_user_ids: reRecruitedAndPhoneMatchWorkerIds,
+                  nonregistered_phone_numbers: unregisteredPhoneNumbers
                 });
                 saveRecruitPromises.push(recruit.save());
               }

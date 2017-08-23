@@ -4,7 +4,8 @@ const Schema = mongoose.Schema;
 const RequestSchema = new Schema({
   job_id: String,
   broadcast_radius: Number,
-  re_recruit_worker_user_ids: [String]
+  re_recruit_worker_user_ids: [String],
+  phone_numbers: [String]
 });
 
 const RecruitSchema = new Schema({
@@ -12,6 +13,7 @@ const RecruitSchema = new Schema({
   company_user_id: String,
   request: {type: RequestSchema, required: true},
   recruited_worker_user_ids: [String],
+  nonregistered_phone_numbers: [String],
   created_at: Date
 });
 
