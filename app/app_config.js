@@ -17,8 +17,8 @@ const config = {
   support_mail: 'super.savych@yandex.com',
   STRIPE_SECRET_KEY: 'sk_test_RhXr4017wVdvnotlxgtS9gOq',
   STRIPE_PUBLISHABLE_KEY: 'pk_test_JZqzrp7oWZSWPvfhZHoGvWH3',
-  ONE_SIGNAL_API_KEY: 'MTJmZWEyMGEtNWE2NS00NWUxLTlmZjgtZTVmNDQwZmRmNmM4',
-  ONE_SIGNAL_API_ID: '160b5387-8178-46e2-b194-ad193dc5efac'
+  ONE_SIGNAL_API_KEY: 'NmNmZTQyNDItNWI3Yy00M2I1LWEwNWMtY2RiMTkwNTQ3MWY2',
+  ONE_SIGNAL_API_ID: 'ade7e4b5-b439-4d82-9bb2-c040372c1f14'
 };
 
 config.load = function () {
