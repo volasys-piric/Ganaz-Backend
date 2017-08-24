@@ -56,11 +56,17 @@ const create = function (body) {
   const sendPushNotification = function (user, savedMessage) {
     const jsonMessage = savedMessage.toObject();
     let messageString = null;
-    if (typeof jsonMessage.message === 'object') {
-      messageString = jsonMessage.message.en;
+    let messageObject = null;
+    if (body.sender.company_id && body.auto_translate === true) {
+      messageString = jsonMessage.message.es;
+      messageObject = {en: messageString, es: messageString};
+    } else if (typeof jsonMessage.message === 'object') {
+      messageString = jsonMessage.message.es ? jsonMessage.message.es : jsonMessage.message.en;
+      messageObject = {en: messageString};
     } else {
       // Assumed to be string
       messageString = jsonMessage.message;
+      messageObject = {en: messageString};
     }
     const messageId = jsonMessage._id.toString();
     const data = {type: jsonMessage.type};
@@ -81,7 +87,7 @@ const create = function (body) {
       data.contents.suggest_id = body.metadata.suggest_id;
       data.contents.suggested_phone_number = body.metadata.suggested_phone_number;
     }
-    sendNotification(user.player_ids, {contents: {en: messageString}, data: data});
+    sendNotification(user.player_ids, {contents: messageObject, data: data});
   };
 
   return Promise.all(saveMessagePromises).then(function (savedMessages) {
