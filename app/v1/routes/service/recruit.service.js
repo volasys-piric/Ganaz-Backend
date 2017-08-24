@@ -225,22 +225,29 @@ const create = function (body, currentUser) {
         } else {
           return Promise.resolve([]);
         }
+      }).then(function(newRecruits) {
+        if (isNotNullOrEmpty(phoneNumbersParam)) {
+          Company.findById(currentUser.company.company_id).then(function (company) {
+            const companyName = company.name.en;
+            for (let i = 0; i < phoneNumbersParam.length; i++) {
+              const phoneNumber = phoneNumbersParam[i];
+              if (!registeredUserPhoneNumbers.has(phoneNumber)) {
+                for (const job of jobIdJobMap.values()) {
+                  const jobTitle = job.title.es ? job.title.es : job.title.en;
+                  const toFullNumber = "+1" + phoneNumber;
+                  const payRate = job.pay.rate;
+                  const payUnit = job.pay.unit;
+                  const messageBody = companyName +' pensé que te interesaría este trabajo: ' + jobTitle
+                    + ' ' + payRate + ' per ' + payUnit + '. par más información baje la aplicación Ganaz. www.GanazApp.com/download';
+                  twilioService.sendMessage(toFullNumber, messageBody);
+                }
+              }
+            }
+          });
+        }
+        return newRecruits;
       });
   }).then(function (newRecruits) {
-    if (isNotNullOrEmpty(phoneNumbersParam)) {
-      Company.findById(currentUser.company.company_id).then(function (company) {
-        const companyName = company.name.en;
-        for (let i = 0; i < phoneNumbersParam.length; i++) {
-          const phoneNumber = phoneNumbersParam[i];
-          if (!registeredUserPhoneNumbers.has(phoneNumber)) {
-            const toFullNumber = "+1" + phoneNumber;
-            const body = companyName + ' quisiera recomendar que ud baje la aplicación Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. http://www.GanazApp.com/download';
-            twilioService.sendMessage(toFullNumber, body);
-          }
-        }
-      });
-    }
-
     if (newRecruits.length < 1) {
       return Promise.resolve([]);
     }
