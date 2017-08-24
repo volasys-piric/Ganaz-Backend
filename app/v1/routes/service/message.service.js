@@ -161,7 +161,7 @@ const create = function (body) {
             Company.findById(body.sender.company_id).then(function (company) {
               const companyName = company.name.en;
               const messageContent = body.message.es;
-              const messageBody = companyName + messageContent + 'Baje la aplicación Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. www.GanazApp.com/download';
+              const messageBody = companyName + ' ' + messageContent + ' Baje la aplicación Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. www.GanazApp.com/download';
               for (let i = 0; i < noUserPhoneNumbers.length; i++) {
                 const toFullNumber = "+1" + noUserPhoneNumbers[i];
                 twilioService.sendMessage(toFullNumber, messageBody).catch(function (err) {
