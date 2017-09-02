@@ -53,13 +53,14 @@ router.post('/', function (req, res) {
        "firstname": "{first name}",
        "lastname": "{last name}",
        "username": "{user login name}",
+       "password": "{password}",
        "email_address": "{email address}",
        "phone_number": {
            "country": "US",
            "country_code": "1",
            "local_number": "{local number}"
        },
-       "auth_type": "email/facebook/twitter/google/phone",
+       "auth_type": "email/facebook/twitter/google",
        "external_id": "{facebook_user_id/twitter_user_id/google_user_id}",
        "player_ids": [
            "{onesignal_player_id}",
@@ -270,5 +271,56 @@ router.post('/bulksearch', function (req, res) {
     });
   }).catch(httpUtil.handleError(res));
 });
+
+// https://bitbucket.org/volasys-ss/ganaz-backend/wiki/1.2.1%20User%20-%20Onboarding%20User%20Signup
+router.patch('/onboarding/:id', function (req, res) {
+  /** Expected req.body is
+   {
+       "type": "worker/company-regular/company-admin",
+       "firstname": "{first name}",
+       "lastname": "{last name}",
+       "username": "{user login name}",
+       "password": "{password}",
+       "email_address": "{email address}",
+       "phone_number": {
+           "country": "US",
+           "country_code": "1",
+           "local_number": "{local number}"
+       },
+       "auth_type": "email/facebook/twitter/google",
+       "external_id": "{facebook_user_id/twitter_user_id/google_user_id}",
+       "player_ids": [
+           "{onesignal_player_id}",
+           "{onesignal_player_id}",
+           ...
+       ],
+
+       "worker": {                                          [optional]
+           "location": {
+               "address": "{address}",
+               "lat": "{latitude}",
+               "lng": "{longitude}"
+           },
+           "is_newjob_lock": "true/false",
+       },
+
+       "company": {                                          [optional]
+           "company_id": "{company_id}"
+       }
+   }
+   */
+  const body = req.body;
+  if (!body) {
+    res.json({success: false, msg: 'Request body not found.'});
+  } else {
+    return userService.update(req.params.id, body).then(function (user) {
+      res.json({
+        success: true,
+        account: user
+      });
+    }).catch(httpUtil.handleError(res));
+  }
+});
+
 
 module.exports = router;

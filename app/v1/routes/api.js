@@ -28,6 +28,10 @@ app.use('/', express_jwt({
         methods: 'GET'
       },
       {
+        url: /\/user\/onboarding\/[0-9a-f]{8,}$/,
+        methods: 'PATCH'
+      },
+      {
         url: /\/company$/,
         methods: 'POST'
       },

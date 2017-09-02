@@ -40,13 +40,13 @@ const validate = function (id, body) {
           errorMessage += 'Request body external_id is required for auth_type ' + body.auth_type + '. ';
         }
         body.type = body.type.toLowerCase();
-        if (body.type !== 'onboading-worker' && body.type !== 'worker' && body.type !== 'company-admin' && body.type !== 'company-regular') {
+        if (body.type !== 'onboarding-worker' && body.type !== 'worker' && body.type !== 'company-admin' && body.type !== 'company-regular') {
           errorMessage += 'Request type ' + body.type + ' is not acceptable. ';
-        } else if ((body.type !== 'onboading-worker' || body.type !== 'worker') && !(body.company && body.company.company_id)) {
+        } else if ((body.type !== 'onboarding-worker' || body.type !== 'worker') && !(body.company && body.company.company_id)) {
           errorMessage += 'Request body company.company_id is required for type ' + body.type + '. '
         }
       }
-    } else if(body.type === 'onboading-worker') {
+    } else if (body.type === 'onboarding-worker') {
       errorMessage += 'Request type ' + body.type + ' is allowed to updated but not to create user record.';
     }
   } else {
@@ -143,17 +143,18 @@ const create = function (body) {
 
 const update = function (id, body) {
   return validate(id, body).then(function (existingUser) {
-    const deleteProperty = function (propertyName) {
-      if (body[propertyName]) { // In case front end pass this
-        body[propertyName] = null;
-        delete body[propertyName];
-      }
-    };
-    deleteProperty('type');
-    deleteProperty('password');
-    deleteProperty('company');
-    deleteProperty('external_id');
-
+    if (body.type !== 'onboarding-worker') { // See https://bitbucket.org/volasys-ss/ganaz-backend/wiki/1.2.1%20User%20-%20Onboarding%20User%20Signup
+      const deleteProperty = function (propertyName) {
+        if (body[propertyName]) { // In case front end pass this
+          body[propertyName] = null;
+          delete body[propertyName];
+        }
+      };
+      deleteProperty('type');
+      deleteProperty('password');
+      deleteProperty('company');
+      deleteProperty('external_id');
+    }
     const user = Object.assign(existingUser, User.adaptLocation(body));
     return user.save().then(function () {
       return user;
