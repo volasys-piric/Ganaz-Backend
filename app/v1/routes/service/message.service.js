@@ -1,6 +1,7 @@
 const Promise = require('bluebird');
 const db = require('./../../db');
 const twilioService = require('./twilio.service');
+const myworkerService = require('./myworker.service');
 const sendNotification = require('./../../../push_notification');
 const logger = require('./../../../utils/logger');
 
@@ -32,7 +33,9 @@ const findById = function (id) {
 };
 
 const create = function (body) {
-  // TODO: Add validation such that job_id (if not null) and sender/receiver iuser_id and company_id (if not null) should be existing.
+  // TODO: Add the following validations:
+  // 1. job_id (if not null), sender/receiver user_id and company_id (if not null) should be existing.
+  // 2. If receiver user_id is an existing onboarding-worker, sender.company_id should not be null
   const saveMessagePromises = [];
   if (body.receivers) {
     const receivers = body.receivers;
@@ -97,7 +100,22 @@ const create = function (body) {
       if (savedMessage.receiver && savedMessage.receiver.user_id) {
         User.findById(savedMessage.receiver.user_id).then(function (user) {
           if (user) {
-            if (user.player_ids) {
+            if (user.type === 'onboarding-worker') {
+              /*
+               https://bitbucket.org/volasys-ss/ganaz-backend/wiki/7.3%20Message%20-%20Create
+               Onboarding users (If the receiver is onboarding user, this means the sender is company user.)
+               - Add the onboarding user to my-workers list of company if not added yet.
+               - Invite object will be created if not yet.
+               - Message object will be created.
+               - SMS will be sent to the onboarding-user.
+               */
+              const companyId = body.sender.company_id;
+              const workerUserId = savedMessage.receiver.user_id;
+              return myworkerService.findByCompanyIdWorkerUserId(companyId, workerUserId)
+                .then(function (myworker) {
+                  return myworker === null ? myworkerService.createOne(companyId, workerUserId) : myworker;
+                });
+            } else if (user.player_ids) {
               sendPushNotification(user, savedMessage);
             } else {
               logger.warn('[Message Service] Not sending push notification. User with id ' + savedMessage.receiver.user_id + ' has no player_ids.');
