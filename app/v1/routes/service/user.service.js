@@ -40,12 +40,14 @@ const validate = function (id, body) {
           errorMessage += 'Request body external_id is required for auth_type ' + body.auth_type + '. ';
         }
         body.type = body.type.toLowerCase();
-        if (body.type !== 'worker' && body.type !== 'company-admin' && body.type !== 'company-regular') {
+        if (body.type !== 'onboading-worker' && body.type !== 'worker' && body.type !== 'company-admin' && body.type !== 'company-regular') {
           errorMessage += 'Request type ' + body.type + ' is not acceptable. ';
-        } else if (body.type !== 'worker' && !(body.company && body.company.company_id)) {
+        } else if ((body.type !== 'onboading-worker' || body.type !== 'worker') && !(body.company && body.company.company_id)) {
           errorMessage += 'Request body company.company_id is required for type ' + body.type + '. '
         }
       }
+    } else if(body.type === 'onboading-worker') {
+      errorMessage += 'Request type ' + body.type + ' is allowed to updated but not to create user record.';
     }
   } else {
     errorMessage = 'Request body is required.';
@@ -220,7 +222,7 @@ const updateType = function (currentUserId, userIdToUpdate, type) {
     return Promise.reject('Invalid type in request body.');
   } else {
     return User.findById(currentUserId).then(function (currentUser) {
-      if (!currentUser.company || currentUser.type != 'company-admin') {
+      if (!currentUser.company || currentUser.type !== 'company-admin') {
         return Promise.reject('You have no privilege to update the user company role');
       } else {
         return User.findById(userIdToUpdate)
