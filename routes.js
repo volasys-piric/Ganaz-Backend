@@ -17,7 +17,7 @@ import twilio from 'twilio';
 import stripe from 'stripe';
 import express from 'express';
 import async from 'async';
-import sendNotification from './app/push_notification';
+import pushNotification from './app/push_notification';
 import _ from 'underscore';
 import request from 'request';
 import mongoose from 'mongoose';
@@ -1138,7 +1138,7 @@ module.exports = function(app, passport) {
                                         notification.data.contents.job_id = req.body.application_id;
                                     }
 
-                                    sendNotification(user.player_ids, notification);
+                                    pushNotification.sendNotification(user.player_ids, notification);
 
                                     parallel_callback(null, jsonMessage);
                                 }

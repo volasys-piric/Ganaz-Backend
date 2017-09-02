@@ -41,4 +41,44 @@ const sendNotification = function (device, notification) {
   }
 };
 
-module.exports = sendNotification;
+const sendMessage = function (player_ids, savedMessage) {
+  const o = savedMessage.toObject();
+  let messageString = null;
+  let messageObject = null;
+  if (o.sender.company_id && o.auto_translate === true) {
+    messageString = o.message.es;
+    messageObject = {en: messageString, es: messageString};
+  } else if (typeof o.message === 'object') {
+    messageString = o.message.es ? o.message.es : o.message.en;
+    messageObject = {en: messageString};
+  } else {
+    // Assumed to be string
+    messageString = o.message;
+    messageObject = {en: messageString};
+  }
+  const messageId = o._id.toString();
+  const data = {type: o.type};
+  data.contents = {
+    id: messageId,
+    message_id: messageId,
+    message: messageString,
+  };
+  if (o.job_id) {
+    // For backward compatibility
+    data.contents.job_id = o.job_id
+  }
+  if (o.type === 'application') {
+    data.contents.application_id = o.metadata.application_id;
+  } else if (o.type === 'recruit') {
+    data.contents.recruit_id = o.metadata.recruit_id;
+  } else if (o.type === 'suggest') {
+    data.contents.suggest_id = o.metadata.suggest_id;
+    data.contents.suggested_phone_number = o.metadata.suggested_phone_number;
+  }
+  sendNotification(player_ids, {contents: messageObject, data: data});
+};
+
+module.exports = {
+  sendNotification: sendNotification,
+  sendMessage: sendMessage
+};
