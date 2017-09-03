@@ -225,32 +225,14 @@ const create = function (body, currentUser) {
         } else {
           return Promise.resolve([]);
         }
-      }).then(function(newRecruits) {
-        if (isNotNullOrEmpty(phoneNumbersParam)) {
-          Company.findById(currentUser.company.company_id).then(function (company) {
-            const companyName = company.name.en;
-            for (let i = 0; i < phoneNumbersParam.length; i++) {
-              const phoneNumber = phoneNumbersParam[i];
-              if (!registeredUserPhoneNumbers.has(phoneNumber)) {
-                for (const job of jobIdJobMap.values()) {
-                  const jobTitle = job.title.es ? job.title.es : job.title.en;
-                  const toFullNumber = "+1" + phoneNumber;
-                  const payRate = job.pay.rate;
-                  const payUnit = job.pay.unit;
-                  const messageBody = companyName +' pensé que te interesaría este trabajo: ' + jobTitle
-                    + ' ' + payRate + ' per ' + payUnit + '. par más información baje la aplicación Ganaz. www.GanazApp.com/download';
-                  twilioService.sendMessage(toFullNumber, messageBody);
-                }
-              }
-            }
-          });
-        }
-        return newRecruits;
+      }).then(function (newRecruits) {
+        return _sendMessage(currentUser, jobIdJobMap, newRecruits);
       });
-  }).then(function (newRecruits) {
-    if (newRecruits.length < 1) {
-      return Promise.resolve([]);
-    }
+  });
+};
+
+function _sendMessage(currentUser, jobIdJobMap, newRecruits) {
+  return Company.findById(currentUser.company.company_id).then(function (company) {
     const now = Date.now();
     const createMessagePromises = [];
     for (let i = 0; i < newRecruits.length; i++) {
@@ -269,17 +251,26 @@ const create = function (body, currentUser) {
         }
       }
       if (receivers.length > 0) {
-        const messageBody = {
-          job_id: newRecruit.request.job_id,
+        const jobId = newRecruit.request.job_id;
+        const job = jobIdJobMap.get(jobId);
+        const jobTitle = job.title.es ? job.title.es : job.title.en;
+        const payRate = job.pay.rate;
+        const payUnit = job.pay.unit;
+        const companyName = company.name.en;
+        const smsMessage = companyName + ' pensé que te interesaría este trabajo: ' + jobTitle
+          + ' ' + payRate + ' per ' + payUnit + '. par más información baje la aplicación Ganaz. www.GanazApp.com/download';
+        const message = {
+          job_id: jobId,
           type: 'recruit',
           sender: {
             user_id: newRecruit.company_user_id,
             company_id: newRecruit.company_id
           },
           receivers: receivers,
+          receivers_phone_numbers: newRecruit.nonregistered_phone_numbers,
           message: {
-            en: 'New work available',
-            es: 'Nuevo trabajo disponible'
+            en: smsMessage,
+            es: smsMessage
           },
           auto_translate: true,
           datetime: now,
@@ -287,7 +278,7 @@ const create = function (body, currentUser) {
             recruit_id: newRecruit._id.toString()
           }
         };
-        createMessagePromises.push(messageService.create(messageBody));
+        createMessagePromises.push(messageService.create(message, true));
       } else {
         logger.warn("[Recruit Service] Recruit " + newRecruit._id.toString() + " doesn't have receivers");
       }
@@ -296,7 +287,7 @@ const create = function (body, currentUser) {
       return newRecruits;
     });
   });
-};
+}
 
 const search = function (searchBody) {
   let query = {};
@@ -315,6 +306,7 @@ const search = function (searchBody) {
   }
   return Recruit.find(query);
 };
+
 module.exports = {
   create: create,
   search: search

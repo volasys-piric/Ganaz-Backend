@@ -5,6 +5,7 @@ const pushNotification = require('./../../../push_notification');
 const logger = require('./../../../utils/logger');
 
 const Message = db.models.message;
+const Job = db.models.job;
 const User = db.models.user;
 const Company = db.models.company;
 const Myworker = db.models.myworker;
@@ -34,7 +35,11 @@ const findById = function (id) {
 };
 
 function _validate(body) {
-  const findPromises = [User.findById(body.sender.user_id), body.sender.company_id ? Company.findById(body.sender.company_id) : Promise.resolve(null)];
+  const findPromises = [
+    body.job_id ? Job.findById(body.job_id) : Promise.resolve(null),
+    User.findById(body.sender.user_id),
+    body.sender.company_id ? Company.findById(body.sender.company_id) : Promise.resolve(null)
+  ];
   if (body.receivers) {
     const receivers = body.receivers;
     for (let i = 0; i < receivers.length; i++) {
@@ -50,12 +55,19 @@ function _validate(body) {
     }
   }
   return Promise.all(findPromises).then(function (findResults) {
-    const senderUser = findResults[0];
-    const senderCmpy = findResults[1];
-    // const usersByPhoneNumber = [];
+    const job = findResults[0];
+    const senderUser = findResults[1];
+    const senderCmpy = findResults[2];
     let errorMessage = "";
+    if (body.job_id) {
+      if (job === null) {
+        errorMessage += ' No job record for job_id ' + body.job_id + '.';
+      }
+    } else if (body.type === 'recruit') {
+      errorMessage += ' job_id is required for message type recruit.';
+    }
     if (senderUser === null) {
-      errorMessage += "Sender with id " + body.sender.user_id + " does not exists.";
+      errorMessage += " Sender with id " + body.sender.user_id + " does not exists.";
     }
     if (body.sender.company_id && senderCmpy === null) {
       errorMessage += " Sender company " + body.sender.company_id + " does not exists.";
@@ -64,7 +76,7 @@ function _validate(body) {
     const userIdMap = new Map(); // Avoid duplicate creation of Message per user
     const noUserPhoneNumbers = [];
 
-    let counter = 2;
+    let counter = 3;
     if (body.receivers) {
       const receivers = body.receivers;
       for (let i = 0; i < receivers.length; i++) {
@@ -105,6 +117,7 @@ function _validate(body) {
       return Promise.reject(errorMessage);
     } else {
       return {
+        job: job,
         userIdMap: userIdMap,
         noUserPhoneNumbers: noUserPhoneNumbers,
         senderCmpy: senderCmpy
@@ -228,13 +241,14 @@ function _createUserInviteMyworkerMessageForNotRegisteredUsers(noUserPhoneNumber
   return Promise.resolve(modelsArr);
 }
 
-const create = function (body) {
+const create = function (body, smsMessageComplete) {
   return _validate(body).then(function (result) {
+    const job = result.job;
     const userIdMap = result.userIdMap;
     const noUserPhoneNumbers = result.noUserPhoneNumbers;
     const senderCmpy = result.senderCmpy;
     return _createMessagesForNonOnboardingWorkers(userIdMap, body).then(function (nonOnboardingWorkerMessages) {
-      return _createMyworkerInviteMessageForOnboardingWorkers(userIdMap, body).then(function (myworkerInviteMessageModels) {
+      return _createMyworkerInviteMessageForOnboardingWorkers(userIdMap, body).then(function (myworkerInviteMessageForOnboardingWorkerModels) {
         return _createUserInviteMyworkerMessageForNotRegisteredUsers(noUserPhoneNumbers, body).then(function (userInviteMyworkerMessageModels) {
           // 1) Save all users
           // 2) Save all myworkers
@@ -251,8 +265,8 @@ const create = function (body) {
             saveInvitePromises.push(models.invite.save());
             saveMessagePromises.push(models.message.save());
           }
-          for (let i = 0; i < myworkerInviteMessageModels.length; i++) {
-            const models = myworkerInviteMessageModels[i];
+          for (let i = 0; i < myworkerInviteMessageForOnboardingWorkerModels.length; i++) {
+            const models = myworkerInviteMessageForOnboardingWorkerModels[i];
             if (models.myworker) {
               saveMyworkerPromises.push(models.myworker.save());
             }
@@ -272,7 +286,10 @@ const create = function (body) {
           }).then(function () {
             return Promise.all(saveMessagePromises);
           }).then(function (savedMessages) {
-            //  Already registered users  - push notification will be sent.
+            /*
+             Send push notification and SMSs asynchronously
+             */
+            // Already registered users  - push notification will be sent.
             for (let i = 0; i < nonOnboardingWorkerMessages.length; i++) {
               const message = nonOnboardingWorkerMessages[i];
               const userId = message.receiver.user_id;
@@ -283,19 +300,33 @@ const create = function (body) {
                 logger.warn('[Message Service] Not sending push notification. User with id ' + userId + ' has no player_ids.');
               }
             }
-            // Onboarding users - SMS will be sent to the onboarding-user.
+
+            let messageBody = null;
             const companyName = senderCmpy.name.en;
-            const messageContent = body.message.es;
-            const messageBody = companyName + ' ' + messageContent + ' Baje la aplicación Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. www.GanazApp.com/download';
-            for (let i = 0; i < myworkerInviteMessageModels.length; i++) {
-              const models = myworkerInviteMessageModels[i];
+            if (body.type === 'recruit') {
+              if (smsMessageComplete) {
+                messageBody = body.message.es; // When called from recruit.service.js
+              } else {
+                const jobTitle = job.title.es ? job.title.es : job.title.en;
+                const payRate = job.pay.rate;
+                const payUnit = job.pay.unit;
+                messageBody = companyName + ' pensé que te interesaría este trabajo: ' + jobTitle
+                  + ' ' + payRate + ' per ' + payUnit + '. par más información baje la aplicación Ganaz. www.GanazApp.com/download';
+              }
+            } else {
+              // Onboarding users - SMS will be sent to the onboarding-user.
+              messageBody = companyName + ' ' + body.message.es + ' Baje la aplicación Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. www.GanazApp.com/download';
+            }
+
+            for (let i = 0; i < myworkerInviteMessageForOnboardingWorkerModels.length; i++) {
+              const models = myworkerInviteMessageForOnboardingWorkerModels[i];
               const userId = models.message.receiver.user_id;
               const user = userIdMap.get(userId);
               if (user.phone_number && user.phone_number.local_number) {
                 const toFullNumber = "+1" + user.phone_number.local_number;
                 twilioService.sendMessage(toFullNumber, messageBody).catch(function (err) {
                   logger.warn(err);
-                })
+                });
               } else {
                 logger.warn('[Message Service] Not sending SMS. User ' + userId + ' has no phone_number.')
               }
@@ -307,6 +338,7 @@ const create = function (body) {
                 logger.warn(err);
               })
             }
+
             return savedMessages;
           });
         });
