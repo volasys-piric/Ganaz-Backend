@@ -1,13 +1,14 @@
 const Promise = require('bluebird');
 const db = require('./../../db');
 const twilioService = require('./twilio.service');
-const myworkerService = require('./myworker.service');
 const pushNotification = require('./../../../push_notification');
 const logger = require('./../../../utils/logger');
 
 const Message = db.models.message;
 const User = db.models.user;
 const Company = db.models.company;
+const Myworker = db.models.myworker;
+const Invite = db.models.invite;
 
 const find = function (body) {
   const $or = [];
@@ -32,120 +33,286 @@ const findById = function (id) {
   return Message.findById(id);
 };
 
-const create = function (body) {
-  // TODO: Add the following validations:
-  // 1. job_id (if not null), sender/receiver user_id and company_id (if not null) should be existing.
-  // 2. If receiver user_id is an existing onboarding-worker, sender.company_id should not be null
-  const saveMessagePromises = [];
+function _validate(body) {
+  const findPromises = [User.findById(body.sender.user_id), body.sender.company_id ? Company.findById(body.sender.company_id) : Promise.resolve(null)];
   if (body.receivers) {
     const receivers = body.receivers;
-    if (receivers.length) {
-      const userIds = [];
-      for (let i = 0; i < receivers.length; i++) {
-        const receiver = receivers[i];
-        if (userIds.indexOf(receiver.user_id) === -1) {
-          // Avoid duplicate creation of messaqge for same user id
-          userIds.push(receiver.user_id);
-          body.receiver = receiver;
-          const message = new Message(body);
-          saveMessagePromises.push(message.save());
-        }
-      }
-    } else {
-      const message = new Message(body);
-      saveMessagePromises.push(message.save());
+    for (let i = 0; i < receivers.length; i++) {
+      findPromises.push(User.findById(receivers[i].user_id));
     }
   }
+  if (body.receivers_phone_numbers) {
+    // https://bitbucket.org/volasys-ss/ganaz-backend/wiki/7.3%20Message%20-%20Create#markdown-header-change-log-v14
+    const receivers_phone_numbers = body.receivers_phone_numbers;
+    for (let i = 0; i < receivers_phone_numbers.length; i++) {
+      const localNumber = receivers_phone_numbers[i];
+      findPromises.push(User.findOne({'phone_number.local_number': localNumber}));
+    }
+  }
+  return Promise.all(findPromises).then(function (findResults) {
+    const senderUser = findResults[0];
+    const senderCmpy = findResults[1];
+    // const usersByPhoneNumber = [];
+    let errorMessage = "";
+    if (senderUser === null) {
+      errorMessage += "Sender with id " + body.sender.user_id + " does not exists.";
+    }
+    if (body.sender.company_id && senderCmpy === null) {
+      errorMessage += " Sender company " + body.sender.company_id + " does not exists.";
+    }
+    let hasOnboardingWorker = false;
+    const userIdMap = new Map(); // Avoid duplicate creation of Message per user
+    const noUserPhoneNumbers = [];
 
-  return Promise.all(saveMessagePromises).then(function (savedMessages) {
-    for (let i = 0; i < savedMessages.length; i++) {
-      // Send message to user/receiver ignoring result
-      const savedMessage = savedMessages[i];
-      if (savedMessage.receiver && savedMessage.receiver.user_id) {
-        User.findById(savedMessage.receiver.user_id).then(function (user) {
-          if (user) {
-            if (user.player_ids) {
-              pushNotification.sendMessage(user.player_ids, savedMessage);
-            } else {
-              logger.warn('[Message Service] Not sending push notification. User with id ' + savedMessage.receiver.user_id + ' has no player_ids.');
-            }
-          } else {
-            logger.warn('[Message Service] Not sending push notification. User with id ' + savedMessage.receiver.user_id + ' not found.');
+    let counter = 2;
+    if (body.receivers) {
+      const receivers = body.receivers;
+      for (let i = 0; i < receivers.length; i++) {
+        const user = findResults[counter];
+        if (user === null) {
+          errorMessage += " Receiver id " + body.receivers[i].user_id + " does not exists.";
+        } else {
+          userIdMap.set(user._id.toString(), user);
+          if (user.type === 'onboarding-worker') {
+            hasOnboardingWorker = true;
           }
-        });
-      } else {
-        logger.info('[Message Service] Not sending push notification. Message id ' + savedMessage._id.toString() + ' has no receiver.');
+        }
+        counter++;
       }
     }
-    return savedMessages;
-  }).then(function (savedMessages) {
-    // https://bitbucket.org/volasys-ss/ganaz-backend/wiki/7.3%20Message%20-%20Create#markdown-header-change-log-v14
     if (body.receivers_phone_numbers) {
-      const findUserPromises = [];
-      for (let i = 0; i < body.receivers_phone_numbers.length; i++) {
-        const localNumber = body.receivers_phone_numbers[i];
-        findUserPromises.push(User.findOne({'phone_number.local_number': localNumber}));
+      // https://bitbucket.org/volasys-ss/ganaz-backend/wiki/7.3%20Message%20-%20Create#markdown-header-change-log-v14
+      const receivers_phone_numbers = body.receivers_phone_numbers;
+      for (let i = 0; i < receivers_phone_numbers.length; i++) {
+        const user = findResults[counter];
+        if (user === null) {
+          noUserPhoneNumbers.push(receivers_phone_numbers[i]);
+        } else {
+          userIdMap.set(user._id.toString(), user);
+          if (user.type === 'onboarding-worker') {
+            hasOnboardingWorker = true;
+          }
+        }
+        counter++;
       }
-      return Promise.all(findUserPromises).then(function (users) {
-        const saveMessagePromises = [];
-        const validUsers = []; // Holder of user. We'll need this later
-        const noUserPhoneNumbers = [];
-        const existingReceiverUserIds = []; // Avoid duplicate creation of Message
-        for (let i = 0; i < savedMessages.length; i++) {
-          existingReceiverUserIds.push(savedMessages[i].receiver.user_id);
-        }
+    }
 
-        for (let i = 0; i < users.length; i++) {
-          const user = users[i];
-          if (user !== null) {
-            if (existingReceiverUserIds.indexOf(user._id.toString()) === -1) { // Avoid duplicate creation of Message
-              validUsers.push(user);
-              body.receiver = {user_id: user._id.toString()};
-              if (user.company) {
-                body.receiver.company_id = user.company.company_id;
-              }
-              const message = new Message(body);
-              saveMessagePromises.push(message.save());
-            }
-          } else {
-            noUserPhoneNumbers.push(body.receivers_phone_numbers[i]);
-          }
+    if (hasOnboardingWorker && !body.sender.company_id) {
+      errorMessage += " Sender company id is required if one of the receiver is of type onboarding-worker.";
+    }
+
+    if (errorMessage.length > 0) {
+      return Promise.reject(errorMessage);
+    } else {
+      return {
+        userIdMap: userIdMap,
+        noUserPhoneNumbers: noUserPhoneNumbers,
+        senderCmpy: senderCmpy
+      }
+    }
+  });
+}
+
+function _createMessagesForNonOnboardingWorkers(userIdMap, body) {
+  /*
+   Already registered users
+   - Message object will be created.
+   - push notification will be sent.  (will be done later since this is async)
+   */
+  const messages = [];
+  for (const [userId, user] of userIdMap) {
+    if (user.type !== 'onboarding-worker') {
+      const message = new Message(body);
+      message.receiver = {user_id: userId};
+      messages.push(message)
+    }
+  }
+  return Promise.resolve(messages);
+}
+
+function _createMyworkerInviteMessageForOnboardingWorkers(userIdMap, body) {
+  /*
+   Onboarding users (If the receiver is onboarding user, this means the sender is company user.)
+   - 1) Add the onboarding user to my-workers list of company if not added yet.
+   - 2) Invite object will be created if not yet.
+   - 3) Message object will be created.
+   - SMS will be sent to the onboarding-user. (will be done later since this is async)
+   */
+  const companyId = body.sender.company_id;
+  const promises = [];
+  for (const [userId, user] of userIdMap) {
+    if (user.type === 'onboarding-worker') {
+      promises.push(Promise.resolve(user)); // Pass user object since we will be needing it later
+      promises.push(Myworker.findOne({company_id: companyId, worker_user_id: userId}));
+      if (user.phone_number && user.phone_number.local_number) {
+        promises.push(Invite.findOne({
+          company_id: companyId,
+          'phone_number.local_number': user.phone_number.local_number
+        }));
+      } else {
+        promises.push(Promise.resolve(null));
+      }
+    }
+  }
+  return Promise.all(promises).then(function (promisesResults) {
+    const modelsArr = [];
+    for (let i = 0; i < promisesResults.length; i += 3) {
+      const user = promisesResults[i];
+      const userId = user._id.toString();
+      let myworker = promisesResults[i + 1];
+      let invite = promisesResults[i + 2];
+      const models = {myworker: null, invite: null, message: null};
+      if (myworker === null) {
+        // 1) Add the onboarding user to my-workers list of company if not added yet.
+        models.myworker = new Myworker({company_id: companyId, worker_user_id: userId});
+      } else {
+        logger.info('[Message Service][Onboarding users] Not creating myworker record. User ' + userId + ' company ' + companyId + ' myworker record already exists.')
+      }
+      if (invite === null) {
+        // 2) Invite object will be created if not yet.
+        if (user.phone_number && user.phone_number.local_number) {
+          models.invite = new Invite({company_id: companyId, phone_number: user.phone_number});
+        } else {
+          logger.warn('[Message Service][Onboarding users] Not creating invite record. User ' + userId + ' has no phone_number.')
         }
-        return Promise.all(saveMessagePromises).then(function (additionalSavedMessages) {
-          for (let i = 0; i < additionalSavedMessages.length; i++) {
-            // Send message to user/receiver ignoring result
-            const savedMessage = additionalSavedMessages[i];
-            savedMessages.push(savedMessage);
-            const user = validUsers[i];
-            if (user.player_ids) {
-              sendPushNotification(user, savedMessage);
-            } else {
-              logger.warn('[Message Service] Not sending push notification. User with id ' + savedMessage.receiver.user_id + ' has no player_ids.');
-            }
+      } else {
+        logger.info('[Message Service][Onboarding users] Not creating invite record. Invite with user ' + userId
+          + ' and phone number ' + invite.phone_number.local_number + ' already exists.')
+      }
+      // 3) Message object will be created.
+      const message = new Message(body);
+      message.receiver = {user_id: userId};
+      models.message = message;
+
+      modelsArr.push(models);
+    }
+    return modelsArr;
+  });
+}
+
+function _createUserInviteMyworkerMessageForNotRegisteredUsers(noUserPhoneNumbers, body) {
+  /*
+   Not-registered users
+   - 1) New onboarding-user object will be created (Please refer to 1. User - Overview, Data Model)
+   - 2) Invite object will be created.
+   - 3) Add the onboarding user to my-workers list of company.
+   - 4) Message object will be created.
+   - SMS will be sent to the onboarding-user. (will be done later since this is async)
+   */
+  const modelsArr = [];
+  const companyId = body.sender.company_id;
+  for (let i = 0; i < noUserPhoneNumbers.length; i++) {
+    const models = {user: null, invite: null, myworker: null, message: null};
+    // 1) New onboarding-user object will be created (Please refer to 1. User - Overview, Data Model)
+    const company = {company_id: companyId};
+    const localNumber = noUserPhoneNumbers[i];
+    const phoneNumber = {country: 'US', country_code: '1', local_number: localNumber};
+    models.user = new User({
+      type: 'onboarding-worker',
+      username: localNumber, // Since username is required and must be unique, so let's set this to localNumber
+      company: company,
+      phone_number: phoneNumber
+    });
+    const userId = models.user._id.toString(); // Should not be null
+    // 2) Invite object will be created.
+    models.invite = new Invite({company_id: companyId, phone_number: phoneNumber});
+    // 3) Add the onboarding user to my-workers list of company.
+    models.myworker = new Myworker({company_id: companyId, worker_user_id: userId});
+    // 4) Message object will be created.
+    const message = new Message(body);
+    message.receiver = {user_id: userId};
+    models.message = message;
+
+    modelsArr.push(models);
+  }
+  return Promise.resolve(modelsArr);
+}
+
+const create = function (body) {
+  return _validate(body).then(function (result) {
+    const userIdMap = result.userIdMap;
+    const noUserPhoneNumbers = result.noUserPhoneNumbers;
+    const senderCmpy = result.senderCmpy;
+    return _createMessagesForNonOnboardingWorkers(userIdMap, body).then(function (nonOnboardingWorkerMessages) {
+      return _createMyworkerInviteMessageForOnboardingWorkers(userIdMap, body).then(function (myworkerInviteMessageModels) {
+        return _createUserInviteMyworkerMessageForNotRegisteredUsers(noUserPhoneNumbers, body).then(function (userInviteMyworkerMessageModels) {
+          // 1) Save all users
+          // 2) Save all myworkers
+          // 3) Save all invites
+          // 4) Save all messages
+          const saveUserPromises = [];
+          const saveMyworkerPromises = [];
+          const saveInvitePromises = [];
+          const saveMessagePromises = [];
+          for (let i = 0; i < userInviteMyworkerMessageModels.length; i++) {
+            const models = userInviteMyworkerMessageModels[i];
+            saveUserPromises.push(models.user.save());
+            saveMyworkerPromises.push(models.myworker.save());
+            saveInvitePromises.push(models.invite.save());
+            saveMessagePromises.push(models.message.save());
           }
-          if (noUserPhoneNumbers.length > 0) {
-            // Send SMS asynchronously and ignore result
-            Company.findById(body.sender.company_id).then(function (company) {
-              const companyName = company.name.en;
-              const messageContent = body.message.es;
-              const messageBody = companyName + ' ' + messageContent + ' Baje la aplicación Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. www.GanazApp.com/download';
-              for (let i = 0; i < noUserPhoneNumbers.length; i++) {
+          for (let i = 0; i < myworkerInviteMessageModels.length; i++) {
+            const models = myworkerInviteMessageModels[i];
+            if (models.myworker) {
+              saveMyworkerPromises.push(models.myworker.save());
+            }
+            if (models.invite) {
+              saveInvitePromises.push(models.invite.save());
+            }
+            saveMessagePromises.push(models.message.save());
+          }
+          for (let i = 0; i < nonOnboardingWorkerMessages.length; i++) {
+            const message = nonOnboardingWorkerMessages[i];
+            saveMessagePromises.push(message.save());
+          }
+          return Promise.all(saveUserPromises).then(function () {
+            return Promise.all(saveMyworkerPromises);
+          }).then(function () {
+            return Promise.all(saveInvitePromises)
+          }).then(function () {
+            return Promise.all(saveMessagePromises);
+          }).then(function (savedMessages) {
+            //  Already registered users  - push notification will be sent.
+            for (let i = 0; i < nonOnboardingWorkerMessages.length; i++) {
+              const message = nonOnboardingWorkerMessages[i];
+              const userId = message.receiver.user_id;
+              const user = userIdMap.get(userId);
+              if (user.player_ids) {
+                pushNotification.sendMessage(user.player_ids, message);
+              } else {
+                logger.warn('[Message Service] Not sending push notification. User with id ' + userId + ' has no player_ids.');
+              }
+            }
+            // Onboarding users - SMS will be sent to the onboarding-user.
+            const companyName = senderCmpy.name.en;
+            const messageContent = body.message.es;
+            const messageBody = companyName + ' ' + messageContent + ' Baje la aplicación Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. www.GanazApp.com/download';
+            for (let i = 0; i < myworkerInviteMessageModels.length; i++) {
+              const models = myworkerInviteMessageModels[i];
+              const userId = models.message.receiver.user_id;
+              const user = userIdMap.get(userId);
+              if (user.phone_number && user.phone_number.local_number) {
                 const toFullNumber = "+1" + noUserPhoneNumbers[i];
                 twilioService.sendMessage(toFullNumber, messageBody).catch(function (err) {
                   logger.warn(err);
                 })
+              } else {
+                logger.warn('[Message Service] Not sending SMS. User ' + userId + ' has no phone_number.')
               }
-            }).catch(function (err) {
-              logger.error(err);
-            });
-          }
-          return savedMessages;
+            }
+            // Not-registered users - SMS will be sent to the onboarding-user.
+            for (let i = 0; i < noUserPhoneNumbers.length; i++) {
+              const toFullNumber = "+1" + noUserPhoneNumbers[i];
+              twilioService.sendMessage(toFullNumber, messageBody).catch(function (err) {
+                logger.warn(err);
+              })
+            }
+            return savedMessages;
+          });
         });
       });
-    } else {
-      return savedMessages;
-    }
-  });
+    })
+  })
 };
 
 const updateStatus = function (id, status) {
