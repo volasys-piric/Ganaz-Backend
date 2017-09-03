@@ -16,12 +16,12 @@ router.use(function (req, res, next) {
   if (!version) {
     res.status(403).json({
       success: false,
-      message: 'No Header with name "version" found.'
+      msg: 'No Header with name "version" found.'
     })
   } else if (version < 1) {
     res.status(403).json({
       success: false,
-      message: 'Header version ' + version + ' not acceptable.'
+      msg: 'Header version ' + version + ' not acceptable.'
     })
   } else {
     req.api_version = version;

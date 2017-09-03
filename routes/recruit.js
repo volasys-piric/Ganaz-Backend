@@ -152,7 +152,7 @@ router.route('/', passport.authenticate('jwt', {session: false}))
     }).catch(function (error) {
       console.log(error);
       res.json({
-        success: false, message: "Failed to recruit users. Reason: " + error.message
+        success: false, msg: "Failed to recruit users. Reason: " + error.message
       })
     });
   });

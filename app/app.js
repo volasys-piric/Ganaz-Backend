@@ -23,7 +23,7 @@ app.use(function (err, req, res, next) {
   } else {
     res.status(err.status || 500).json({
       success: false,
-      message: err.message
+      msg: err.message
     });
   }
 });
