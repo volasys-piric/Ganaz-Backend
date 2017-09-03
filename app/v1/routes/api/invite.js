@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
+const Promise = require('bluebird');
 const twilioService = require('./../service/twilio.service');
 const httpUtil = require('./../../../utils/http');
+const log = require('./../../../utils/logger');
 const db = require('./../../db');
 
 const Invite = db.models.invite;
@@ -27,25 +29,99 @@ router.post('/', function (req, res) {
       msg: 'Request body company_id and phone_number.local_number are required.'
     })
   } else {
-    Company.findById(body.company_id).then(function (company) {
-      if (company === null) {
-        return Promise.reject('Company with id ' + body.company_id + ' does not exists.');
+    /*
+     https://bitbucket.org/volasys-ss/ganaz-backend/wiki/11.1%20Invite%20-%20New#markdown-header-change-log-v15
+     CHANGE LOG: v1.5
+     Backend will check if the phone number is already invited by the company. If not, it will do the followings.
+     - Create Invite object if needed.
+     - Create Onboarding worker object if needed. (Please refer to 1. User - Overview, Data Model)
+     - Add onboarding-worker to my-workers list of the company if needed.
+     - Send SMS.
+     */
+    const companyId = body.company_id;
+    const localNumber = body.phone_number.local_number;
+    return Promise.join(
+      Invite.findOne({company_id: companyId, 'phone_number.local_number': localNumber}),
+      Company.findById(body.company_id)
+    ).then(function (promiseResult) {
+      let invite = promiseResult[0];
+      const company = promiseResult[1];
+      if (invite === null) {
+        if (company === null) {
+          return Promise.reject('Company with id ' + body.company_id + ' does not exists.');
+        }
+        // 1) Create Invite object if needed.
+        invite = new Invite(req.body);
+        return invite.save().then(function (invite) {
+          log.info('[Invite] Created invite record with info: ' + JSON.stringify(invite) + '.');
+          return {newInvite: invite, company: company};
+        });
       } else {
-        return company;
+        return {newInvite: null, company: company};
       }
-    }).then(function (company) {
-      const invite = new Invite(req.body);
-      return invite.save().then(function (invite) {
+    }).then(function (result) {
+      // 2) Create Onboarding worker object if needed. (Please refer to 1. User - Overview, Data Model)
+      return User.findOne({
+        'company.company_id': companyId,
+        'phone_number.local_number': localNumber
+      }).then(function (user) {
+        if (user === null) {
+          const company = {company_id: companyId};
+          const phoneNumber = {country: 'US', country_code: '1', local_number: localNumber};
+          const basicUserInfo = {
+            type: 'onboarding-worker',
+            username: localNumber, // Since username is required and must be unique, so let's set this to localNumber
+            company: company,
+            phone_number: phoneNumber
+          };
+          const user = new User(basicUserInfo);
+          return user.save().then(function (savedUser) {
+            log.info('[Invite] Created onboarding user with info: ' + JSON.stringify(basicUserInfo) + '.');
+            result.onboardingWorker = savedUser;
+            return result;
+          });
+        } else if (user.type === 'onboarding-worker') {
+          result.onboardingWorker = user;
+          return result;
+        } else {
+          return result;
+        }
+      });
+    }).then(function (result) {
+      if (result.onboardingWorker) {
+        // 3) Add onboarding-worker to my-workers list of the company if needed.
+        const userId = result.onboardingWorker._id.toString();
+        return Myworker.findOne({
+          company_id: companyId,
+          worker_user_id: userId,
+        }).then(function (myworker) {
+          if (myworker === null) {
+            myworker = new Myworker({company_id: companyId, worker_user_id: userId});
+            return myworker.save().then(function (myworker) {
+              return result;
+            });
+          } else {
+            return result;
+          }
+        });
+      } else {
+        return result;
+      }
+    }).then(function (result) {
+      const invite = result.newInvite;
+      const company = result.company;
+      if (invite !== null) {
         const toFullNumber = "+" + invite.phone_number.country_code + invite.phone_number.local_number;
         const body = company.name.en + ' quisiera recomendar que ud baje la aplicación Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. http://www.GanazApp.com/download';
         twilioService.sendMessage(toFullNumber, body);
-        return invite;
-      });
-    }).then(function (invite) {
-      res.json({
-        success: true,
-        invite: invite
-      })
+      }
+      return result;
+    }).then(function (result) {
+      const json = {success: true};
+      if (result.newInvite) {
+        json.invite = result.newInvite;
+      }
+      res.json(json);
     }).catch(httpUtil.handleError(res));
   }
 });
