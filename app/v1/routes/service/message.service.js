@@ -292,7 +292,7 @@ const create = function (body) {
               const userId = models.message.receiver.user_id;
               const user = userIdMap.get(userId);
               if (user.phone_number && user.phone_number.local_number) {
-                const toFullNumber = "+1" + noUserPhoneNumbers[i];
+                const toFullNumber = "+1" + user.phone_number.local_number;
                 twilioService.sendMessage(toFullNumber, messageBody).catch(function (err) {
                   logger.warn(err);
                 })
