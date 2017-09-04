@@ -5,7 +5,7 @@ const MetadataSchema = new Schema({}, {strict: false});
 
 const MessageSchema = new Schema({
   job_id: {type: String, required: true},
-  type: String, // "message/recruit/application/suggest"
+  type: {type: String, required: true}, // "message/recruit/application/suggest"
   sender: {
     user_id: String,
     company_id: String
