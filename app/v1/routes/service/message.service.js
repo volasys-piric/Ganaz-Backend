@@ -1,4 +1,5 @@
 const Promise = require('bluebird');
+const mongoose = require('mongoose');
 const db = require('./../../db');
 const twilioService = require('./twilio.service');
 const pushNotification = require('./../../../push_notification');
@@ -36,7 +37,7 @@ const findById = function (id) {
 
 function _validate(body) {
   const findPromises = [
-    body.job_id ? Job.findById(body.job_id) : Promise.resolve(null),
+    body.job_id && mongoose.Types.ObjectId.isValid(body.job_id) ? Job.findById(body.job_id) : Promise.resolve(null),
     User.findById(body.sender.user_id),
     body.sender.company_id ? Company.findById(body.sender.company_id) : Promise.resolve(null)
   ];
@@ -59,12 +60,12 @@ function _validate(body) {
     const senderUser = findResults[1];
     const senderCmpy = findResults[2];
     let errorMessage = "";
-    if (body.job_id) {
+    if (body.job_id && mongoose.Types.ObjectId.isValid(body.job_id)) {
       if (job === null) {
         errorMessage += ' No job record for job_id ' + body.job_id + '.';
       }
     } else if (body.type === 'recruit') {
-      errorMessage += ' job_id is required for message type recruit.';
+      errorMessage += ' Valid job_id is required for message type recruit.';
     }
     if (senderUser === null) {
       errorMessage += " Sender with id " + body.sender.user_id + " does not exists.";
