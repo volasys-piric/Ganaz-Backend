@@ -50,7 +50,7 @@ module.exports = {
         const user = users[i];
         if (!user) {
           nonExistingUserIds.push(workerIds[i]);
-        } else if (user.type !== 'worker') {
+        } else if (user.type !== 'worker' && user.type !== 'onboarding-worker') {
           notWorkerIds.push(workerIds[i]);
         }
       }
