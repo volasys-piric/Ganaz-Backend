@@ -275,7 +275,7 @@ const search = function (sParams) {
     addCondition('firstname', sParams.firstname, true);
     addCondition('lastname', sParams.lastname, true);
     addCondition('phone_number.local_number', sParams.phone_number, false);
-    addCondition('type', sParams.type, true);
+    addCondition('type', sParams.type, false);
     addCondition('company.company_id', sParams.company_id, false);
   }
   return _findUsers(dbQ);
