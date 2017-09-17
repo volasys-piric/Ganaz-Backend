@@ -303,11 +303,11 @@ const create = function (body, smsMessageComplete) {
             }
 
             let messageBody = null;
-            const companyName = senderCmpy.name.en;
             if (body.type === 'recruit') {
               if (smsMessageComplete) {
                 messageBody = body.message.es; // When called from recruit.service.js
               } else {
+                const companyName = senderCmpy.name.en; // sender company is required for recruit message
                 const jobTitle = job.title.es ? job.title.es : job.title.en;
                 const payRate = job.pay.rate;
                 const payUnit = job.pay.unit;
@@ -315,6 +315,7 @@ const create = function (body, smsMessageComplete) {
                   + ' ' + payRate + ' per ' + payUnit + '. par más información baje la aplicación Ganaz. www.GanazApp.com/download';
               }
             } else {
+              const companyName = senderCmpy ? senderCmpy.name.en : ''; // application message has no sender company
               // Onboarding users - SMS will be sent to the onboarding-user.
               messageBody = companyName + ' ' + body.message.es + ' Baje la aplicación Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. www.GanazApp.com/download';
             }
