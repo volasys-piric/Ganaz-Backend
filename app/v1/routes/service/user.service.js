@@ -42,8 +42,10 @@ const validate = function (id, body) {
         body.type = body.type.toLowerCase();
         if (body.type !== 'onboarding-worker' && body.type !== 'worker' && body.type !== 'company-admin' && body.type !== 'company-regular') {
           errorMessage += 'Request type ' + body.type + ' is not acceptable. ';
-        } else if ((body.type !== 'onboarding-worker' || body.type !== 'worker') && !(body.company && body.company.company_id)) {
-          errorMessage += 'Request body company.company_id is required for type ' + body.type + '. '
+        } else if (body.type.startsWith('company-')) {
+          if (!body.company || !body.company.company_id) {
+            errorMessage += 'Request body company.company_id is required for type ' + body.type + '. '
+          }
         }
       }
     } else if (body.type === 'onboarding-worker') {
