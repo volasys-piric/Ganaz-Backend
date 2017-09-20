@@ -317,7 +317,14 @@ const create = function (body, smsMessageComplete) {
             } else {
               const companyName = senderCmpy ? senderCmpy.name.en + ':' : ''; // application message has no sender company
               // Onboarding users - SMS will be sent to the onboarding-user.
-              messageBody = companyName + ' ' + body.message.es + ' Baje la aplicación Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. www.GanazApp.com/download';
+              messageBody = companyName + ' "' + body.message.es;
+              if (body.metadata && body.metadata.map && body.metadata.map.loc) {
+                const loc = body.metadata.map.loc;
+                const lng = loc[0];
+                const lat = loc[1];
+                messageBody += ' Location—> http://maps.google.com/maps?q=' + lat + ',' + lng;
+              }
+              messageBody += '" Para responder a este mensaje, por favor instale la aplicación Ganaz haciendo click aquí—> www.ganaz.com/download';
             }
 
             for (let i = 0; i < myworkerInviteMessageForOnboardingWorkerModels.length; i++) {
