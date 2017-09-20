@@ -120,7 +120,7 @@ router.post('/', function (req, res) {
       const invite = result.invite;
       const company = result.company;
       const toFullNumber = "+" + invite.phone_number.country_code + invite.phone_number.local_number;
-      const body = company.name.en + ': quisiera recomendar que ud baje la aplicaciÃ³n Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. http://www.GanazApp.com/download';
+      const body = company.name.en + ' quisiera recomendar que ud baje la aplicación Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. http://www.GanazApp.com/download';
       twilioService.sendMessage(toFullNumber, body);
       return result;
     }).then(function (result) {
