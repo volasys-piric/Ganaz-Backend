@@ -81,10 +81,10 @@ router.post('/', function (req, res) {
         const receivers = [];
         for (let i = 0; i < users.length; i++) {
           const user = users[i];
-          receivers.push({user_id: user._id.toString(), company_id: job.company_id})
+          receivers.push({user_id: user._id.toString()}) // No need to pass company_id since messageService.create will retrieve it
         }
         const senderId = req.user._id;
-        const senderCompanyId = req.user.company ? req.user.company.company_id : null;
+        const senderCompanyId = req.user.company ? req.user.company.company_id : "";
         const messageBody = {
           job_id: jobId,
           type: 'application',

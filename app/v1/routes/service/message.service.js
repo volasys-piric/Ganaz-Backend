@@ -127,6 +127,14 @@ function _validate(body) {
   });
 }
 
+function _createMessage(body, receiverUser) {
+  const message = new Message(body);
+  const userId = receiverUser._id.toString();
+  const companyId = receiverUser.company && receiverUser.company.company_id ? receiverUser.company.company_id : "";
+  message.receiver = {user_id: userId, company_id: companyId};
+  return message;
+}
+
 function _createMessagesForNonOnboardingWorkers(userIdMap, body) {
   /*
    Already registered users
@@ -134,10 +142,9 @@ function _createMessagesForNonOnboardingWorkers(userIdMap, body) {
    - push notification will be sent.  (will be done later since this is async)
    */
   const messages = [];
-  for (const [userId, user] of userIdMap) {
+  for (const user of userIdMap.values()) {
     if (user.type !== 'onboarding-worker') {
-      const message = new Message(body);
-      message.receiver = {user_id: userId};
+      const message = _createMessage(body, user);
       messages.push(message)
     }
   }
@@ -194,9 +201,7 @@ function _createMyworkerInviteMessageForOnboardingWorkers(userIdMap, body) {
           + ' and phone number ' + invite.phone_number.local_number + ' already exists.')
       }
       // 3) Message object will be created.
-      const message = new Message(body);
-      message.receiver = {user_id: userId};
-      models.message = message;
+      models.message = _createMessage(body, user);
 
       modelsArr.push(models);
     }
@@ -235,9 +240,7 @@ function _createUserInviteMyworkerMessageForNotRegisteredUsers(noUserPhoneNumber
     // 3) Add the onboarding user to my-workers list of company.
     models.myworker = new Myworker({company_id: companyId, worker_user_id: userId});
     // 4) Message object will be created.
-    const message = new Message(body);
-    message.receiver = {user_id: userId};
-    models.message = message;
+    models.message = _createMessage(body, models.user);
 
     modelsArr.push(models);
   }

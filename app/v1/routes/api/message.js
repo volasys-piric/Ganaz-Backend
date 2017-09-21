@@ -55,6 +55,9 @@ router.post('/', function (req, res) {
    }
    */
   const body = req.body;
+  if (!body.sender.company_id) {
+    body.sender.company_id = "";
+  }
   messageService.create(body).then(function (messages) {
     res.json({
       success: true,
