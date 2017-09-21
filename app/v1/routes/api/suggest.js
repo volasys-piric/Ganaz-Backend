@@ -32,7 +32,7 @@ router.post('/', function (req, res) {
       const suggest = new Suggest(body);
       return suggest.save().then(function (suggest) {
         const senderId = req.user._id;
-        const senderCompanyId = req.user.company ? req.user.company.company_id : null;
+        const senderCompanyId = req.user.company ? req.user.company.company_id : "";
         const messageBody = {
           job_id: body.job_id,
           type: 'suggest',
