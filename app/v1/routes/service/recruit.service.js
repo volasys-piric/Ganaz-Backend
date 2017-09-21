@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const messageService = require('./message.service');
 const twilioService = require('./twilio.service');
 const constants = require('./../../../utils/constants');
+const logger = require('./../../../utils/logger');
 const db = require('./../../db');
 
 const Recruit = db.models.recruit;
@@ -191,36 +192,33 @@ const create = function (body, currentUser) {
           });
         } else if (reRecruitedAndPhoneConditions) {
           return User.find(reRecruitedAndPhoneConditions).then(function (users) {
+            const saveRecruitPromises = [];
+            const reRecruitedAndPhoneMatchWorkerIds = [];
             if (users.length > 0) {
-              const saveRecruitPromises = [];
-              const reRecruitedAndPhoneMatchWorkerIds = [];
               for (let i = 0; i < users.length; i++) {
                 const user = users[i];
                 reRecruitedAndPhoneMatchWorkerIds.push(user._id.toString());
                 addNumberToRegistedUsersPhoneNumber(user);
               }
-
-              const unregisteredPhoneNumbers = getUnregisteredPhoneNumbers();
-              for (let i = 0; i < jobs.length; i++) {
-                const job = jobs[i];
-                const jobId = job._id.toString();
-                const recruit = new Recruit({
-                  company_id: currentUser.company.company_id,
-                  company_user_id: currentUser.id,
-                  request: {
-                    job_id: jobId,
-                    re_recruit_worker_user_ids: reRecruitWorkerUserIdsParam,
-                    phone_numbers: phoneNumbersParam
-                  },
-                  recruited_worker_user_ids: reRecruitedAndPhoneMatchWorkerIds,
-                  nonregistered_phone_numbers: unregisteredPhoneNumbers
-                });
-                saveRecruitPromises.push(recruit.save());
-              }
-              return Promise.all(saveRecruitPromises);
-            } else {
-              return Promise.resolve([]);
             }
+            const unregisteredPhoneNumbers = getUnregisteredPhoneNumbers();
+            for (let i = 0; i < jobs.length; i++) {
+              const job = jobs[i];
+              const jobId = job._id.toString();
+              const recruit = new Recruit({
+                company_id: currentUser.company.company_id,
+                company_user_id: currentUser.id,
+                request: {
+                  job_id: jobId,
+                  re_recruit_worker_user_ids: reRecruitWorkerUserIdsParam,
+                  phone_numbers: phoneNumbersParam
+                },
+                recruited_worker_user_ids: reRecruitedAndPhoneMatchWorkerIds,
+                nonregistered_phone_numbers: unregisteredPhoneNumbers
+              });
+              saveRecruitPromises.push(recruit.save());
+            }
+            return Promise.all(saveRecruitPromises);
           });
         } else {
           return Promise.resolve([]);
@@ -250,38 +248,35 @@ function _sendMessage(currentUser, jobIdJobMap, newRecruits) {
           receivers.push({user_id: userIds[i], company_id: ''})
         }
       }
-      if (receivers.length > 0) {
-        const jobId = newRecruit.request.job_id;
-        const job = jobIdJobMap.get(jobId);
-        const jobTitle = job.title.es ? job.title.es : job.title.en;
-        const payRate = job.pay.rate;
-        const payUnit = job.pay.unit;
-        const companyName = company.name.en;
-        const smsMessage = companyName + ' pensé que te interesaría este trabajo: ' + jobTitle
+      const jobId = newRecruit.request.job_id;
+      const job = jobIdJobMap.get(jobId);
+      const jobTitle = job.title.es ? job.title.es : job.title.en;
+      const payRate = job.pay.rate;
+      const payUnit = job.pay.unit;
+      const companyName = company.name.en;
+      const smsMessage = companyName + ' pensé que te interesaría este trabajo: ' + jobTitle
           + ' ' + payRate + ' per ' + payUnit + '. par más información baje la aplicación Ganaz. www.GanazApp.com/download';
-        const message = {
-          job_id: jobId,
-          type: 'recruit',
-          sender: {
-            user_id: newRecruit.company_user_id,
-            company_id: newRecruit.company_id
-          },
-          receivers: receivers,
-          receivers_phone_numbers: newRecruit.nonregistered_phone_numbers,
-          message: {
-            en: smsMessage,
-            es: smsMessage
-          },
-          auto_translate: true,
-          datetime: now,
-          metadata: {
-            recruit_id: newRecruit._id.toString()
-          }
-        };
-        createMessagePromises.push(messageService.create(message, true));
-      } else {
-        logger.warn("[Recruit Service] Recruit " + newRecruit._id.toString() + " doesn't have receivers");
-      }
+      const message = {
+        job_id: jobId,
+        type: 'recruit',
+        sender: {
+          user_id: newRecruit.company_user_id,
+          company_id: newRecruit.company_id
+        },
+        receivers: receivers,
+        receivers_phone_numbers: newRecruit.nonregistered_phone_numbers,
+        message: {
+          en: smsMessage,
+          es: smsMessage
+        },
+        auto_translate: true,
+        datetime: now,
+        metadata: {
+          recruit_id: newRecruit._id.toString()
+        }
+      };
+      createMessagePromises.push(messageService.create(message, true));
+      // logger.warn("[Recruit Service] Recruit " + newRecruit._id.toString() + " doesn't have receivers");
     }
     return Promise.all(createMessagePromises).then(function () {
       return newRecruits;
