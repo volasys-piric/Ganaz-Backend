@@ -72,13 +72,15 @@ router.post('/', function (req, res) {
           'phone_number.local_number': localNumber
         }).then(function (user) {
           if (user === null) {
-            const company = {company_id: companyId};
             const phoneNumber = {country: 'US', country_code: '1', local_number: localNumber};
             const basicUserInfo = {
               type: 'onboarding-worker',
               username: localNumber, // Since username is required and must be unique, so let's set this to localNumber
-              company: company,
-              phone_number: phoneNumber
+              phone_number: phoneNumber,
+              worker: {
+                location: {address: '', loc: [0, 0]},
+                is_newjob_lock: true
+              }
             };
             const user = new User(basicUserInfo);
             return user.save().then(function (savedUser) {
@@ -120,7 +122,7 @@ router.post('/', function (req, res) {
       const invite = result.invite;
       const company = result.company;
       const toFullNumber = "+" + invite.phone_number.country_code + invite.phone_number.local_number;
-      const body = company.name.en + ' quisiera recomendar que ud baje la aplicación Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. http://www.GanazApp.com/download';
+      const body = company.name.en + ' quisiera recomendar que ud baje la aplicaciï¿½n Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. http://www.GanazApp.com/download';
       twilioService.sendMessage(toFullNumber, body);
       return result;
     }).then(function (result) {

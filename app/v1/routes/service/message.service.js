@@ -218,14 +218,16 @@ function _createUserInviteMyworkerMessageForNotRegisteredUsers(noUserPhoneNumber
   for (let i = 0; i < noUserPhoneNumbers.length; i++) {
     const models = {user: null, invite: null, myworker: null, message: null};
     // 1) New onboarding-user object will be created (Please refer to 1. User - Overview, Data Model)
-    const company = {company_id: companyId};
     const localNumber = noUserPhoneNumbers[i];
     const phoneNumber = {country: 'US', country_code: '1', local_number: localNumber};
     models.user = new User({
       type: 'onboarding-worker',
       username: localNumber, // Since username is required and must be unique, so let's set this to localNumber
-      company: company,
-      phone_number: phoneNumber
+      phone_number: phoneNumber,
+      worker: {
+        location: {address: '', loc: [0, 0]},
+        is_newjob_lock: true
+      }
     });
     const userId = models.user._id.toString(); // Should not be null
     // 2) Invite object will be created.
