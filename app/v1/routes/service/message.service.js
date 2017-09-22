@@ -232,9 +232,17 @@ function _createUserInviteMyworkerMessageForNotRegisteredUsers(noUserPhoneNumber
     const localNumber = noUserPhoneNumbers[i];
     const phoneNumber = {country: 'US', country_code: '1', local_number: localNumber};
     models.user = new User({
+      access_token: '',
       type: 'onboarding-worker',
+      firstname: '',
+      lastname: '',
       username: localNumber, // Since username is required and must be unique, so let's set this to localNumber
+      email_address: '',
       phone_number: phoneNumber,
+      auth_type: 'phone',
+      external_id: '',
+      player_ids: [],
+      last_login: '',
       worker: {
         location: {address: '', loc: [0, 0]},
         is_newjob_lock: true
