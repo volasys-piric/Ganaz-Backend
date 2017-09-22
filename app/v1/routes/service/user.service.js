@@ -145,19 +145,20 @@ const create = function (body) {
 
 const update = function (id, body) {
   return validate(id, body).then(function (existingUser) {
+    const deleteProperty = function (propertyName) {
+      if (body[propertyName]) { // In case  front end pass this
+        body[propertyName] = null;
+        delete body[propertyName];
+      }
+    };
     const isOnBoardingWorker = existingUser.type ===  'onboarding-worker';
     if (!isOnBoardingWorker) { // See https://bitbucket.org/volasys-ss/ganaz-backend/wiki/1.2.1%20User%20-%20Onboarding%20User%20Signup
-      const deleteProperty = function (propertyName) {
-        if (body[propertyName]) { // In case  front end pass this
-          body[propertyName] = null;
-          delete body[propertyName];
-        }
-      };
       deleteProperty('type');
-      deleteProperty('password');
       deleteProperty('company');
       deleteProperty('external_id');
     }
+    const newPassword = body.password;
+    deleteProperty('password');
     const user = Object.assign(existingUser, User.adaptLocation(body));
     if (isOnBoardingWorker) {
       /*
@@ -170,6 +171,11 @@ const update = function (id, body) {
       const now = Date.now();
       user.created_at = now;
       user.last_login = now;
+      if (newPassword) {
+        if (user.password === null || (user.password !== newPassword && !bcrypt.compareSync(user.password, newPassword))) {
+          user.password = bcrypt.hashSync(newPassword);
+        }
+      }
       if(body.type ===  'worker') {
         if (!user.worker) {
           user.worker = {is_newjob_lock: true}
