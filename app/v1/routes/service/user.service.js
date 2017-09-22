@@ -172,7 +172,7 @@ const update = function (id, body) {
       user.created_at = now;
       user.last_login = now;
       if (newPassword) {
-        if (user.password === null || (user.password !== newPassword && !bcrypt.compareSync(user.password, newPassword))) {
+        if (!user.password || (user.password !== newPassword && !bcrypt.compareSync(user.password, newPassword))) {
           user.password = bcrypt.hashSync(newPassword);
         }
       }
