@@ -145,9 +145,10 @@ const create = function (body) {
 
 const update = function (id, body) {
   return validate(id, body).then(function (existingUser) {
-    if (body.type !== 'onboarding-worker') { // See https://bitbucket.org/volasys-ss/ganaz-backend/wiki/1.2.1%20User%20-%20Onboarding%20User%20Signup
+    const isOnBoardingWorker = existingUser.type ===  'onboarding-worker';
+    if (!isOnBoardingWorker) { // See https://bitbucket.org/volasys-ss/ganaz-backend/wiki/1.2.1%20User%20-%20Onboarding%20User%20Signup
       const deleteProperty = function (propertyName) {
-        if (body[propertyName]) { // In case front end pass this
+        if (body[propertyName]) { // In case  front end pass this
           body[propertyName] = null;
           delete body[propertyName];
         }
@@ -158,11 +159,32 @@ const update = function (id, body) {
       deleteProperty('external_id');
     }
     const user = Object.assign(existingUser, User.adaptLocation(body));
+    if (isOnBoardingWorker) {
+      /*
+        See https://bitbucket.org/volasys-ss/ganaz-backend/wiki/1.2.1%20User%20-%20Onboarding%20User%20Signup
+        Attention!*
+        This API should generate access_token and created_at, last_login fields.
+        is_newjob_lock will be true if this is to complete the singup process of onboarding-worker.
+          - if “onboarding-worker” => “worker”, we should set “is_newjob_lock” = true,
+       */
+      const now = Date.now();
+      user.created_at = now;
+      user.last_login = now;
+      if(body.type ===  'worker') {
+        if (!user.worker) {
+          user.worker = {is_newjob_lock: true}
+        } else {
+          user.worker.is_newjob_lock = true;
+        }
+      }
+    }
     return user.save().then(function () {
-      return user;
-    })
-  }).then(function (user) {
-    return populateCompany(toObject(user), true);
+      const o = toObject(user);
+      if (isOnBoardingWorker) {
+        o.access_token = _generateToken(o);
+      }
+      return populateCompany(o, true);
+    });
   });
 };
 
