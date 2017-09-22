@@ -70,8 +70,14 @@ function _validate(body) {
     if (senderUser === null) {
       errorMessage += " Sender with id " + body.sender.user_id + " does not exists.";
     }
-    if (body.sender.company_id && senderCmpy === null) {
-      errorMessage += " Sender company " + body.sender.company_id + " does not exists.";
+    if (body.sender.company_id) {
+      if (senderCmpy === null) {
+        errorMessage += " Sender company " + body.sender.company_id + " does not exists.";
+      } else if (senderUser !== null && senderUser.company && (senderUser.company.company_id !== body.sender.company_id)) {
+        errorMessage += " Sender " + body.sender.company_id + " does not belong to the sender.company_id specified.";
+      }
+    } else if (senderUser !== null && senderUser.company && senderUser.company.company_id) {
+      body.sender.company_id = senderUser.company.company_id;
     }
     let hasOnboardingWorker = false;
     const userIdMap = new Map(); // Avoid duplicate creation of Message per user

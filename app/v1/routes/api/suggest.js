@@ -41,8 +41,7 @@ router.post('/', function (req, res) {
             company_id: senderCompanyId
           },
           receivers: [{
-            user_id: job.company_user_id,
-            company_id: job.company_id
+            user_id: job.company_user_id // No need to pass company_id since messageService.create will retrieve it
           }],
           message: {
             'en': 'New Job Inquiry for Referring a worker: ' + job.title.en,
