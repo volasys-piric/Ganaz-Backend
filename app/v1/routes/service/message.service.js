@@ -333,7 +333,7 @@ const create = function (body, smsMessageComplete) {
                 const loc = body.metadata.map.loc;
                 const lng = loc[0];
                 const lat = loc[1];
-                messageBody += ' Location—> http://maps.google.com/maps?q=' + lat + ',' + lng;
+                messageBody += ' http://maps.google.com/maps?q=' + lat + ',' + lng;
               }
               messageBody += '" Para responder a este mensaje, por favor instale la aplicación Ganaz haciendo click aquí—> www.ganaz.com/download';
             }
