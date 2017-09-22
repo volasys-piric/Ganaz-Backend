@@ -243,6 +243,7 @@ function _createUserInviteMyworkerMessageForNotRegisteredUsers(noUserPhoneNumber
       external_id: '',
       player_ids: [],
       last_login: '',
+      created_at: '',
       worker: {
         location: {address: '', loc: [0, 0]},
         is_newjob_lock: true
