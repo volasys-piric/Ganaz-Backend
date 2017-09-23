@@ -75,7 +75,11 @@ const validate = function (id, body) {
         body.phone_number && body.phone_number.local_number &&
         existingUser.phone_number.local_number !== body.phone_number.local_number)
       ) {
-        return User.findOne({'phone_number.local_number': body.phone_number.local_number}).then(function (user) {
+        const countryCode = body.phone_number.country_code ? body.phone_number.country_code : '1';
+        return User.findOne({
+          'phone_number.country_code': countryCode,
+          'phone_number.local_number': body.phone_number.local_number
+        }).then(function (user) {
           if (user) {
             return Promise.reject('Phone number local number ' + body.phone_number.local_number + ' already exists.');
           } else {
