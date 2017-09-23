@@ -41,19 +41,25 @@ function _validate(body) {
     User.findById(body.sender.user_id),
     body.sender.company_id ? Company.findById(body.sender.company_id) : Promise.resolve(null)
   ];
-  if (body.receivers) {
-    const receivers = body.receivers;
-    for (let i = 0; i < receivers.length; i++) {
-      findPromises.push(User.findById(receivers[i].user_id));
+  let findUsersPromise = null;
+  if (body.receivers || body.receivers_phone_numbers) {
+    const $orQ = [];
+    if (body.receivers) {
+      $orQ.push({
+        _id: {
+          $in: body.receivers.map(function (receiver) {
+            return mongoose.Types.ObjectId(receiver.user_id);
+          })
+        }
+      })
     }
+    if (body.receivers_phone_numbers) {
+      $orQ.push({'phone_number.local_number': {$in: body.receivers_phone_numbers}});
+    }
+    findUsersPromise = User.find({$or: $orQ});
   }
-  if (body.receivers_phone_numbers) {
-    // https://bitbucket.org/volasys-ss/ganaz-backend/wiki/7.3%20Message%20-%20Create#markdown-header-change-log-v14
-    const receivers_phone_numbers = body.receivers_phone_numbers;
-    for (let i = 0; i < receivers_phone_numbers.length; i++) {
-      const localNumber = receivers_phone_numbers[i];
-      findPromises.push(User.findOne({'phone_number.local_number': localNumber}));
-    }
+  if (findPromises) {
+    findPromises.push(findUsersPromise);
   }
   return Promise.all(findPromises).then(function (findResults) {
     const job = findResults[0];
@@ -61,17 +67,17 @@ function _validate(body) {
     const senderCmpy = findResults[2];
     let errorMessage = "";
     if (body.job_id && mongoose.Types.ObjectId.isValid(body.job_id)) {
-      if (job === null) {
+      if (!job) {
         errorMessage += ' No job record for job_id ' + body.job_id + '.';
       }
     } else if (body.type === 'recruit') {
       errorMessage += ' Valid job_id is required for message type recruit.';
     }
-    if (senderUser === null) {
+    if (!senderUser) {
       errorMessage += " Sender with id " + body.sender.user_id + " does not exists.";
     }
     if (body.sender.company_id) {
-      if (senderCmpy === null) {
+      if (!senderCmpy) {
         errorMessage += " Sender company " + body.sender.company_id + " does not exists.";
       } else if (senderUser !== null && senderUser.company && (senderUser.company.company_id !== body.sender.company_id)) {
         errorMessage += " Sender " + body.sender.company_id + " does not belong to the sender.company_id specified.";
@@ -80,39 +86,49 @@ function _validate(body) {
       body.sender.company_id = senderUser.company.company_id;
     }
     let hasOnboardingWorker = false;
-    const userIdMap = new Map(); // Avoid duplicate creation of Message per user
     const noUserPhoneNumbers = [];
-
-    let counter = 3;
-    if (body.receivers) {
-      const receivers = body.receivers;
-      for (let i = 0; i < receivers.length; i++) {
-        const user = findResults[counter];
-        if (user === null) {
-          errorMessage += " Receiver id " + body.receivers[i].user_id + " does not exists.";
-        } else {
-          userIdMap.set(user._id.toString(), user);
-          if (user.type === 'onboarding-worker') {
-            hasOnboardingWorker = true;
-          }
-        }
-        counter++;
+    const userIdMap = new Map(); // Avoid duplicate creation of Message per user
+    if (findResults.length === 4) {
+      const users = findResults[3];
+      for (let i = 0; i < users.length; i++) {
+        const user = users[i];
+        userIdMap.set(user._id.toString(), user);
       }
-    }
-    if (body.receivers_phone_numbers) {
-      // https://bitbucket.org/volasys-ss/ganaz-backend/wiki/7.3%20Message%20-%20Create#markdown-header-change-log-v14
-      const receivers_phone_numbers = body.receivers_phone_numbers;
-      for (let i = 0; i < receivers_phone_numbers.length; i++) {
-        const user = findResults[counter];
-        if (user === null) {
-          noUserPhoneNumbers.push(receivers_phone_numbers[i]);
-        } else {
-          userIdMap.set(user._id.toString(), user);
-          if (user.type === 'onboarding-worker') {
+      if (body.receivers) {
+        const receivers = body.receivers;
+        for (let i = 0; i < receivers.length; i++) {
+          const user = userIdMap.get(receivers[i].user_id);
+          if (!user) {
+            errorMessage += " Receiver id " + receivers[i].user_id + " does not exists.";
+          } else if (user.type === 'onboarding-worker') {
             hasOnboardingWorker = true;
           }
         }
-        counter++;
+      }
+      if (body.receivers_phone_numbers) {
+        const findUserByPhoneNumber = function (localNumber) {
+          let user = null;
+          for (let i = 0; i < users.length; i++) {
+            if (users[i].phone_number.local_number === localNumber) {
+              user = users[i];
+              break;
+            }
+          }
+          return user;
+        };
+        // https://bitbucket.org/volasys-ss/ganaz-backend/wiki/7.3%20Message%20-%20Create#markdown-header-change-log-v14
+        const receivers_phone_numbers = body.receivers_phone_numbers;
+        for (let i = 0; i < receivers_phone_numbers.length; i++) {
+          const localNumber = receivers_phone_numbers[i];
+          const user = findUserByPhoneNumber(localNumber);
+          if (!user) {
+            if (noUserPhoneNumbers.indexOf(localNumber) === -1) {
+              noUserPhoneNumbers.push(localNumber);
+            }
+          } else if (user.type === 'onboarding-worker') {
+            hasOnboardingWorker = true;
+          }
+        }
       }
     }
 
@@ -189,13 +205,13 @@ function _createMyworkerInviteMessageForOnboardingWorkers(userIdMap, body) {
       let myworker = promisesResults[i + 1];
       let invite = promisesResults[i + 2];
       const models = {myworker: null, invite: null, message: null};
-      if (myworker === null) {
+      if (!myworker) {
         // 1) Add the onboarding user to my-workers list of company if not added yet.
         models.myworker = new Myworker({company_id: companyId, worker_user_id: userId});
       } else {
         logger.info('[Message Service][Onboarding users] Not creating myworker record. User ' + userId + ' company ' + companyId + ' myworker record already exists.')
       }
-      if (invite === null) {
+      if (!invite) {
         // 2) Invite object will be created if not yet.
         if (user.phone_number && user.phone_number.local_number) {
           models.invite = new Invite({company_id: companyId, phone_number: user.phone_number});
@@ -378,7 +394,7 @@ const create = function (body, smsMessageComplete) {
 
 const updateStatus = function (id, status) {
   return Message.findById(id).then(function (message) {
-    if (message === null) {
+    if (!message) {
       return Promise.reject('Message with id ' + id + ' does not exists.');
     } else {
       return message;
