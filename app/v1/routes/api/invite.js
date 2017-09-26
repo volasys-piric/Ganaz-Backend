@@ -29,6 +29,11 @@ router.post('/', function (req, res) {
       msg: 'Request body company_id and phone_number.local_number are required.'
     })
   } else {
+    const phoneNumber = body.phone_number;
+    if (!phoneNumber.country_code) {
+      phoneNumber.country = 'US';
+      phoneNumber.country_code = '1';
+    }
     /*
      https://bitbucket.org/volasys-ss/ganaz-backend/wiki/11.1%20Invite%20-%20New#markdown-header-change-log-v15
      CHANGE LOG: v1.5
@@ -44,9 +49,12 @@ router.post('/', function (req, res) {
      */
     const inviteOnly = body.invite_only && typeof body.invite_only === 'boolean' ? body.invite_only : false;
     const companyId = body.company_id;
-    const localNumber = body.phone_number.local_number;
     return Promise.join(
-      Invite.findOne({company_id: companyId, 'phone_number.local_number': localNumber}),
+      Invite.findOne({
+        company_id: companyId,
+        'phone_number.country_code': phoneNumber.country_code,
+        'phone_number.local_number': phoneNumber.local_number
+      }),
       Company.findById(body.company_id)
     ).then(function (promiseResult) {
       let invite = promiseResult[0];
@@ -68,14 +76,13 @@ router.post('/', function (req, res) {
       if (!inviteOnly) {
         // 2) Create Onboarding worker object if needed. (Please refer to 1. User - Overview, Data Model)
         return User.findOne({
-          'company.company_id': companyId,
-          'phone_number.local_number': localNumber
+          'phone_number.country_code': phoneNumber.country_code,
+          'phone_number.local_number': phoneNumber.local_number
         }).then(function (user) {
           if (user === null) {
-            const phoneNumber = {country: 'US', country_code: '1', local_number: localNumber};
             const basicUserInfo = {
               type: 'onboarding-worker',
-              username: localNumber, // Since username is required and must be unique, so let's set this to localNumber
+              username: phoneNumber.local_number, // Since username is required and must be unique, so let's set this to localNumber
               phone_number: phoneNumber,
               worker: {
                 location: {address: '', loc: [0, 0]},
