@@ -14,6 +14,7 @@ app.use('/', express_jwt({
   {
     path: [
       /\/status/,
+      /\/admins\/login$/,
       /\/user\/login$/,
       /\/user\/search$/,
       /\/user\/bulksearch$/,
@@ -50,7 +51,9 @@ app.use('/', headerCheckerMiddleware);
 router.get('/', function (req, res) {
   res.send('Hello! The API is now working');
 });
+
 app.use('/', router);
+app.use('/admins', require('./api/admins'));
 app.use('/user', require('./api/user'));
 app.use('/company', require('./api/company'));
 app.use('/job', require('./api/job'));

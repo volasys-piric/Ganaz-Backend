@@ -7,6 +7,7 @@ mongoose.connect(appConfig.dbUrl, {useMongoClient: true});
 
 module.exports = {
   models: {
+    admin: require('./models/admin'),
     application: require('./models/application'),
     company: require('./models/company'),
     crew: require('./models/crew'),
