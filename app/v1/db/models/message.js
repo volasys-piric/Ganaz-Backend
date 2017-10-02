@@ -4,7 +4,7 @@ const Schema = mongoose.Schema;
 const MetadataSchema = new Schema({}, {strict: false});
 
 const MessageSchema = new Schema({
-  job_id: {type: String, required: true},
+  job_id: String,
   type: {
     $type: String,
     required: true,

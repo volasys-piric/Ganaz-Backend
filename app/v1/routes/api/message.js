@@ -36,7 +36,7 @@ router.post('/', function (req, res) {
            "user_id": "{user object id}",
            "company_id": "{company object id, empty in case of worker}"
        },
-       "receivers": [
+       "receivers": [                                            [optional]
            {
                "user_id": "{user object id}",
                "company_id": "{company object id, empty in case of worker}"
@@ -47,9 +47,17 @@ router.post('/', function (req, res) {
            },
            ...
        ],
+       "receivers_phone_numbers": [                               [optional]
+           {local phone number},
+           {local phone number},
+           ...
+       ],
        "message": {
            "en": "{Message in English}",
            "es": "{Message in Spanish}"
+       },
+       "metadata": {
+           ....
        },
        "auto_translate": true/false
    }
