@@ -238,13 +238,13 @@ function _sendMessage(currentUser, jobIdJobMap, newRecruits) {
       if (newRecruit.request.re_recruit_worker_user_ids) {
         const userIds = newRecruit.request.re_recruit_worker_user_ids;
         for (let i = 0; i < userIds.length; i++) {
-          receivers.push({user_id: userIds[i]}) // No need to pass company_id since messageService.create will retrieve it
+          receivers.push({user_id: userIds[i]}); // No need to pass company_id since messageService.create will retrieve it
         }
       }
       if (newRecruit.recruited_worker_user_ids) {
         const userIds = newRecruit.recruited_worker_user_ids;
         for (let i = 0; i < userIds.length; i++) {
-          receivers.push({user_id: userIds[i]}) // No need to pass company_id since messageService.create will retrieve it
+          receivers.push({user_id: userIds[i]}); // No need to pass company_id since messageService.create will retrieve it
         }
       }
       const jobId = newRecruit.request.job_id;

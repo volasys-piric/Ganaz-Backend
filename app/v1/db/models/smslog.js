@@ -4,7 +4,7 @@ const Schema = mongoose.Schema;
 const TwilioResponseSchema = new Schema({}, {strict: false});
 const SurveySchema = new Schema({
   sender: {
-    user_id: {$type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true},
+    user_id: {$type: mongoose.Schema.Types.ObjectId, ref: 'User'},
     company_id: {$type: mongoose.Schema.Types.ObjectId, ref: 'Company'}
   },
   receiver: {

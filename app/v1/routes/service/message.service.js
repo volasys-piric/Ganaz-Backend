@@ -362,28 +362,23 @@ const create = function (body, smsMessageComplete) {
               }
               messageBody += '" Para responder a este mensaje, por favor instale la aplicación Ganaz haciendo click aquí—> www.ganaz.com/download';
             }
-
+            const senderUserId = body.sender.user_id;
+            const senderCompanyId = body.sender.company_id;
             for (let i = 0; i < myworkerInviteMessageForOnboardingWorkerModels.length; i++) {
               const models = myworkerInviteMessageForOnboardingWorkerModels[i];
               const userId = models.message.receiver.user_id;
               const user = userIdMap.get(userId);
               if (user.phone_number && user.phone_number.local_number) {
-                const toFullNumber = "+1" + user.phone_number.local_number;
-                twilioService.sendMessage(toFullNumber, messageBody).catch(function (err) {
-                  logger.warn(err);
-                });
+                twilioService.sendMessage(senderUserId, senderCompanyId, user.phone_number, messageBody);
               } else {
                 logger.warn('[Message Service] Not sending SMS. User ' + userId + ' has no phone_number.')
               }
             }
             // Not-registered users - SMS will be sent to the onboarding-user.
             for (let i = 0; i < noUserPhoneNumbers.length; i++) {
-              const toFullNumber = "+1" + noUserPhoneNumbers[i];
-              twilioService.sendMessage(toFullNumber, messageBody).catch(function (err) {
-                logger.warn(err);
-              })
+              const phoneNumber = {country: 'US', country_code: '1', local_number: noUserPhoneNumbers[i]};
+              twilioService.sendMessage(senderUserId, senderCompanyId, phoneNumber, messageBody);
             }
-
             return savedMessages;
           });
         });

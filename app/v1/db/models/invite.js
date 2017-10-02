@@ -8,6 +8,7 @@ const PhoneNumberSchema = new Schema({
 });
 
 const InviteSchema = new Schema({
+  user_id: {type: mongoose.Schema.Types.ObjectId, ref: 'User'},
   company_id: String,
   phone_number: {
     type: PhoneNumberSchema,

@@ -155,7 +155,7 @@ const update = function (id, body) {
         delete body[propertyName];
       }
     };
-    const isOnBoardingWorker = existingUser.type ===  'onboarding-worker';
+    const isOnBoardingWorker = existingUser.type === 'onboarding-worker';
     if (!isOnBoardingWorker) { // See https://bitbucket.org/volasys-ss/ganaz-backend/wiki/1.2.1%20User%20-%20Onboarding%20User%20Signup
       deleteProperty('type');
       deleteProperty('company');
@@ -166,11 +166,11 @@ const update = function (id, body) {
     const user = Object.assign(existingUser, User.adaptLocation(body));
     if (isOnBoardingWorker) {
       /*
-        See https://bitbucket.org/volasys-ss/ganaz-backend/wiki/1.2.1%20User%20-%20Onboarding%20User%20Signup
-        Attention!*
-        This API should generate access_token and created_at, last_login fields.
-        is_newjob_lock will be true if this is to complete the singup process of onboarding-worker.
-          - if “onboarding-worker” => “worker”, we should set “is_newjob_lock” = true,
+       See https://bitbucket.org/volasys-ss/ganaz-backend/wiki/1.2.1%20User%20-%20Onboarding%20User%20Signup
+       Attention!*
+       This API should generate access_token and created_at, last_login fields.
+       is_newjob_lock will be true if this is to complete the singup process of onboarding-worker.
+       - if “onboarding-worker” => “worker”, we should set “is_newjob_lock” = true,
        */
       const now = Date.now();
       user.created_at = now;
@@ -180,7 +180,7 @@ const update = function (id, body) {
           user.password = bcrypt.hashSync(newPassword);
         }
       }
-      if(body.type ===  'worker') {
+      if (body.type === 'worker') {
         if (!user.worker) {
           user.worker = {is_newjob_lock: true}
         } else {
@@ -346,8 +346,9 @@ const recoverPassRequestPin = function (username) {
       return populateCompany(o, true).then(function (o) {
         const access_token = _generateToken(o);
         //  send twilio message ignoring any errors in sending twilio messages
-        const toFullNumber = '+' + o.phone_number.country_code + o.phone_number.local_number;
-        twilioService.sendMessage(toFullNumber, 'Ganaz Pin Code: ' + pin);
+        const senderUserId = user._id;
+        const senderCompanyId = user.company ? user.company.company_id : null;
+        twilioService.sendMessage(senderUserId, senderCompanyId, user.phone_number, 'Ganaz Pin Code: ' + pin);
         return {pin, access_token};
       });
     }
