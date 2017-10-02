@@ -5,7 +5,11 @@ const MetadataSchema = new Schema({}, {strict: false});
 
 const MessageSchema = new Schema({
   job_id: {type: String, required: true},
-  type: {type: String, required: true}, // "message/recruit/application/suggest"
+  type: {
+    $type: String,
+    required: true,
+    match: /^(message|recruit|application|suggest|survey-choice-single|survey-open-text|survey-answer)$/
+  },
   sender: {
     user_id: String,
     company_id: String
@@ -22,7 +26,7 @@ const MessageSchema = new Schema({
   metadata: {type: MetadataSchema},
   auto_translate: Boolean,
   datetime: Date
-});
+}, {typeKey: '$type'});
 
 MessageSchema.pre('save', function (next) {
   if (!this.datetime) {

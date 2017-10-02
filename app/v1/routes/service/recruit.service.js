@@ -1,7 +1,6 @@
 const Promise = require('bluebird');
 const mongoose = require('mongoose');
 const messageService = require('./message.service');
-const twilioService = require('./twilio.service');
 const constants = require('./../../../utils/constants');
 const logger = require('./../../../utils/logger');
 const db = require('./../../db');

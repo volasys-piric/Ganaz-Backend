@@ -128,10 +128,14 @@ router.post('/', function (req, res) {
     }).then(function (result) {
       const invite = result.invite;
       const company = result.company;
-      const toFullNumber = "+" + invite.phone_number.country_code + invite.phone_number.local_number;
-      const body = company.name.en + ' quisiera recomendar que ud baje la aplicaci�n Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. http://www.GanazApp.com/download';
-      twilioService.sendMessage(toFullNumber, body);
-      return result;
+      const user = req.user;
+      const senderUserId = user._id;
+      const senderCompanyId = user.company ? user.company.company_id : null;
+      const phoneNumber = invite.phone_number;
+      const messageBody = company.name.en + ' quisiera recomendar que ud baje la aplicaci�n Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. http://www.GanazApp.com/download';
+      return twilioService.sendMessage(senderUserId, senderCompanyId, phoneNumber, messageBody).then(function () {
+        return result;
+      });
     }).then(function (result) {
       const json = {success: true};
       if (result.isNew) {

@@ -21,6 +21,9 @@ module.exports = {
     recruit: require('./models/recruit'),
     review: require('./models/review'),
     user: require('./models/user'),
-    suggest: require('./models/suggest')
+    suggest: require('./models/suggest'),
+    smslog: require('./models/smslog'),
+    survey: require('./models/survey'),
+    answer: require('./models/answer')
   }
 };
