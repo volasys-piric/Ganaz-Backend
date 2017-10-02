@@ -124,6 +124,7 @@ function _validate(body) {
           if (!user) {
             if (noUserPhoneNumbers.indexOf(localNumber) === -1) {
               noUserPhoneNumbers.push(localNumber);
+              hasOnboardingWorker = true;
             }
           } else if (user.type === 'onboarding-worker') {
             hasOnboardingWorker = true;
@@ -133,7 +134,7 @@ function _validate(body) {
     }
 
     if (hasOnboardingWorker && !body.sender.company_id) {
-      errorMessage += " Sender company id is required if one of the receiver is of type onboarding-worker.";
+      errorMessage += " Sender company id is required if one of the receiver is of type onboarding-worker or or if one of the receivers_phone_numbers doesnt exist.";
     }
 
     if (errorMessage.length > 0) {
