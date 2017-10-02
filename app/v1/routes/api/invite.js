@@ -14,12 +14,14 @@ const Myworker = db.models.myworker;
 router.post('/', function (req, res) {
   /** Expected req.body
    {
-       "company_id": "{company object id}",
+       "company_id": "{sender's company object id}",
+       "user_id": "{sender's user object id, optional}",        [optional]
        "phone_number": {
            "country": "US",
            "country_code": "1",
            "local_number": "{local phone number}"
-       }
+       },
+       "invite_only": true / false             // optional
    }
    */
   const body = req.body;
@@ -49,6 +51,7 @@ router.post('/', function (req, res) {
      */
     const inviteOnly = body.invite_only && typeof body.invite_only === 'boolean' ? body.invite_only : false;
     const companyId = body.company_id;
+    const userId = body.user_id ? body.user_id : req.user.id;
     return Promise.join(
       Invite.findOne({
         company_id: companyId,
@@ -130,7 +133,7 @@ router.post('/', function (req, res) {
       const company = result.company;
       const phoneNumber = invite.phone_number;
       const messageBody = company.name.en + ' quisiera recomendar que ud baje la aplicaci�n Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. http://www.GanazApp.com/download';
-      return twilioService.sendMessage(invite.user_id, invite.company_id, phoneNumber, messageBody).then(function () {
+      return twilioService.sendMessage(userId, companyId, phoneNumber, messageBody).then(function () {
         return result;
       });
     }).then(function (result) {
