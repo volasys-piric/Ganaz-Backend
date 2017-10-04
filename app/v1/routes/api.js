@@ -66,4 +66,5 @@ app.use('/review', require('./api/review'));
 app.use('/support', require('./api/support'));
 app.use('/suggest', require('./api/suggest'));
 app.use('/survey', require('./api/survey'));
+app.use('/survey/answer', require('./api/answer'));
 module.exports = app;

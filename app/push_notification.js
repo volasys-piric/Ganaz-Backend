@@ -74,6 +74,11 @@ const sendMessage = function (player_ids, savedMessage) {
   } else if (o.type === 'suggest') {
     data.contents.suggest_id = o.metadata.suggest_id;
     data.contents.suggested_phone_number = o.metadata.suggested_phone_number;
+  } else if (o.type === 'survey-answer') {
+    data.contents.survey_id = o.metadata.survey.survey_id;
+    data.contents.answer_id = o.metadata.survey.answer_id;
+  } else if (o.type === 'survey-choice-single' || o.type === 'survey-open-text') {
+    data.contents.survey_id = o.metadata.survey.survey_id;
   }
   sendNotification(player_ids, {contents: messageObject, data: data});
 };

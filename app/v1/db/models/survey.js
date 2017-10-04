@@ -6,7 +6,7 @@ const SurveySchema = new Schema({
   type: {$type: String, required: true, match: /^(choice-single|open-text)$/},
   owner: {
     user_id: {$type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true},
-    company_id: {$type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true}
+    company_id: {$type: String, required: true}
   },
   question: {
     en: {$type: String, required: true},
