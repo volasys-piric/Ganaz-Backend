@@ -27,13 +27,15 @@ AnswerSchema.pre('save', function (next) {
   if (!this.datetime) {
     this.datetime = Date.now();
   }
-  if (!this.owner && !this.owner.company_id) {
+  if (!this.survey && !this.survey.owner && !!this.survey.owner.company_id) {
     const model = this;
     Survey.findById(model.survey_id).then(function (survey) {
       if (survey === null) {
         next(new Error('Survey with id ' + model.survey_id + ' does not exists.'));
       }
-      model.owner = {company_id: survey.owner.company_id};
+      model.survey = {
+        owner: {company_id: survey.owner.company_id}
+      };
       next();
     })
   } else {

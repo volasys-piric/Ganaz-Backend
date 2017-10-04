@@ -37,14 +37,17 @@ router.post('/', function (req, res) {
   _validate(body).then(function (models) {
     const survey = models.survey;
     const user = models.user;
-    body.owner = {company_id: survey.owner.company_id};
+    body.survey = {owner: {company_id: survey.owner.company_id}};
     const answer = new Answer(body);
-    return answer.then(function (answer) {
+    return answer.save().then(function (answer) {
       const message = new Message({
         job_id: 'NONE',
         type: 'survey-answer',
         sender: answer.responder,
-        receiver: survey.owner,
+        receivers: [{
+          user_id: survey.owner.user_id.toString(),
+          company_id: survey.owner.company_id
+        }],
         message: {
           en: '{Your survey is answered}',
           es: '{Your survey is answered}'
@@ -103,10 +106,10 @@ function _validate(body) {
   if (errorMessage.length > 0) {
     return Promise.reject(errorMessage);
   } else {
-    const findCompanyPromise = body.responder.company_id ? Company.findOne(body.responder.company_id) : Promise.resolve(null);
+    const findCompanyPromise = body.responder.company_id ? Company.findById(body.responder.company_id) : Promise.resolve(null);
     return Promise.join(
       Survey.findById(body.survey_id),
-      User.findOne(body.responder.user_id),
+      User.findById(body.responder.user_id),
       findCompanyPromise
     ).then(function (promiseResult) {
       let errorMessage = '';
