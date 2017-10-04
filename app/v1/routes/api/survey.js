@@ -53,18 +53,23 @@ router.post('/', function (req, res) {
   if (errorMessage.length > 0) {
     res.json({success: false, msg: errorMessage});
   } else {
+    if (!body.owner.company_id) {
+      body.owner.company_id = '';
+    }
+    const receivers = body.receivers;
+    for (let i = 0; i < receivers.length; i++) {
+      if (!receivers[i].company_id) {
+        receivers[i].company_id = '';
+      }
+    }
     const survey = new Survey(body);
     survey.save().then(function (survey) {
-      const owner = survey.owner;
       const messageParam = {
         job_id: '',
-        type: body.type,
-        sender: {
-          user_id: owner.user_id,
-          company_id: owner.company_id ? owner.company_id : ''
-        },
-        receivers: survey.receivers,
-        receivers_phone_numbers: survey.receivers_phone_numbers,
+        type: 'survey-' + body.type,
+        sender: body.owner,
+        receivers: body.receivers,
+        receivers_phone_numbers: body.receivers_phone_numbers,
         message: {
           en: survey.question ? survey.question.en : '',
           es: survey.question ? survey.question.es : ''
@@ -83,7 +88,7 @@ router.post('/', function (req, res) {
 
 function _validate(body) {
   let errorMessage = '';
-  if (!body.type || body.type !== 'choice-single' || body.type !== 'open-text') {
+  if (!body.type || (body.type !== 'choice-single' && body.type !== 'open-text')) {
     errorMessage += 'Request param type should be either choice-single/open-text.';
   }
   if (!body.question) {

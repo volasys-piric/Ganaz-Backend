@@ -3,10 +3,10 @@ const Schema = mongoose.Schema;
 
 const MetadataSchema = new Schema({}, {strict: false});
 const SurveySchema = new Schema({
-  type: {$type: String, required: true, match: /^(choice-single|open-text)$/},
+  type: {$type: String, required: true, enum: ['choice-single', 'open-text']},
   owner: {
     user_id: {$type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true},
-    company_id: {$type: String, required: true}
+    company_id: String
   },
   question: {
     en: {$type: String, required: true},
@@ -14,8 +14,8 @@ const SurveySchema = new Schema({
   },
   choices: [{en: {$type: String, required: true}, es: {$type: String, required: true}}],
   receivers: [{
-    company_id: {$type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true},
-    user_id: {$type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true}
+    user_id: {$type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true},
+    company_id: String
   }],
   metadata: {$type: MetadataSchema},
   auto_translate: {$type: Boolean, required: true, default: false},

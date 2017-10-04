@@ -18,7 +18,7 @@ const SmslogSchema = new Schema({
   twilio_exception: {$type: TwilioResponseSchema},
   cost: {$type: Number, required: true, default: 0.5}, // Default: 0.05
   billable: {$type: Boolean, required: true, default: true}, // Default: true
-  status: {$type: String, required: true, match: /^(new|paid)$/, default: 'new'},
+  status: {$type: String, required: true, enum: ['new', 'paid'], default: 'new'},
   datetime: {$type: Date}
 }, {typeKey: '$type'});
 

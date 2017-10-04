@@ -58,7 +58,7 @@ function _validate(body) {
     }
     findUsersPromise = User.find({$or: $orQ});
   }
-  if (findPromises) {
+  if (findUsersPromise) {
     findPromises.push(findUsersPromise);
   }
   return Promise.all(findPromises).then(function (findResults) {
