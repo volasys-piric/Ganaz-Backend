@@ -54,25 +54,29 @@ router.post('/', function (req, res) {
     res.json({success: false, msg: errorMessage});
   } else {
     const survey = new Survey(body);
-    survey.save().then(function () {
-      const message = {
+    survey.save().then(function (survey) {
+      const owner = survey.owner;
+      const messageParam = {
         job_id: '',
         type: body.type,
         sender: {
-          user_id: senderId,
-          company_id: senderCompanyId
+          user_id: owner.user_id,
+          company_id: owner.company_id ? owner.company_id : ''
         },
-        receivers: receivers,
+        receivers: survey.receivers,
+        receivers_phone_numbers: survey.receivers_phone_numbers,
         message: {
-          'en': 'New job inquiry',
-          'es': 'Nueva solicitud de empleo'
+          en: survey.question ? survey.question.en : '',
+          es: survey.question ? survey.question.es : ''
         },
-        auto_translate: false,
-        datetime: Date.now(),
         metadata: {
-          application_id: application._id.toString()
-        }
+          survey: {survey_id: survey._id.toString()}
+        },
+        auto_translate: survey.auto_translate
       };
+      messageService.create(messageParam, false).then(function () {
+        res.json({success: true, survey: survey});
+      });
     });
   }
 });
@@ -84,6 +88,9 @@ function _validate(body) {
   }
   if (!body.question) {
     errorMessage += ' Either request param question.en or question.es should be set.';
+  }
+  if (!body.owner || !body.owner.user_id) {
+    errorMessage += ' Request param owner.user_id is required.';
   }
   const arrayNotSet = function (arr) {
     return !Array.isArray(arr) || arr.length < 1;
