@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Promise = require('bluebird');
+const mongoose = require('mongoose');
 const db = require('./../../db');
 const logger = require('./../../../utils/logger');
 const httpUtil = require('./../../../utils/http');
@@ -90,9 +91,17 @@ router.post('/search', function (req, res) {
     dbQ.survey_id = body.survey_id;
   }
   if (body.owner && body.owner.company_id) {
-    dbQ.survey_id = body.survey_id;
+    dbQ['survey.owner.company_id'] = body.owner.company_id;
   }
-
+  if (body.responder && body.responder.user_id) {
+    dbQ['responder.user_id'] = mongoose.Types.ObjectId(body.responder.user_id);
+  }
+  Answer.find(dbQ).then(function (answers) {
+    res.json({
+      success: true,
+      answers: answers
+    });
+  }).catch(httpUtil.handleError(res));
 });
 
 function _validate(body) {
