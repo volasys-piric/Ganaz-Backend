@@ -20,6 +20,7 @@ app.use('/', express_jwt({
       /\/user\/bulksearch$/,
       /\/user\/search\/phones$/,
       /\/user\/password_recovery\/pin$/,
+      /\/survey\/search/,
       /\/survey\/answer/,
       /\/survey\/answer\/search/,
       {
