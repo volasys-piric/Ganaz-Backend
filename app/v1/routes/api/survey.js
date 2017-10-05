@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const db = require('./../../db');
-const appConfig = require('./../../../app_config');
-const logger = require('./../../../utils/logger');
+const httpUtil = require('./../../../utils/http');
 const messageService = require('./../service/message.service');
 
 const Survey = db.models.survey;
@@ -86,6 +86,31 @@ router.post('/', function (req, res) {
   }
 });
 
+router.post('/search', function (req, res) {
+  /** Expected request body
+   {
+       "survey_id": "{survey id}",                           [optional]
+       "owner": {                                            [optional]
+           "company_id": "{company object id of owner}"
+       }
+   }
+   */
+  const body = req.body;
+  const dbQ = {};
+  if (body.survey_id) {
+    dbQ._id = mongoose.Types.ObjectId(body.survey_id);
+  }
+  if (body.owner && body.owner.company_id) {
+    dbQ['owner.company_id'] = body.owner.company_id;
+  }
+  Survey.find(dbQ).then(function (surveys) {
+    res.json({
+      success: true,
+      surveys: surveys
+    });
+  }).catch(httpUtil.handleError(res));
+});
+
 function _validate(body) {
   let errorMessage = '';
   if (!body.type || (body.type !== 'choice-single' && body.type !== 'open-text')) {
@@ -108,4 +133,5 @@ function _validate(body) {
   }
   return errorMessage;
 }
+
 module.exports = router;
