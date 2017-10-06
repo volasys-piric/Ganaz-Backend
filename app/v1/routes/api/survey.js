@@ -79,10 +79,10 @@ router.post('/', function (req, res) {
         },
         auto_translate: survey.auto_translate
       };
-      messageService.create(messageParam, false).then(function () {
+      return messageService.create(messageParam, false).then(function () {
         res.json({success: true, survey: survey});
       });
-    });
+    }).catch(httpUtil.handleError(res));
   }
 });
 
