@@ -16,7 +16,7 @@ const AnswerSchema = new Schema({
   },
   responder: {
     user_id: {type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true},
-    company_id: {type: mongoose.Schema.Types.ObjectId, ref: 'Company'} // "{company object id, empty in case of worker}"
+    company_id: String // "{company object id, empty in case of worker}"
   },
   metadata: {type: MetadataSchema},
   auto_translate: {type: Boolean, required: true, default: false},
