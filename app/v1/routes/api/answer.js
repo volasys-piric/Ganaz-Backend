@@ -77,6 +77,7 @@ router.post('/search', function (req, res) {
   /** Expected request body
    {
        "survey_id": "{survey id}",                           [optional]
+       "answer_id": "{answer id}",                           [optional]
        "owner": {                                            [optional]
            "company_id": "{company object id of owner}"
        },
@@ -89,6 +90,9 @@ router.post('/search', function (req, res) {
   const dbQ = {};
   if (body.survey_id) {
     dbQ.survey_id = body.survey_id;
+  }
+  if(body.answer_id) {
+    dbQ._id = mongoose.Types.ObjectId(body.answer_id);
   }
   if (body.owner && body.owner.company_id) {
     dbQ['survey.owner.company_id'] = body.owner.company_id;
