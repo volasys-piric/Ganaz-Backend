@@ -14,8 +14,10 @@ const SmslogSchema = new Schema({
       local_number: {$type: String, length: 10}
     }
   },
-  twilio_response: {$type: TwilioResponseSchema},
-  twilio_exception: {$type: TwilioResponseSchema},
+  twilio: {
+    response: {$type: TwilioResponseSchema},
+    exception: {$type: TwilioResponseSchema}
+  },
   cost: {$type: Number, required: true, default: 0.5}, // Default: 0.05
   billable: {$type: Boolean, required: true, default: true}, // Default: true
   status: {$type: String, required: true, enum: ['new', 'paid'], default: 'new'},

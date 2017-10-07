@@ -25,10 +25,14 @@ module.exports = {
         to: toFullNumber,
         body: messageBody
       }).then(function (response) {
-        smsLog.twilio_response = response;
+        smsLog.twilio = {
+          response: response
+        };
         smsLog.save();
       }).catch(function (err) {
-        smsLog.twilio_exception = err;
+        smsLog.twilio = {
+          exception: err
+        };
         smsLog.save();
       });
       return null;
