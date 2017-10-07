@@ -39,6 +39,9 @@ router.post('/', function (req, res) {
     const survey = models.survey;
     const user = models.user;
     body.survey = {owner: {company_id: survey.owner.company_id}};
+    if (!body.responder.company_id) {
+      body.responder.company_id = '';
+    }
     const answer = new Answer(body);
     return answer.save().then(function (answer) {
       const message = new Message({
@@ -91,7 +94,7 @@ router.post('/search', function (req, res) {
   if (body.survey_id) {
     dbQ.survey_id = body.survey_id;
   }
-  if(body.answer_id) {
+  if (body.answer_id) {
     dbQ._id = mongoose.Types.ObjectId(body.answer_id);
   }
   if (body.owner && body.owner.company_id) {
