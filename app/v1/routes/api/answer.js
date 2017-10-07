@@ -53,8 +53,8 @@ router.post('/', function (req, res) {
           company_id: survey.owner.company_id
         }],
         message: {
-          en: '{Your survey is answered}',
-          es: '{Your survey is answered}'
+          en: 'Your survey is answered',
+          es: 'Your survey is answered'
         },
         metadata: {
           survey: {
