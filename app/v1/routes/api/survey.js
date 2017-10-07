@@ -125,9 +125,6 @@ function _validate(body) {
   const arrayNotSet = function (arr) {
     return !Array.isArray(arr) || arr.length < 1;
   };
-  if (arrayNotSet(body.choices)) {
-    errorMessage += ' Either request param choices array is required and format is ["en":"english contents", "es":"spanish contents"].';
-  }
   if (arrayNotSet(body.receivers) && arrayNotSet(body.receivers_phone_numbers)) {
     errorMessage += ' Either request param receivers array or receivers_phone_numbers array should be set.';
   }

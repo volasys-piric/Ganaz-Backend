@@ -12,7 +12,7 @@ const SurveySchema = new Schema({
     en: {$type: String, required: true},
     es: {$type: String, required: true}
   },
-  choices: [{en: {$type: String, required: true}, es: {$type: String, required: true}}],
+  choices: [{en: String, es: String}],
   receivers: [{
     user_id: {$type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true},
     company_id: String
