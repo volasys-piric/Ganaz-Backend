@@ -18,10 +18,12 @@ const find = function (body) {
     if (body.company_id) {
       $or.push({'sender.company_id': body.company_id});
       $or.push({'receiver.company_id': body.company_id});
+      $or.push({'receivers.company_id': body.company_id});
     }
     if (body.user_id) {
       $or.push({'sender.user_id': body.user_id});
       $or.push({'receiver.user_id': body.user_id});
+      $or.push({'receivers.user_id': body.user_id});
     }
   }
   const dbQ = {};

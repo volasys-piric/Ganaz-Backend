@@ -14,15 +14,20 @@ const MessageSchema = new Schema({
     user_id: String,
     company_id: String
   },
-  receiver: {
+  receiver: { // deprecated in favor of receivers
     user_id: String,
     company_id: String
   },
+  receivers: [{
+    user_id: String,
+    company_id: String,
+    status: {$type: String, required: true, enum: ['new', 'read'], default: 'new'}
+  }],
   message: {
     en: String,
     es: String
   },
-  status: String,
+  status: String, // deprecated in favor of receivers[x].status
   metadata: {$type: MetadataSchema},
   auto_translate: Boolean,
   datetime: Date
