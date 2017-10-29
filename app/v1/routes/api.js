@@ -13,7 +13,7 @@ app.use('/', express_jwt({
 }).unless(
   {
     path: [
-      /\/status/,
+      /v[\d]+\/status/,
       /\/admins\/login$/,
       /\/user\/login$/,
       /\/user\/search$/,
@@ -51,7 +51,7 @@ app.use('/', express_jwt({
 ));
 app.use('/', headerCheckerMiddleware);
 
-router.get('/', function (req, res) {
+router.get('/status', function (req, res) {
   res.send('Hello! The API is now working');
 });
 
