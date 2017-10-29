@@ -87,7 +87,7 @@ router.post('/:id/status', function (req, res) {
       msg: 'Request body status is required.'
     });
   } else {
-    messageService.updateStatus(req.params.id, body.status).then(function (message) {
+    messageService.updateStatus(req.params.id, body.status, req.user).then(function (message) {
       res.json({
         success: true,
         message: message
@@ -114,7 +114,7 @@ router.post('/status-update', function (req, res) {
       msg: 'Request body status is required.'
     });
   } else {
-    messageService.updateStatusByBulk(body.message_ids, body.status).then(function (messages) {
+    messageService.updateStatusByBulk(body.message_ids, body.status, req.user).then(function (messages) {
       res.json({
         success: true,
         messages: messages.map(function (message) {

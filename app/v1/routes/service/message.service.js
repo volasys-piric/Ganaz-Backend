@@ -390,7 +390,7 @@ const create = function (body, smsMessageComplete) {
   })
 };
 
-const updateStatus = function (id, status) {
+const updateStatus = function (id, status, currentUser) {
   return Message.findById(id).then(function (message) {
     if (!message) {
       return Promise.reject('Message with id ' + id + ' does not exists.');
@@ -398,22 +398,42 @@ const updateStatus = function (id, status) {
       return message;
     }
   }).then(function (message) {
-    message.status = status;
-    return message.save();
+    return _updateMessageStatus(message, status, currentUser);
   });
 };
 
-const updateStatusByBulk = function (messageIds, status) {
+const updateStatusByBulk = function (messageIds, status, currentUser) {
   return Message.find({_id: {$in: messageIds}}).then(function (messages) {
     const saveMessagePromises = [];
     for (let i = 0; i < messages.length; i++) {
       const message = messages[i];
-      message.status = status;
-      saveMessagePromises.push(message.save());
+      saveMessagePromises.push(_updateMessageStatus(message, status, currentUser));
     }
     return Promise.all(saveMessagePromises);
   });
 };
+
+function _updateMessageStatus(message, status, currentUser) {
+  if (message.receivers) { // Since 1.7
+    const receivers = message.receivers;
+    for (let i = 0; i < receivers.length; i++) {
+      const receiver = receivers[i];
+      if (receiver.user_id === currentUser.id) {
+        if (currentUser.company) {
+          if (currentUser.company.company_id === receiver.company_id) {
+            receiver.status = status;
+          }
+        } else if (!receiver.company_id) {
+          receiver.status = status;
+        }
+      }
+    }
+  } else {
+    // For backward compatibility with < 1.7
+    message.status = status;
+  }
+  return message.save();
+}
 
 module.exports = {
   find: find,
