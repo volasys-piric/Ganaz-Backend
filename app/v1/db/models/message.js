@@ -27,7 +27,7 @@ const MessageSchema = new Schema({
     en: String,
     es: String
   },
-  status: String, // deprecated in favor of receivers[x].status
+  status: {$type: String, required: true, enum: ['new', 'read'], default: 'new'}, // deprecated in favor of receivers[x].status
   metadata: {$type: MetadataSchema},
   auto_translate: Boolean,
   datetime: Date
@@ -36,9 +36,6 @@ const MessageSchema = new Schema({
 MessageSchema.pre('save', function (next) {
   if (!this.datetime) {
     this.datetime = Date.now();
-  }
-  if (!this.status) {
-    this.status = 'new';
   }
   next();
 });

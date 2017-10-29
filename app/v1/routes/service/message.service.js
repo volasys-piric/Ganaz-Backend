@@ -157,6 +157,7 @@ function _createMessage(body, receiverUser) {
   const userId = receiverUser._id.toString();
   const companyId = receiverUser.company && receiverUser.company.company_id ? receiverUser.company.company_id : "";
   message.receiver = {user_id: userId, company_id: companyId};
+  message.status = 'new';
   return message;
 }
 
@@ -297,13 +298,15 @@ const create = function (body, smsMessageComplete) {
           const saveUserPromises = [];
           const saveMyworkerPromises = [];
           const saveInvitePromises = [];
-          const saveMessagePromises = [];
+          // const saveMessagePromises = [];
+          const messageModel = new Message(body);
+          messageModel.receivers = []; // Since 1.7
           for (let i = 0; i < userInviteMyworkerMessageModels.length; i++) {
             const models = userInviteMyworkerMessageModels[i];
             saveUserPromises.push(models.user.save());
             saveMyworkerPromises.push(models.myworker.save());
             saveInvitePromises.push(models.invite.save());
-            saveMessagePromises.push(models.message.save());
+            messageModel.receivers.push(models.message.receiver);
           }
           for (let i = 0; i < myworkerInviteMessageForOnboardingWorkerModels.length; i++) {
             const models = myworkerInviteMessageForOnboardingWorkerModels[i];
@@ -313,19 +316,19 @@ const create = function (body, smsMessageComplete) {
             if (models.invite) {
               saveInvitePromises.push(models.invite.save());
             }
-            saveMessagePromises.push(models.message.save());
+            messageModel.receivers.push(models.message.receiver);
           }
           for (let i = 0; i < nonOnboardingWorkerMessages.length; i++) {
-            const message = nonOnboardingWorkerMessages[i];
-            saveMessagePromises.push(message.save());
+            const onboardingWorkerMessage = nonOnboardingWorkerMessages[i];
+            messageModel.receivers.push(onboardingWorkerMessage.receiver);
           }
           return Promise.all(saveUserPromises).then(function () {
             return Promise.all(saveMyworkerPromises);
           }).then(function () {
             return Promise.all(saveInvitePromises)
           }).then(function () {
-            return Promise.all(saveMessagePromises);
-          }).then(function (savedMessages) {
+            return messageModel.save();
+          }).then(function (savedMessage) {
             /*
              Send push notification and SMSs asynchronously
              */
@@ -382,7 +385,7 @@ const create = function (body, smsMessageComplete) {
               const phoneNumber = {country: 'US', country_code: '1', local_number: noUserPhoneNumbers[i]};
               twilioService.sendMessage(senderUserId, senderCompanyId, phoneNumber, messageBody);
             }
-            return savedMessages;
+            return savedMessage;
           });
         });
       });
