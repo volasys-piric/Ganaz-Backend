@@ -19,6 +19,12 @@ router.post('/search', function (req, res) {
            "lng": {longitude}
        },
        "distance": {miles},                                  [optional]
+       "job_search_lock": {                                  [optional]
+           "allowed_company_ids": [
+               "{company id}",
+               "{company id}"
+           ]
+       },
        "date": "yyyy-MM-dd",                                 [optional]
        "status": "open/all"                                  [optional]
    }
@@ -26,7 +32,11 @@ router.post('/search', function (req, res) {
   const body = req.body;
   const dbQ = {status: 'activated'};
   if (body) {
-    if (body.company_id) {
+    if (body.job_search_lock
+      && body.job_search_lock.allowed_company_ids
+      && body.job_search_lock.allowed_company_ids.length > 0) {
+      dbQ.company_id = {$in: body.job_search_lock.allowed_company_ids}
+    } else if (body.company_id) {
       dbQ.company_id = body.company_id;
     }
     if (body.location && body.distance) {
