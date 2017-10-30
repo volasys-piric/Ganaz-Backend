@@ -27,6 +27,10 @@ const LocationSchema = new Schema({
 const WorkerSchema = new Schema({
   location: {type: LocationSchema},
   is_newjob_lock: {type: Boolean, default: false},
+  job_search_lock: {
+    lock: {type: Boolean, default: false},
+    allowed_company_ids: [{type: mongoose.Schema.Types.ObjectId, ref: 'Company'}]
+  }
 });
 
 const UserSchema = new Schema({
