@@ -156,8 +156,7 @@ function _createMessage(body, receiverUser) {
   const message = new Message(body);
   const userId = receiverUser._id.toString();
   const companyId = receiverUser.company && receiverUser.company.company_id ? receiverUser.company.company_id : "";
-  message.receiver = {user_id: userId, company_id: companyId};
-  message.status = 'new';
+  message.receiver = {user_id: userId, company_id: companyId, status: 'new'};
   return message;
 }
 

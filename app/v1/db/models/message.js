@@ -27,7 +27,7 @@ const MessageSchema = new Schema({
     en: String,
     es: String
   },
-  status: {$type: String, required: true, enum: ['new', 'read']}, // deprecated in favor of receivers[x].status
+  status: {$type: String, enum: ['new', 'read']}, // deprecated in favor of receivers[x].status
   metadata: {$type: MetadataSchema},
   auto_translate: Boolean,
   datetime: Date
