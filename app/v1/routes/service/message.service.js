@@ -384,7 +384,7 @@ const create = function (body, smsMessageComplete) {
               const phoneNumber = {country: 'US', country_code: '1', local_number: noUserPhoneNumbers[i]};
               twilioService.sendMessage(senderUserId, senderCompanyId, phoneNumber, messageBody);
             }
-            return savedMessage;
+            return [savedMessage];
           });
         });
       });
