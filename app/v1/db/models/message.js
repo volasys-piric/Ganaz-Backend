@@ -21,7 +21,8 @@ const MessageSchema = new Schema({
   receivers: [{
     user_id: String,
     company_id: String,
-    status: {$type: String, required: true, enum: ['new', 'read'], default: 'new'}
+    status: {$type: String, required: true, enum: ['new', 'read'], default: 'new'},
+    _id : false
   }],
   message: {
     en: String,

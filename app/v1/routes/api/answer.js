@@ -48,10 +48,11 @@ router.post('/', function (req, res) {
         job_id: 'NONE',
         type: 'survey-answer',
         sender: answer.responder,
-        receiver: {
+        receivers: [{
           user_id: survey.owner.user_id.toString(),
-          company_id: survey.owner.company_id
-        },
+          company_id: survey.owner.company_id,
+          status: 'new'
+        }],
         message: {
           en: 'Your survey is answered',
           es: 'Your survey is answered'
