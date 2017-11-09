@@ -4,13 +4,13 @@ const express = require('express');
 const router = express.Router();
 
 const db = require('./../../db');
+const logger = require('./../../../utils/logger');
 const httpUtil = require('./../../../utils/http');
-const twilioService = require('./../service/twilio.service');
 const pushNotification = require('./../../../push_notification');
+
 
 const Application = db.models.application;
 const Message = db.models.message;
-const Smslog = db.models.smslog;
 const User = db.models.user;
 const Job = db.models.job;
 
@@ -76,70 +76,65 @@ router.post('/', function (req, res) {
    }
    */
   const jobId = req.body.job_id;
-  const application = new Application({job_id: jobId, worker_user_id: req.user._id});
-  application.save(application).then(function (application) {
-    return Job.findById(jobId).then(function (job) {
-      return User.find({
-        'company.company_id': job.company_id,
-        'type': {$in: ['company-regular', 'company-admin']}
-      }).then(function (users) {
+  Job.findById(jobId).then(function (job) {
+    return User.find({
+      'company.company_id': job.company_id,
+      'type': {$in: ['company-regular', 'company-admin']}
+    }).then(function (users) {
+      if (users.length > 0) {
+        const promises = [];
         const senderId = req.user._id;
         const senderCompanyId = req.user.company ? req.user.company.company_id : "";
-        const promises = [];
-        const now = Date.now();
-        const messageEn = 'New job inquiry. ' + job.title.en;
-        const messageEs = 'Nueva solicitud de empleo. ' + job.title.es;
+        const application = new Application({job_id: jobId, worker_user_id: req.user._id});
+        const message = new Message({
+          job_id: jobId,
+          type: 'application',
+          sender: {user_id: senderId, company_id: senderCompanyId},
+          receivers: [],
+          message: {
+            en: 'New job inquiry. ' + job.title.en,
+            es: 'Nueva solicitud de empleo. ' + job.title.es
+          },
+          metadata: {
+            application_id: application._id.toString()
+          }
+        });
         for (let i = 0; i < users.length; i++) {
           const user = users[i];
           const userId = user._id.toString();
-          const message = new Message({
-            job_id: jobId,
-            type: 'application',
-            sender: {user_id: senderId, company_id: senderCompanyId},
-            receiver: {
-              user_id: userId,
-              company_id: user.company && user.company.company_id ? user.company.company_id : ""
-            },
-            message: {en: messageEn, es: messageEs},
-            metadata: {
-              application_id: application._id.toString()
-            },
-            datetime: now
+          message.receivers.push({
+            user_id: userId,
+            company_id: user.company && user.company.company_id ? user.company.company_id : ""
           });
-          const smsLog = new Smslog({
-            sender: {
-              user_id: mongoose.Types.ObjectId(senderId),
-              company_id: senderCompanyId ? mongoose.Types.ObjectId(senderCompanyId) : null
-            },
-            receiver: {phone_number: user.phone_number},
-            message: messageEn
-          });
-          promises.push(message.save());
-          promises.push(smsLog.save());
         }
-        return Promise.all(promises).then(function (promiseResults) {
-          const smsLogs = [];
-          for (let i = 0; i < promiseResults.length; i += 2) {
-            const savedMessage = promiseResults[i];
-            smsLogs.push(promiseResults[i + 1]);
-            const user = users[i / 2];
-            // Send push notification asynchronously
-            if (user.player_ids) {
+
+        application.save(application);
+        promises.push(application.save());
+        promises.push(message.save());
+        return Promise.join(application.save(), message.save()).then(function (promiseResults) {
+          const savedMessage = promiseResults[1];
+          // Send push notification asynchronously
+          for (let i = 0; i < users.length; i++) {
+            const user = users[i];
+            if (user.player_ids && user.player_ids.length > 0) {
               pushNotification.sendMessage(user.player_ids, savedMessage);
             } else {
-              logger.warn('[Application] Not sending push notification. User with id ' + userId + ' has no player_ids.');
+              logger.warn('[Application] Not sending push notification. User with id ' + user._id.toString() + ' has no player_ids.');
             }
           }
-          // Send SMS asynchronously
-          twilioService.sendMessages(smsLogs);
-          return application;
+          res.json({
+            success: true,
+            application: promiseResults[0]
+          });
         });
-      });
-    });
-  }).then(function (application) {
-    res.json({
-      success: true,
-      application: application
+      } else {
+        const message = 'Job ' + jobId + ' company ' + job.company_id + ' has no company admin or company regular users.';
+        logger.error('[Application] ' + message);
+        res.json({
+          success: false,
+          msg: message
+        });
+      }
     });
   }).catch(httpUtil.handleError(res));
 });
