@@ -10,6 +10,7 @@ const Invite = db.models.invite;
 const Company = db.models.company;
 const User = db.models.user;
 const Myworker = db.models.myworker;
+const Smslog = db.models.smslog;
 
 router.post('/', function (req, res) {
   /** Expected req.body
@@ -51,7 +52,7 @@ router.post('/', function (req, res) {
      */
     const inviteOnly = body.invite_only && typeof body.invite_only === 'boolean' ? body.invite_only : false;
     const companyId = body.company_id;
-    const userId = body.user_id ? body.user_id : req.user.id;
+    const companyUserId = body.user_id ? body.user_id : req.user.id;
     return Promise.join(
       Invite.findOne({
         company_id: companyId,
@@ -132,8 +133,14 @@ router.post('/', function (req, res) {
       const invite = result.invite;
       const company = result.company;
       const phoneNumber = invite.phone_number;
-      const messageBody = company.name.en + ' quisiera recomendar que ud baje la aplicaci�n Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. http://www.GanazApp.com/download';
-      return twilioService.sendMessage(userId, companyId, phoneNumber, messageBody, false).then(function () {
+      const smsLog = new Smslog({
+        sender: {user_id: companyUserId, company_id: companyId},
+        receiver: {phone_number: phoneNumber},
+        billable: false,
+        message: company.name.en + ' quisiera recomendar que ud baje la aplicaci�n Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. http://www.GanazApp.com/download'
+      });
+      return smsLog.save().then(function (savedSmsLog) {
+        twilioService.sendMessage(savedSmsLog);
         return result;
       });
     }).then(function (result) {

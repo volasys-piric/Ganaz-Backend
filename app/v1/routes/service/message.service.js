@@ -11,6 +11,7 @@ const User = db.models.user;
 const Company = db.models.company;
 const Myworker = db.models.myworker;
 const Invite = db.models.invite;
+const Smslog = db.models.smslog;
 
 const find = function (body) {
   const $or = [];
@@ -356,7 +357,7 @@ const create = function (body, smsMessageComplete) {
                   + ' ' + payRate + ' per ' + payUnit + '. par más información baje la aplicación Ganaz. www.GanazApp.com/download';
               }
             } else {
-              const companyName = senderCmpy ? senderCmpy.name.en + ':' : ''; // application message has no sender company
+              const companyName = senderCmpy ? senderCmpy.name.en + ':' : '';
               // Onboarding users - SMS will be sent to the onboarding-user.
               messageBody = companyName + ' "' + body.message.es;
               if (body.metadata && body.metadata.map && body.metadata.map.loc) {
@@ -369,12 +370,21 @@ const create = function (body, smsMessageComplete) {
             }
             const senderUserId = body.sender.user_id;
             const senderCompanyId = body.sender.company_id;
+            const saveSmsLogPromises = [];
+            const saveSmsLog = function(phoneNumber) {
+              const smsLog = new Smslog({
+                sender: {user_id: senderUserId, company_id: senderCompanyId},
+                receiver: {phone_number: phoneNumber},
+                message: messageBody
+              });
+              return smsLog.save();
+            };
             for (let i = 0; i < myworkerInviteMessageForOnboardingWorkerModels.length; i++) {
               const models = myworkerInviteMessageForOnboardingWorkerModels[i];
               const userId = models.message.receiver.user_id;
               const user = userIdMap.get(userId);
               if (user.phone_number && user.phone_number.local_number) {
-                twilioService.sendMessage(senderUserId, senderCompanyId, user.phone_number, messageBody);
+                saveSmsLogPromises.push(saveSmsLog(user.phone_number));
               } else {
                 logger.warn('[Message Service] Not sending SMS. User ' + userId + ' has no phone_number.')
               }
@@ -382,9 +392,12 @@ const create = function (body, smsMessageComplete) {
             // Not-registered users - SMS will be sent to the onboarding-user.
             for (let i = 0; i < noUserPhoneNumbers.length; i++) {
               const phoneNumber = {country: 'US', country_code: '1', local_number: noUserPhoneNumbers[i]};
-              twilioService.sendMessage(senderUserId, senderCompanyId, phoneNumber, messageBody);
+              saveSmsLogPromises.push(saveSmsLog(phoneNumber));
             }
-            return [savedMessage];
+            return Promise.all(saveSmsLogPromises).then(function(savedSmsLogs) {
+              twilioService.sendMessages(savedSmsLogs);
+              return [savedMessage];
+            });
           });
         });
       });

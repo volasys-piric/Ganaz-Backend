@@ -9,6 +9,7 @@ const companyService = require('./company.service');
 const constants = require('./../../../utils/constants');
 
 const User = db.models.user;
+const Smslog = db.models.smslog;
 
 const validPhonePassword = function (password) {
   return /\d{4}$/.test(password);
@@ -348,8 +349,15 @@ const recoverPassRequestPin = function (username) {
         //  send twilio message ignoring any errors in sending twilio messages
         const senderUserId = user._id;
         const senderCompanyId = user.company ? user.company.company_id : null;
-        twilioService.sendMessage(senderUserId, senderCompanyId, user.phone_number, 'Ganaz Pin Code: ' + pin);
-        return {pin, access_token};
+        const smsLog = new Smslog({
+          sender: {user_id: senderUserId, company_id: senderCompanyId},
+          receiver: {phone_number: user.phone_number},
+          message: 'Ganaz Pin Code: ' + pin
+        });
+        return smsLog.save().then(function(savedSmsLog) {
+          twilioService.sendMessage(savedSmsLog);
+          return {pin, access_token};
+        });
       });
     }
   })

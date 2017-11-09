@@ -3,6 +3,7 @@ const Schema = mongoose.Schema;
 
 const TwilioResponseSchema = new Schema({}, {strict: false});
 const SmslogSchema = new Schema({
+  message: {$type: String, required: true},
   sender: {
     user_id: {$type: mongoose.Schema.Types.ObjectId, ref: 'User'},
     company_id: {$type: mongoose.Schema.Types.ObjectId, ref: 'Company'}
