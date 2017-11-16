@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt-nodejs');
 const jwt = require('jsonwebtoken'); // used to create, sign, and verify tokens
 const twilioService = require('./../service/twilio.service');
 const logger = require('./../../../utils/logger');
+const validation = require('./../../../utils/validation');
 const db = require('./../../db');
 const appConfig = require('./../../../app_config');
 const companyService = require('./company.service');
@@ -71,20 +72,32 @@ const validate = function (id, body) {
         return Promise.resolve(existingUser);
       }
     };
-    const checkIfPhoneNumberExists = function (existingUser) {
+    const checkIfValidPhoneNumber = function (existingUser) {
       if (!existingUser || (
         body.phone_number && body.phone_number.local_number &&
         existingUser.phone_number.local_number !== body.phone_number.local_number)
       ) {
-        const countryCode = body.phone_number.country_code ? body.phone_number.country_code : '1';
+        const phoneNumber = body.phone_number;
+        if (!phoneNumber.country) {
+          phoneNumber.country = 'US';
+        }
+        if (!phoneNumber.country_code) {
+          phoneNumber.country_code = '1';
+        }
         return User.findOne({
-          'phone_number.country_code': countryCode,
-          'phone_number.local_number': body.phone_number.local_number
+          'phone_number.country_code': phoneNumber.country_code,
+          'phone_number.local_number': phoneNumber.local_number
         }).then(function (user) {
           if (user) {
-            return Promise.reject('Phone number local number ' + body.phone_number.local_number + ' already exists.');
+            return Promise.reject('Phone number local number ' + phoneNumber.local_number + ' already exists.');
           } else {
-            return Promise.resolve();
+            if(validation.isUSPhoneNumber(phoneNumber.local_number)) {
+              // Convert to plain xxxxxxxxxx
+              phoneNumber.local_number = phoneNumber.local_number.replace(new RegExp('[()\\s-]', 'g'), '');
+              return Promise.resolve(body);
+            } else {
+              return Promise.reject('Phone number ' + phoneNumber.local_number + ' is an invalid US Phone number.');
+            }
           }
         });
       } else {
@@ -98,7 +111,7 @@ const validate = function (id, body) {
           return Promise.reject('User ' + id + ' does not exists.');
         } else {
           return checkIfUsernameExists(existingUser).then(function () {
-            return checkIfPhoneNumberExists(existingUser);
+            return checkIfValidPhoneNumber(existingUser);
           }).then(function () {
             return existingUser;
           })
@@ -106,7 +119,7 @@ const validate = function (id, body) {
       });
     } else {
       return checkIfUsernameExists(null).then(function () {
-        return checkIfPhoneNumberExists(null);
+        return checkIfValidPhoneNumber(null);
       });
     }
   }
