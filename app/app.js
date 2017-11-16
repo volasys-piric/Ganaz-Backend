@@ -12,15 +12,16 @@ app.use(bodyParser.urlencoded({extended: false}));
 
 app.use('/api/v1', require('./v1/routes/api'));
 
-app.use(function (err, req, res, next) {
-  logger.error(err);
+app.use(function(err, req, res, next) {
   if (err.name === 'UnauthorizedError') {
+    logger.error(err.message);
     if (err.message === 'jwt expired') {
       res.status(403).json({message: 'Token expired'});
     } else {
       res.status(403).json({message: err.message});
     }
   } else {
+    logger.error(err);
     res.status(err.status || 500).json({
       success: false,
       msg: err.message
