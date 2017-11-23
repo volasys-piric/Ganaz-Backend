@@ -1,6 +1,8 @@
+const Promise = require('bluebird');
 const db = require('./../../db');
 
 const Crew = db.models.crew;
+const Myworker = db.models.myworker;
 const Company = db.models.company;
 
 module.exports = {
@@ -31,6 +33,16 @@ module.exports = {
     });
   },
   deleteById: function (id) {
-    return Crew.findByIdAndRemove(id)
+    return Myworker.find({crew_id: id}).then(function (myworkers) {
+      const promises = [];
+      for (let i = 0; i < myworkers.length; i++) {
+        const myworker = myworkers[i];
+        myworker.crew_id = '';
+        promises.push(myworker.save())
+      }
+      return Promise.all(promises);
+    }).then(function () {
+      return Crew.findByIdAndRemove(id)
+    })
   },
 };
