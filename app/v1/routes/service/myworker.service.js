@@ -88,12 +88,17 @@ module.exports = {
   deleteById: function (id) {
     return Myworker.findByIdAndRemove(id)
   },
-  updateNickname: function (id, nickname) {
+  update: function (id, nickname, crewId) {
     return Myworker.findById(id).then(function (myworker) {
       if (myworker === null) {
         return Promise.reject('Myworker with id ' + id + ' does not exists.');
       } else {
-        myworker.nickname = nickname;
+        if (nickname) {
+          myworker.nickname = nickname;
+        }
+        if (crewId) {
+          myworker.crew_id = crewId;
+        }
         return myworker.save().then(function (myworker) {
           return User.findById(myworker.worker_user_id).then(function (user) {
             const o = myworker.toObject();

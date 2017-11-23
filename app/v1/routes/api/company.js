@@ -273,10 +273,12 @@ router.delete('/:id/my-workers/:myworkerId', function (req, res) {
 router.patch('/:id/my-workers/:myworkerId', function (req, res) {
   /** Expected req.body
    {
-       "nickname": "{nickname}"
+       "nickname": "{nickname}",             [optional]
+       "crew_id": "{crew id}"                [optional]
    }
    */
-  myworkerService.updateNickname(req.params.myworkerId, req.body.nickname).then(function (myworker) {
+  const body = req.body;
+  myworkerService.update(req.params.myworkerId, body.nickname, body.crew_id).then(function (myworker) {
     res.json({
       success: true,
       my_worker: myworker
