@@ -93,10 +93,10 @@ module.exports = {
       if (myworker === null) {
         return Promise.reject('Myworker with id ' + id + ' does not exists.');
       } else {
-        if (nickname) {
+        if (nickname !== undefined) {
           myworker.nickname = nickname;
         }
-        if (crewId) {
+        if (crewId !== undefined) {
           myworker.crew_id = crewId;
         }
         return myworker.save().then(function (myworker) {
