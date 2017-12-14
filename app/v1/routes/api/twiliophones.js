@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const httpUtil = require('./../../../utils/http');
-const twiliophoneService = require('./../service/twilio.service');
+const twiliophoneService = require('./../service/twiliophone.service');
 
 // https://bitbucket.org/volasys-ss/ganaz-backend/wiki/19.1%20Twilio%20Phone%20-%20Search
 router.post('/search', function (req, res) {
@@ -17,6 +17,16 @@ router.post('/search', function (req, res) {
     res.json({
       success: true,
       twilio_phones: twiliophones
+    });
+  }).catch(httpUtil.handleError(res));
+});
+
+// https://bitbucket.org/volasys-ss/ganaz-backend/wiki/19.2%20Twilio%20Phones%20-%20Get%20Details%20By%20Id
+router.get('/:id', function (req, res) {
+  twiliophoneService.findById(req.params.id).then(function (twiliophone) {
+    res.json({
+      success: true,
+      twilio_phone: twiliophone
     });
   }).catch(httpUtil.handleError(res));
 });

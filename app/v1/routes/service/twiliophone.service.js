@@ -16,5 +16,8 @@ module.exports = {
       dbQ.is_default = sParams.is_default;
     }
     return Twiliophone.find(dbQ);
+  },
+  findById: function (id) {
+    return Twiliophone.findById(id);
   }
 };
