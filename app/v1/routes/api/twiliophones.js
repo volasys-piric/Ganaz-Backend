@@ -4,6 +4,36 @@ const router = express.Router();
 const httpUtil = require('./../../../utils/http');
 const twiliophoneService = require('./../service/twiliophone.service');
 
+// https://bitbucket.org/volasys-ss/ganaz-backend/wiki/19.3%20Twilio%20Phones%20-%20Create
+router.post('/', function (req, res) {
+  /** Expected req.body is
+   {
+       "is_default": true/false,
+       "phone_number": {
+           "country": "US",
+           "country_code": "1",
+           "local_number": "{local number}"
+       },
+       "company_ids": [
+           "{company object id}",
+           "{company object id}",
+           ...
+       ],
+   }
+   */
+  const body = req.body;
+  if (!body) {
+    res.json({success: false, msg: 'Request body not found.'});
+  } else {
+    return twiliophoneService.create(body).then(function (twiliophone) {
+      res.json({
+        success: true,
+        twilio_phone: twiliophone
+      });
+    }).catch(httpUtil.handleError(res));
+  }
+});
+
 // https://bitbucket.org/volasys-ss/ganaz-backend/wiki/19.1%20Twilio%20Phone%20-%20Search
 router.post('/search', function (req, res) {
   /** Expected req.body is

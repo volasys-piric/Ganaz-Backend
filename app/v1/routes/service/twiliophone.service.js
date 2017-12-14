@@ -19,5 +19,9 @@ module.exports = {
   },
   findById: function (id) {
     return Twiliophone.findById(id);
+  },
+  create: function (body) {
+    const twiliophone = new Twiliophone(body);
+    return twiliophone.save();
   }
 };
