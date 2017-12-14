@@ -6,7 +6,8 @@ const MyWorkerSchema = new Schema({
   worker_user_id: String,
   crew_id: String,
   nickname: String,
-  created_at: Date
+  created_at: Date,
+  twilio_phone_id: {type: mongoose.Schema.Types.ObjectId, ref: 'Twiliophone'}
 });
 
 MyWorkerSchema.pre('save', function (next) {
