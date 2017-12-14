@@ -1,5 +1,4 @@
 const Promise = require('bluebird');
-const mongoose = require('mongoose');
 const express = require('express');
 const router = express.Router();
 
