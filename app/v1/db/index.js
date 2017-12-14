@@ -24,6 +24,7 @@ module.exports = {
     suggest: require('./models/suggest'),
     smslog: require('./models/smslog'),
     survey: require('./models/survey'),
-    answer: require('./models/answer')
+    answer: require('./models/answer'),
+    twiliophone: require('./models/twiliophone'),
   }
 };

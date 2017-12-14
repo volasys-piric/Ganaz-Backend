@@ -43,6 +43,10 @@ app.use('/', express_jwt({
         url: /\/company\/[0-9a-f]{8,}$/,
         methods: 'GET'
       },
+      {
+        url: /\/twilio-phones\/search$/,
+        methods: 'POST'
+      },
       /\/company\/search$/,
       /\/job\/search$/,
       /\/plans$/
@@ -70,4 +74,5 @@ app.use('/support', require('./api/support'));
 app.use('/suggest', require('./api/suggest'));
 app.use('/survey', require('./api/survey'));
 app.use('/survey/answer', require('./api/answer'));
+app.use('/twilio-phones', require('./api/twiliophones'));
 module.exports = app;
