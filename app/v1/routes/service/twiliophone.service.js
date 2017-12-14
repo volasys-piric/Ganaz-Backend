@@ -23,5 +23,15 @@ module.exports = {
   create: function (body) {
     const twiliophone = new Twiliophone(body);
     return twiliophone.save();
+  },
+  update: function (id, body) {
+    return Twiliophone.findById(id).then(function (existingTwiliophone) {
+      if (existingTwiliophone === null) {
+        return Promise.reject('Twilio phone with id ' + id + ' does not exists.');
+      } else {
+        const twiliophone = Object.assign(existingTwiliophone, body);
+        return twiliophone.save();
+      }
+    });
   }
 };
