@@ -113,15 +113,4 @@ module.exports = {
       }
     })
   },
-  findByCompanyIdWorkerUserId: function (companyId, workerUserId) {
-    return Myworker.findOne({company_id: companyId, worker_user_id: workerUserId});
-  },
-  createOne: function (companyId, workerUserId) {
-    // TODO: What about nickname and crew_id?
-    const myworker = new Myworker({
-      company_id: companyId,
-      worker_user_id: workerUserId
-    });
-    return myworker.save();
-  }
 };
