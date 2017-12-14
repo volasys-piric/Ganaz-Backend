@@ -64,6 +64,16 @@ router.patch('/:id', function (req, res) {
   }
 });
 
+// https://bitbucket.org/volasys-ss/ganaz-backend/wiki/19.5%20Twilio%20Phones%20-%20Delete
+router.delete('/:id', function (req, res) {
+  twiliophoneService.deleteById(req.params.id).then(function () {
+    res.json({
+      success: true,
+    });
+  }).catch(httpUtil.handleError(res));
+});
+
+
 // https://bitbucket.org/volasys-ss/ganaz-backend/wiki/19.1%20Twilio%20Phone%20-%20Search
 router.post('/search', function (req, res) {
   /** Expected req.body is

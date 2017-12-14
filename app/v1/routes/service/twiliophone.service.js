@@ -33,5 +33,8 @@ module.exports = {
         return twiliophone.save();
       }
     });
+  },
+  deleteById: function (id) {
+    return Twiliophone.findByIdAndRemove(id);
   }
 };
