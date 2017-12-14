@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const db = require('./../../db');
 
 const Myworker = db.models.myworker;
@@ -88,16 +89,19 @@ module.exports = {
   deleteById: function (id) {
     return Myworker.findByIdAndRemove(id)
   },
-  update: function (id, nickname, crewId) {
+  update: function (id, body) {
     return Myworker.findById(id).then(function (myworker) {
       if (myworker === null) {
         return Promise.reject('Myworker with id ' + id + ' does not exists.');
       } else {
-        if (nickname !== undefined) {
-          myworker.nickname = nickname;
+        if (body.nickname !== undefined) {
+          myworker.nickname = body.nickname;
         }
-        if (crewId !== undefined) {
-          myworker.crew_id = crewId;
+        if (body.crew_id !== undefined) {
+          myworker.crew_id = body.crew_id;
+        }
+        if (body.twilio_phone_id !== undefined) {
+          myworker.twilio_phone_id = mongoose.Schema.Types.ObjectId(body.twilio_phone_id);
         }
         return myworker.save().then(function (myworker) {
           return User.findById(myworker.worker_user_id).then(function (user) {

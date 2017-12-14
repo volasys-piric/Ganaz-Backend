@@ -274,11 +274,12 @@ router.patch('/:id/my-workers/:myworkerId', function (req, res) {
   /** Expected req.body
    {
        "nickname": "{nickname}",             [optional]
-       "crew_id": "{crew id}"                [optional]
+       "crew_id": "{crew id}",               [optional]
+       "twilio_phone_id": "{twilio phone id} [optional]
    }
    */
   const body = req.body;
-  myworkerService.update(req.params.myworkerId, body.nickname, body.crew_id).then(function (myworker) {
+  myworkerService.update(req.params.myworkerId, body).then(function (myworker) {
     res.json({
       success: true,
       my_worker: myworker
