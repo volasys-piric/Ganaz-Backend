@@ -9,6 +9,8 @@ const db = require('./../../db');
 
 const Smslog = db.models.smslog;
 const Invite = db.models.invite;
+const User = db.models.user;
+const Myworker = db.models.myworker;
 
 router.post('/error/:errorCode/resend', function (req, res) {
   const body = req.body;
@@ -60,10 +62,32 @@ router.post('/error/:errorCode/resend', function (req, res) {
         }
       }
       if (sendSms) {
-        twilioService.sendMessages(validSmsLogs);
+        // Send asynchronously
+        const promises = [];
+        for (let i = 0; i < validSmsLogs.length; i++) {
+          promises.push(User.find({'phone_number.local_number': validSmsLogs[i].receiver.phone_number.local_number}));
+        }
+        return Promise.all(promises).then(function (users) {
+          const promises = [];
+          for (let i = 0; i < users.length; i++) {
+            const companyId = validSmsLogs[i].sender.company_id;
+            const user = users[i];
+            if (user && companyId) {
+              promises.push(Myworker.find({worker_user_id: user._id.toString(), company_id: companyId}));
+            } else {
+              promises.push(Promise.resolve(null));
+            }
+          }
+        }).then(function (myworkers) {
+          for (let i = 0; i < myworkers.length; i++) {
+            const myworkerId = myworkers[i] ? myworkers[i]._id.toString() : null;
+            twilioService.sendMessage(validSmsLogs[i], myworkerId);
+          }
+        });
       }
       res.json({
-        count: validSmsLogs.length, resent_ids: validSmsLogs.map(function (m) {
+        count: validSmsLogs.length,
+        resent_ids: validSmsLogs.map(function (m) {
           return {
             id: m._id.toString(),
             sender_company_id: m.sender.company_id,

@@ -141,9 +141,11 @@ router.post('/', function (req, res) {
           if (myworker === null) {
             myworker = new Myworker({company_id: companyId, worker_user_id: userId});
             return myworker.save().then(function (myworker) {
+              result.myworker = myworker;
               return result;
             });
           } else {
+            result.myworker = myworker;
             return result;
           }
         });
@@ -160,8 +162,9 @@ router.post('/', function (req, res) {
         billable: false,
         message: company.name.en + ' quisiera recomendar que ud baje la aplicaci�n Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. http://www.GanazApp.com/download'
       });
+      const myworkerId = result.myworker ? result.myworker._id.toString() : null;
       return smsLog.save().then(function (savedSmsLog) {
-        twilioService.sendMessage(savedSmsLog);
+        twilioService.sendMessage(savedSmsLog, myworkerId);
         return result;
       });
     }).then(function (result) {
@@ -305,7 +308,7 @@ function _saveNoUserRows(now, companyId, companyUserId, companyName, noUserRows,
       }
       return noUserRows;
     });
-  }).then(function () {
+  }).then(function (noUserRows) {
     // 4.d Send SMS (not billable when we log to SMS-LOG table) for invitation.
     // The invitation message will be same as what we do for Invite.
     const smsLogPromises = [];
@@ -335,7 +338,9 @@ function _saveNoUserRows(now, companyId, companyUserId, companyName, noUserRows,
     }
     return Promise.all(smsLogPromises).then(function (savedSmsLogs) {
       if (sendSms) {
-        twilioService.sendMessages(savedSmsLogs);
+        for (let i = 0; i < noUserRows.length; i++) {
+          twilioService.sendMessage(savedSmsLogs[i], noUserRows[i].myworkerId);
+        }
       } else {
         log.info('[Invite Bulk] Skipping sending SMS.');
       }

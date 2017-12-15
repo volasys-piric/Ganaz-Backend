@@ -390,12 +390,22 @@ const create = function (body, smsMessageComplete) {
               }
             }
             // Not-registered users - SMS will be sent to the onboarding-user.
-            for (let i = 0; i < noUserPhoneNumbers.length; i++) {
-              const phoneNumber = {country: 'US', country_code: '1', local_number: noUserPhoneNumbers[i]};
-              saveSmsLogPromises.push(saveSmsLog(phoneNumber));
+            for (let i = 0; i < userInviteMyworkerMessageModels.length; i++) {
+              saveSmsLogPromises.push(saveSmsLog(userInviteMyworkerMessageModels[i].invite.phone_number));
             }
             return Promise.all(saveSmsLogPromises).then(function(savedSmsLogs) {
-              twilioService.sendMessages(savedSmsLogs);
+              let counter = 0;
+              const sendSms = function(models) {
+                const myworkerId = models.myworker ? models.myworker._id.toString() : null;
+                twilioService.sendMessage(savedSmsLogs[counter], myworkerId);
+                counter++;
+              };
+              for (let i = 0; i < myworkerInviteMessageForOnboardingWorkerModels.length; i++) {
+                sendSms(myworkerInviteMessageForOnboardingWorkerModels[i]);
+              }
+              for (let i = 0; i < userInviteMyworkerMessageModels.length; i++) {
+                sendSms(userInviteMyworkerMessageModels[i]);
+              }
               return [savedMessage];
             });
           });

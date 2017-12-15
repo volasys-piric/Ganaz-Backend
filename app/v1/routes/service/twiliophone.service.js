@@ -5,6 +5,7 @@ const logger = require('./../../../utils/logger');
 const db = require('./../../db');
 
 const Twiliophone = db.models.twiliophone;
+const Myworker = db.models.myworker;
 
 module.exports = {
   search: function (sParams) {
@@ -36,5 +37,21 @@ module.exports = {
   },
   deleteById: function (id) {
     return Twiliophone.findByIdAndRemove(id);
+  },
+  sendMessage: function (smsLog) {
+    if (!smsLog.sender.company_id) {
+      return Twiliophone.find({
+        is_default: true,
+        company_ids: {$or: [{$exists: false}, {$size: 0}]}
+      }).then(function (phones) {
+        if (phones === null || phones.length === 0) {
+          return Twiliophone.find({is_default: true});
+        } else {
+          return phones;
+        }
+      });
+    } else {
+      return Myworker.find()
+    }
   }
 };
