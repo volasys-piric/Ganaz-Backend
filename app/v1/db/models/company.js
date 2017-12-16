@@ -33,6 +33,9 @@ const CompanySchema = new Schema({
     auto_renewal: Boolean
   },
   payment_stripe_customer_id: String,
+  settings: {
+    invitation_message: String
+  },
   created_at: Date
 }, {typeKey: '$type'});
 

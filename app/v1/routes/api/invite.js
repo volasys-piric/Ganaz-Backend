@@ -156,11 +156,13 @@ router.post('/', function (req, res) {
       const invite = result.invite;
       const company = result.company;
       const phoneNumber = invite.phone_number;
+      const messageBody = company.settings && company.settings.invitation_message ? company.settings.invitation_message
+        : company.name.en + ' quisiera recomendar que ud baje la aplicaci�n Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. http://www.GanazApp.com/download';
       const smsLog = new Smslog({
         sender: {user_id: companyUserId, company_id: companyId},
         receiver: {phone_number: phoneNumber},
         billable: false,
-        message: company.name.en + ' quisiera recomendar que ud baje la aplicaci�n Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. http://www.GanazApp.com/download'
+        message: messageBody
       });
       const myworkerId = result.myworker ? result.myworker._id.toString() : null;
       return smsLog.save().then(function (savedSmsLog) {
@@ -196,7 +198,7 @@ function _parseSheet(sheet) {
         row.push(void 0);
       } else row.push(nextCell.w);
     }
-
+    
     if (row[8]) {
       row[8] = row[8].replace(/-/g, '');
       let skipped = false;
@@ -247,10 +249,11 @@ function _populateUsers(rows) {
   });
 }
 
-function _saveNoUserRows(now, companyId, companyUserId, companyName, noUserRows, sendSms) {
+function _saveNoUserRows(now, companyId, companyUserId, company, noUserRows, sendSms) {
   if (!noUserRows || noUserRows.length < 1) {
     return Promise.resolve(noUserRows);
   }
+  const companyName = company.name.en;
   // 4.a Create Invite object if needed
   // 4.b We will create new onboarding-worker object
   const promises = [];
@@ -312,7 +315,8 @@ function _saveNoUserRows(now, companyId, companyUserId, companyName, noUserRows,
     // 4.d Send SMS (not billable when we log to SMS-LOG table) for invitation.
     // The invitation message will be same as what we do for Invite.
     const smsLogPromises = [];
-    const messageBody = companyName + ' quisiera recomendar que ud baje la aplicaci�n Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. http://www.GanazApp.com/download';
+    const messageBody = company.settings && company.settings.invitation_message ? company.settings.invitation_message
+      : companyName + ' quisiera recomendar que ud baje la aplicaci�n Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. http://www.GanazApp.com/download';
     for (let i = 0; i < noUserRows.length; i++) {
       const cellNumber = noUserRows[i].row[4].replace(/-/g, '');
       const phoneNumber = {
@@ -429,7 +433,7 @@ router.post('/bulk', upload.single('file'), function (req, res) {
             sendSms = false;
           }
         }
-        return _saveNoUserRows(now, companyId, companyUserId, company.name.en, noUserRows, sendSms).then(function (noUserRows) {
+        return _saveNoUserRows(now, companyId, companyUserId, company, noUserRows, sendSms).then(function (noUserRows) {
           return _saveWithUserRows(now, body.company_id, withUserRows).then(function (withUserRows) {
             rows = rows.map(function (row) {
               // Delete row.row from response
