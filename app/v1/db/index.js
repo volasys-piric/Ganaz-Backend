@@ -26,5 +26,6 @@ module.exports = {
     survey: require('./models/survey'),
     answer: require('./models/answer'),
     twiliophone: require('./models/twiliophone'),
+    inboundSms: require('./models/inboundSms'),
   }
 };
