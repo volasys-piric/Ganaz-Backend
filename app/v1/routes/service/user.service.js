@@ -1,8 +1,7 @@
 const Promise = require('bluebird');
 const bcrypt = require('bcrypt-nodejs');
 const jwt = require('jsonwebtoken'); // used to create, sign, and verify tokens
-const twilioService = require('./../service/twilio.service');
-const logger = require('./../../../utils/logger');
+const twiliophoneService = require('./../service/twiliophone.service');
 const validation = require('./../../../utils/validation');
 const db = require('./../../db');
 const appConfig = require('./../../../app_config');
@@ -368,7 +367,7 @@ const recoverPassRequestPin = function (username) {
           message: 'Ganaz Pin Code: ' + pin
         });
         return smsLog.save().then(function(savedSmsLog) {
-          twilioService.sendMessage(savedSmsLog);
+          twiliophoneService.sendMessage(savedSmsLog);
           return {pin, access_token};
         });
       });

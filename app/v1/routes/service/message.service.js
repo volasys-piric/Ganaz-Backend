@@ -1,7 +1,7 @@
 const Promise = require('bluebird');
 const mongoose = require('mongoose');
 const db = require('./../../db');
-const twilioService = require('./twilio.service');
+const twiliophoneService = require('./twiliophone.service');
 const pushNotification = require('./../../../push_notification');
 const logger = require('./../../../utils/logger');
 
@@ -397,7 +397,7 @@ const create = function (body, smsMessageComplete) {
               let counter = 0;
               const sendSms = function(models) {
                 const myworkerId = models.myworker ? models.myworker._id.toString() : null;
-                twilioService.sendMessage(savedSmsLogs[counter], myworkerId);
+                twiliophoneService.sendMessage(savedSmsLogs[counter], myworkerId);
                 counter++;
               };
               for (let i = 0; i < myworkerInviteMessageForOnboardingWorkerModels.length; i++) {

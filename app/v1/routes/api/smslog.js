@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Promise = require('bluebird');
 const mongoose = require('mongoose');
-const twilioService = require('./../service/twilio.service');
+const twiliophoneService = require('./../service/twiliophone.service');
 const httpUtil = require('./../../../utils/http');
 const log = require('./../../../utils/logger');
 const db = require('./../../db');
@@ -81,7 +81,7 @@ router.post('/error/:errorCode/resend', function (req, res) {
         }).then(function (myworkers) {
           for (let i = 0; i < myworkers.length; i++) {
             const myworkerId = myworkers[i] ? myworkers[i]._id.toString() : null;
-            twilioService.sendMessage(validSmsLogs[i], myworkerId);
+            twiliophoneService.sendMessage(validSmsLogs[i], myworkerId);
           }
         });
       }

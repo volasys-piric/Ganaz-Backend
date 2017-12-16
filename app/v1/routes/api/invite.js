@@ -4,7 +4,7 @@ const Promise = require('bluebird');
 const XLSX = require('xlsx');
 const os = require('os');
 const fs = require('fs');
-const twilioService = require('./../service/twilio.service');
+const twiliophoneService = require('./../service/twiliophone.service');
 const formatter = require('./../../../../app/utils/formatter');
 const httpUtil = require('./../../../utils/http');
 const log = require('./../../../utils/logger');
@@ -164,7 +164,7 @@ router.post('/', function (req, res) {
       });
       const myworkerId = result.myworker ? result.myworker._id.toString() : null;
       return smsLog.save().then(function (savedSmsLog) {
-        twilioService.sendMessage(savedSmsLog, myworkerId);
+        twiliophoneService.sendMessage(savedSmsLog, myworkerId);
         return result;
       });
     }).then(function (result) {
@@ -339,7 +339,7 @@ function _saveNoUserRows(now, companyId, companyUserId, companyName, noUserRows,
     return Promise.all(smsLogPromises).then(function (savedSmsLogs) {
       if (sendSms) {
         for (let i = 0; i < noUserRows.length; i++) {
-          twilioService.sendMessage(savedSmsLogs[i], noUserRows[i].myworkerId);
+          twiliophoneService.sendMessage(savedSmsLogs[i], noUserRows[i].myworkerId);
         }
       } else {
         log.info('[Invite Bulk] Skipping sending SMS.');

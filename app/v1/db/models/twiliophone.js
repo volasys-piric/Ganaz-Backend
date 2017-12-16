@@ -10,7 +10,7 @@ const TwiliophoneSchema = new Schema({
     _id: false
   },
   usage_count: {type: Number, default: 0},
-  company_ids: [{type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true}],
+  company_ids: [{type: mongoose.Schema.Types.ObjectId, ref: 'Company'}],
   datetime: {type: Date}
 });
 

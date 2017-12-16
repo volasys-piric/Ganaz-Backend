@@ -1,3 +1,4 @@
+// TODO: Remove this since this is deprecated once twiliophone.service.js is stabilized
 const twilio = require('twilio');
 const appConfig = require('./../../../app_config');
 const logger = require('./../../../utils/logger');
