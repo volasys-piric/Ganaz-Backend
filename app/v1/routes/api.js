@@ -50,7 +50,8 @@ app.use('/', express_jwt({
       },
       /\/company\/search$/,
       /\/job\/search$/,
-      /\/plans$/
+      /\/plans$/,
+      /\/sms$/,
     ]
   }
 ));
@@ -77,4 +78,5 @@ app.use('/suggest', require('./api/suggest'));
 app.use('/survey', require('./api/survey'));
 app.use('/survey/answer', require('./api/answer'));
 app.use('/twilio-phones', require('./api/twiliophones'));
+app.use('/sms', require('./api/sms'));
 module.exports = app;

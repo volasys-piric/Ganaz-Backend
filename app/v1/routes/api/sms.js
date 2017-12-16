@@ -32,3 +32,5 @@ router.post('/inbound', function (req, res) {
   
   res.send("<Response><Message>Message received.</Message></Response>");
 });
+
+module.exports = router;

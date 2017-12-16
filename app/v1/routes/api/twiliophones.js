@@ -100,3 +100,5 @@ router.get('/:id', function (req, res) {
     });
   }).catch(httpUtil.handleError(res));
 });
+
+module.exports = router;
