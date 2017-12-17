@@ -3,9 +3,13 @@ const Schema = mongoose.Schema;
 
 const RequestSchema = new Schema({}, {strict: false});
 const InboundSmsSchema = new Schema({
-  request: {type: RequestSchema, required: true},
-  user_id: {type: mongoose.Schema.Types.ObjectId, ref: 'User'},
-  company_id: {type: mongoose.Schema.Types.ObjectId, ref: 'Company'},
+  request: {
+    body: {type: RequestSchema, required: true},
+    rejected: {type: Boolean, default: false},
+    reject_reason: String
+  },
+  from_user_id: {type: mongoose.Schema.Types.ObjectId, ref: 'User'},
+  to_twilio_phone_id: {type: mongoose.Schema.Types.ObjectId, ref: 'Twiliophone'},
   datetime: Date
 });
 

@@ -6,7 +6,7 @@ const TwiliophoneSchema = new Schema({
   phone_number: {
     country: {type: String, required: true, default: 'US'},
     country_code: {type: String, required: true, default: '1'},
-    local_number: {type: String, required: true},
+    local_number: {type: String, required: true, unique: true},
     _id: false
   },
   usage_count: {type: Number, default: 0},

@@ -79,6 +79,10 @@ const sendMessage = function (player_ids, savedMessage) {
     data.contents.answer_id = o.metadata.survey.answer_id;
   } else if (o.type === 'survey-choice-single' || o.type === 'survey-open-text') {
     data.contents.survey_id = o.metadata.survey.survey_id;
+  } else if (o.metadata) {
+    if (o.metadata.is_from_sms) {
+      data.contents.is_from_sms = o.metadata.is_from_sms;
+    }
   }
   sendNotification(player_ids, {contents: messageObject, data: data});
 };
