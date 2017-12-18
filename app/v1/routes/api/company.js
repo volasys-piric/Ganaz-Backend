@@ -79,7 +79,7 @@ router.post('/search', function (req, res) {
   }).catch(httpUtil.handleError(res));
 });
 
-// https://bitbucket.org/volasys-ss/ganaz-backend/wiki/2.4%20Company%20-%20Update%20Profile
+https://bitbucket.org/volasys-ss/ganaz-backend/wiki/2.4%20Company%20-%20Update
 router.patch('/:id/profile', function (req, res) {
   /** Expected req.body
    {

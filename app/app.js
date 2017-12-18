@@ -2,6 +2,7 @@ const express = require('express');
 const logger = require('./utils/logger');
 const bodyParser = require('body-parser');
 const appConfig = require('./app_config');
+const cors = require('cors');
 logger.debug("Overriding 'Express' logger");
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -9,6 +10,7 @@ const app = express();
 app.use(require('morgan')(isProduction ? 'common' : 'dev', {'stream': logger.stream}));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: false}));
+app.use(cors());
 
 app.use('/api/v1', require('./v1/routes/api'));
 
