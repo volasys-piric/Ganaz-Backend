@@ -15,6 +15,7 @@ const Company = db.models.company;
 const User = db.models.user;
 const Myworker = db.models.myworker;
 const Smslog = db.models.smslog;
+const Crew = db.models.crew;
 
 const dir = os.tmpDir() + '/ganaz-backend-uploads/';
 if (!fs.existsSync(dir)) {
@@ -149,6 +150,30 @@ router.post('/', function (req, res) {
             return result;
           }
         });
+      } else {
+        return result;
+      }
+    }).then(function (result) {
+      // https://bitbucket.org/volasys-ss/ganaz-backend/issues/26/admin-portal-phone-number-bulk-upload-with
+      // One thing to consider is, if new crew name is mentioned in CSV file, we need to create new crew with that name..
+      const myworker = result.myworker;
+      if(myworker && (body.nickname || body.crew_name)) {
+        if(body.nickname) {
+          myworker.nickname = body.nickname;
+        }
+        if(body.crew_name) {
+          const crew = new Crew({company_id: companyId, title: body.crew_name});
+          return crew.save().then(function(crew) {
+            myworker.crew_id = crew._id.toString();
+            return myworker.save();
+          }).then(function() {
+            return result;
+          });
+        } else {
+          return myworker.save().then(function () {
+            return result;
+          });
+        }
       } else {
         return result;
       }
