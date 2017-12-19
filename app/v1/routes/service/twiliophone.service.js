@@ -119,20 +119,35 @@ function _findAvailTwiliophone(companyId) {
 }
 
 function _findAndSendToAvailTwiliophone(smsLog, myworker) {
-  return _findAvailTwiliophone(smsLog.sender.company_id).then(function (phone) {
-    if (phone) {
-      // Try to send smslog given avail twiliophone.
-      _sendIfTwiliophoneNotInUsed(phone._id.toString(), smsLog, myworker).then(function (sent) {
-        if (!sent) {
-          // At some instant (usually split of milliseconds), the avail phone was used by other request.
-          logger.debug('[TwiliophoneService] Will look for available phone after 1 second.');
-          setTimeout(_findAndSendToAvailTwiliophone, 1000, smsLog, myworker); // Try again after 1 second
+  const companyId = smsLog.sender.company_id;
+  return Twiliophone.find({
+    is_default: false,
+    company_ids: mongoose.Schema.Types.ObjectId(companyId)
+  }).then(function (phones) {
+    if (phones && phones.length > 0) {
+      let phone = null;
+      for (let i = 0; i < phones.length; i++) {
+        if (phones[i].usage_count === 0) {
+          phone = phones[i];
+          break;
         }
-      });
+      }
+      if (phone !== null) {
+        // Try to send smslog given avail twiliophone.
+        _sendIfTwiliophoneNotInUsed(phone._id.toString(), smsLog, myworker).then(function (sent) {
+          if (!sent) {
+            // At some instant (usually split of milliseconds), the avail phone was used by other request.
+            logger.debug('[TwiliophoneService] Will look for available phone after 1 second.');
+            setTimeout(_findAndSendToAvailTwiliophone, 1000, smsLog, myworker); // Try again after 1 second
+          }
+        });
+      } else {
+        logger.debug('[TwiliophoneService] All phone numbers for company ' + companyId + ' is in use. Will retry sending smslog '
+          + smsLog._id.toString() + ' after 1 second.');
+        setTimeout(_sendMessage, 1000, smsLog, myworker); // Try again after 1 second
+      }
     } else {
-      logger.debug('[TwiliophoneService] All phone numbers are in use. Will retry sending smslog '
-        + smsLog._id.toString() + ' after 1 second.');
-      setTimeout(_sendMessage, 1000, smsLog, myworker); // Try again after 1 second
+      logger.debug('[TwiliophoneService] No phone configured for company ' + companyId + '.');
     }
   });
 }
@@ -148,7 +163,7 @@ function _sendMessage(smsLog, myworkerId) {
   if (myworkerId) {
     Myworker.findById(myworkerId).then(function (myworker) {
       if (myworker) {
-        if (myworker.company_id !== smsLog.sender.company_id) {
+        if (myworker.company_id !== smsLog.sender.company_id.toString()) {
           logger.error('[TwiliophoneService] Not sending smslog ' + smsLog._id.toString()
             + '. Myworker ' + myworkerId + ' company is not the same as smslog sender company.');
         } else if (myworker.twilio_phone_id) {
