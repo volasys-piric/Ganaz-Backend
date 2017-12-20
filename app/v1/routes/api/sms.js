@@ -98,12 +98,14 @@ router.post('/inbound', function (req, res) {
             phone_number: twiliophone.phone_number,
             created_at: now
           });
+          const messageBody = company.settings && company.settings.invitation_message ? company.settings.invitation_message
+            : company.name.en + ' quisiera recomendar que ud baje la aplicaci�n Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. http://www.GanazApp.com/download';
           const smsLog = new Smslog({
             sender: {user_id: companyUserId, company_id: companyId},
             receiver: {phone_number: worker.phone_number},
             billable: false,
             datetime: now,
-            message: `${company.name.en} quisiera recomendar que ud baje la aplicación Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. http://www.GanazApp.com/download`
+            message: messageBody
           });
           const myworker = new Myworker({
             company_id: companyId,
