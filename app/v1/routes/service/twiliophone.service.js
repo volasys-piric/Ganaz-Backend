@@ -195,6 +195,10 @@ module.exports = {
     if (sParams.is_default !== undefined) {
       dbQ.is_default = sParams.is_default;
     }
+    if (sParams.phone_number) {
+      const regex = new RegExp('^' + sParams.phone_number, 'i');
+      dbQ['phone_number.local_number'] = regex;
+    }
     return Twiliophone.find(dbQ);
   },
   findById: function (id) {
