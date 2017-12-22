@@ -104,27 +104,21 @@ function _sendIfTwiliophoneNotInUsed(twiliophoneId, smsLog, myworker, retry) {
     });
 }
 
-function _findAvailTwiliophone(companyId) {
-  if (companyId) {
-    return Twiliophone.findOne({
-      is_default: false,
-      usage_count: 0,
-      company_ids: mongoose.Schema.Types.ObjectId(companyId)
-    }).then(function (phone) {
-      return phone ? phone : Twiliophone.findOne({is_default: true, usage_count: 0});
-    });
-  } else {
-    return Twiliophone.findOne({is_default: true, usage_count: 0});
-  }
-}
-
 function _findAndSendToAvailTwiliophone(smsLog, myworker) {
-  const companyId = smsLog.sender.company_id;
-  return Twiliophone.find({
-    is_default: false,
-    company_ids: mongoose.Schema.Types.ObjectId(companyId)
-  }).then(function (phones) {
-    if (phones && phones.length > 0) {
+  const companyId = myworker.company_id;
+  return Promise.join(
+    Twiliophone.find({is_default: false, company_ids: mongoose.Schema.Types.ObjectId(companyId)}),
+    Twiliophone.find({
+      is_default: true,
+      $or: [
+        {company_ids: {$exists: false}},
+        {company_ids: {$size: 0}},
+      ]
+    })
+  ).then(function (promiseResults) {
+    const companyPhones = promiseResults[0];
+    const defaultPhones = promiseResults[1];
+    const iteratePhones = function(phones) {
       let phone = null;
       for (let i = 0; i < phones.length; i++) {
         if (phones[i].usage_count === 0) {
@@ -134,7 +128,7 @@ function _findAndSendToAvailTwiliophone(smsLog, myworker) {
       }
       if (phone !== null) {
         // Try to send smslog given avail twiliophone.
-        _sendIfTwiliophoneNotInUsed(phone._id.toString(), smsLog, myworker).then(function (sent) {
+        _sendIfTwiliophoneNotInUsed(phone._id.toString(), smsLog, myworker).then(function(sent) {
           if (!sent) {
             // At some instant (usually split of milliseconds), the avail phone was used by other request.
             logger.debug('[TwiliophoneService] Will look for available phone after 1 second.');
@@ -146,8 +140,13 @@ function _findAndSendToAvailTwiliophone(smsLog, myworker) {
           + smsLog._id.toString() + ' after 1 second.');
         setTimeout(_sendMessage, 1000, smsLog, myworker); // Try again after 1 second
       }
+    };
+    if (companyPhones && companyPhones.length > 0) {
+      iteratePhones(companyPhones);
+    } else if(defaultPhones && defaultPhones.length > 0) {
+      iteratePhones(defaultPhones);
     } else {
-      logger.debug('[TwiliophoneService] No phone configured for company ' + companyId + '.');
+      logger.error('[TwiliophoneService] No phone configured for company ' + companyId + ' and no default phones found.');
     }
   });
 }
@@ -163,7 +162,7 @@ function _sendMessage(smsLog, myworkerId) {
   if (myworkerId) {
     Myworker.findById(myworkerId).then(function (myworker) {
       if (myworker) {
-        if (myworker.company_id !== smsLog.sender.company_id.toString()) {
+        if (!smsLog.sender.admin_id && myworker.company_id !== smsLog.sender.company_id.toString()) {
           logger.error('[TwiliophoneService] Not sending smslog ' + smsLog._id.toString()
             + '. Myworker ' + myworkerId + ' company is not the same as smslog sender company.');
         } else if (myworker.twilio_phone_id) {
@@ -221,5 +220,6 @@ module.exports = {
   deleteById: function (id) {
     return Twiliophone.findByIdAndRemove(id);
   },
-  sendMessage: _sendMessage
+  sendMessage: _sendMessage,
+  findAndSendToAvailTwiliophone: _findAndSendToAvailTwiliophone
 };
