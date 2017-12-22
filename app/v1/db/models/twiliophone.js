@@ -18,6 +18,7 @@ TwiliophoneSchema.pre('save', function (next) {
   if (!this.datetime) {
     this.datetime = Date.now();
   }
+  this.is_default = !this.company_ids || this.company_ids.length === 0;
   next();
 });
 

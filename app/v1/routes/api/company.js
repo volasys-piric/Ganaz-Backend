@@ -287,4 +287,14 @@ router.patch('/:id/my-workers/:myworkerId', function (req, res) {
   }).catch(httpUtil.handleError(res));
 });
 
+router.get('/:id/onboarding-workers', function (req, res) {
+  myworkerService.findOnboardingByCompanyId(req.params.id).then(function (my_workers) {
+    res.json({
+      success: true,
+      my_workers: my_workers
+    });
+  }).catch(httpUtil.handleError(res));
+});
+
+
 module.exports = router;

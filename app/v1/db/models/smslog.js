@@ -6,7 +6,8 @@ const SmslogSchema = new Schema({
   message: {$type: String, required: true},
   sender: {
     user_id: {$type: mongoose.Schema.Types.ObjectId, ref: 'User'},
-    company_id: {$type: mongoose.Schema.Types.ObjectId, ref: 'Company'}
+    company_id: {$type: mongoose.Schema.Types.ObjectId, ref: 'Company'},
+    admin_id: {$type: mongoose.Schema.Types.ObjectId, ref: 'Admin'},
   },
   receiver: {
     phone_number: {
