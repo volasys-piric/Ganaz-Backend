@@ -41,14 +41,15 @@ function _sendIfTwiliophoneNotInUsed(twiliophoneId, smsLog, myworker, retry) {
     .then(function (twilioPhone) {
       // Send SMS
       if (twilioPhone.usage_count === 1) {
+        const fromFullNumber = `+${twilioPhone.country_code}${twilioPhone.local_number}`;
         const phoneNumber = smsLog.receiver.phone_number;
         const countryCode = phoneNumber.country_code ? phoneNumber.country_code : '1';
-        const toFullNumber = '+' + countryCode + phoneNumber.local_number;
+        const toFullNumber = `+${countryCode}${phoneNumber.local_number}`;
         const messageBody = smsLog.message;
         logger.debug('[TwiliophoneService] Sending smslog ' + smsLog._id.toString()
           + ' to twilio phone ' + twiliophoneId + '.');
         twilio_client.messages.create({
-          from: appConfig.TWILIO_PHONE_NUMBER,
+          from: fromFullNumber,
           to: toFullNumber,
           body: messageBody
         }).then(function (response) {
