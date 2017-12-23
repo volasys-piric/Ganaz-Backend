@@ -121,7 +121,7 @@ module.exports = {
           myworker.crew_id = body.crew_id;
         }
         if (body.twilio_phone_id !== undefined) {
-          myworker.twilio_phone_id = mongoose.Schema.Types.ObjectId(body.twilio_phone_id);
+          myworker.twilio_phone_id = body.twilio_phone_id;
         }
         return myworker.save().then(function (myworker) {
           return User.findById(myworker.worker_user_id).then(function (user) {
