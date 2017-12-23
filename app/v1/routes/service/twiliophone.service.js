@@ -1,5 +1,4 @@
 const Promise = require('bluebird');
-const mongoose = require('mongoose');
 const twilio = require('twilio');
 const appConfig = require('./../../../app_config');
 const logger = require('./../../../utils/logger');
@@ -13,7 +12,7 @@ const twilio_client = twilio(appConfig.TWILIO_ACCOUNT_SID, appConfig.TWILIO_AUTH
 function _updateTwilioField(smsLog, response, exception) {
   const id = smsLog._id.toString();
   if (response) {
-    logger.info('[Twilio Service] Smslog ' + id + ' successfully sent with response status ' + response.status + '.');
+    logger.info('[TwiliophoneService] Smslog ' + id + ' successfully sent with response status ' + response.status + '.');
     response._context = undefined;
     response._solution = undefined;
     response._version = undefined;
@@ -21,7 +20,7 @@ function _updateTwilioField(smsLog, response, exception) {
     delete response._solution;
     delete response._version;
   } else if (exception) {
-    logger.error('[Twilio Service] Failed to send smslog ' + id + '. Reason: ' + exception.message);
+    logger.error('[TwiliophoneService] Failed to send smslog ' + id + '. Reason: ' + exception.message);
   }
   smsLog.twilio = {response: response, exception: exception};
   return smsLog.save();
@@ -41,13 +40,11 @@ function _sendIfTwiliophoneNotInUsed(twiliophoneId, smsLog, myworker, retry) {
     .then(function (twilioPhone) {
       // Send SMS
       if (twilioPhone.usage_count === 1) {
-        const fromFullNumber = `+${twilioPhone.country_code}${twilioPhone.local_number}`;
+        const fromFullNumber = `+${twilioPhone.phone_number.country_code}${twilioPhone.phone_number.local_number}`;
         const phoneNumber = smsLog.receiver.phone_number;
         const countryCode = phoneNumber.country_code ? phoneNumber.country_code : '1';
         const toFullNumber = `+${countryCode}${phoneNumber.local_number}`;
         const messageBody = smsLog.message;
-        logger.debug('[TwiliophoneService] Sending smslog ' + smsLog._id.toString()
-          + ' to twilio phone ' + twiliophoneId + '.');
         twilio_client.messages.create({
           from: fromFullNumber,
           to: toFullNumber,
@@ -59,7 +56,7 @@ function _sendIfTwiliophoneNotInUsed(twiliophoneId, smsLog, myworker, retry) {
             .then(function () {
               const promises = [_updateTwilioField(smsLog, response, null)];
               if (myworker && !myworker.twilio_phone_id) {
-                myworker.twilio_phone_id = mongoose.Schema.Types.ObjectId(twiliophoneId);
+                myworker.twilio_phone_id = twiliophoneId;
                 promises.push(myworker.save());
               } else {
                 promises.push(Promise.resolve(null));
@@ -75,7 +72,10 @@ function _sendIfTwiliophoneNotInUsed(twiliophoneId, smsLog, myworker, retry) {
               + ' to twilio phone ' + twiliophoneId + ' failed. Reason: Too many requests. Retrying after 1 second.');
             Twiliophone.findByIdAndUpdate(twiliophoneId, {$inc: {usage_count: -1}})
               .then(function () {
-                setTimeout(_sendIfTwiliophoneNotInUsed, 1000, twiliophoneId, smsLog, myworker, true);
+                // setTimeout(_sendIfTwiliophoneNotInUsed, 1000, twiliophoneId, smsLog, myworker, true);
+                setTimeout(function () {
+                  return _sendIfTwiliophoneNotInUsed(twiliophoneId, smsLog, myworker, true);
+                }, 1000);
               });
           } else {
             logger.debug('[TwiliophoneService] Sending smslog ' + smsLog._id.toString()
@@ -96,7 +96,9 @@ function _sendIfTwiliophoneNotInUsed(twiliophoneId, smsLog, myworker, retry) {
             if (retry) {
               logger.debug('[TwiliophoneService] Retry sending sms ' + smsLog._id.toString()
                 + ' to twilio phone ' + twiliophoneId + ' after 1 second.');
-              setTimeout(_sendIfTwiliophoneNotInUsed, 1000, twiliophoneId, smsLog, myworker, true)
+              setTimeout(function () {
+                return _sendIfTwiliophoneNotInUsed(twiliophoneId, smsLog, myworker, true);
+              }, 1000);
             } else {
               return false;
             }
@@ -108,7 +110,7 @@ function _sendIfTwiliophoneNotInUsed(twiliophoneId, smsLog, myworker, retry) {
 function _findAndSendToAvailTwiliophone(smsLog, myworker) {
   const companyId = myworker.company_id;
   return Promise.join(
-    Twiliophone.find({is_default: false, company_ids: mongoose.Schema.Types.ObjectId(companyId)}),
+    Twiliophone.find({is_default: false, company_ids: companyId}),
     Twiliophone.find({
       is_default: true,
       $or: [
@@ -133,13 +135,17 @@ function _findAndSendToAvailTwiliophone(smsLog, myworker) {
           if (!sent) {
             // At some instant (usually split of milliseconds), the avail phone was used by other request.
             logger.debug('[TwiliophoneService] Will look for available phone after 1 second.');
-            setTimeout(_findAndSendToAvailTwiliophone, 1000, smsLog, myworker); // Try again after 1 second
+            setTimeout(function () {
+              _findAndSendToAvailTwiliophone(smsLog, myworker);
+            }, 1000);
           }
         });
       } else {
         logger.debug('[TwiliophoneService] All phone numbers for company ' + companyId + ' is in use. Will retry sending smslog '
           + smsLog._id.toString() + ' after 1 second.');
-        setTimeout(_sendMessage, 1000, smsLog, myworker); // Try again after 1 second
+        setTimeout(function () {
+          _findAndSendToAvailTwiliophone(smsLog, myworker);
+        }, 1000);
       }
     };
     if (companyPhones && companyPhones.length > 0) {
@@ -171,7 +177,9 @@ function _sendMessage(smsLog, myworkerId) {
             if (!sent) {
               logger.debug('[TwiliophoneService] Retry sending sms ' + smsLog._id.toString() + ' to phone '
                 + myworker.twilio_phone_id + 'after 1 second.');
-              setTimeout(_sendIfTwiliophoneNotInUsed, 1000, myworker.twilio_phone_id, smsLog);
+              setTimeout(function () {
+                return _sendIfTwiliophoneNotInUsed(myworker.twilio_phone_id, smsLog);
+              }, 1000);
             }
           });
         } else {
@@ -190,7 +198,7 @@ module.exports = {
   search: function (sParams) {
     const dbQ = {};
     if (sParams.company_id) {
-      dbQ.company_ids = mongoose.Types.ObjectId(sParams.company_id)
+      dbQ.company_ids = sParams.company_id
     }
     if (sParams.is_default !== undefined) {
       dbQ.is_default = sParams.is_default;
