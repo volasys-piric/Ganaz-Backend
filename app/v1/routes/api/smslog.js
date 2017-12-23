@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const Promise = require('bluebird');
-const mongoose = require('mongoose');
 const twiliophoneService = require('./../service/twiliophone.service');
 const httpUtil = require('./../../../utils/http');
 const log = require('./../../../utils/logger');
@@ -15,6 +14,7 @@ const Myworker = db.models.myworker;
 router.post('/error/:errorCode/resend', function (req, res) {
   const body = req.body;
   const errorCode = req.params.errorCode;
+  const senderUserId = body.sender_id;
   Smslog.find({'twilio.exception.code': parseInt(errorCode)}, null, {sort: {datetime: -1}}).then(function (smsLogs) {
     const promises = [];
     for (let i = 0; i < smsLogs.length; i++) {
@@ -33,17 +33,22 @@ router.post('/error/:errorCode/resend', function (req, res) {
           localNumbers.push(localNumber);
           const invites = promiseResults[i];
           if (invites.length > 1) {
-            log.warn('Invite records of ' + smsLog.receiver.phone_number.local_number + ' is ' + invites.length);
+            log.warn('[Sms Log API] Invite records of ' + smsLog.receiver.phone_number.local_number + ' is ' + invites.length);
           } else if (invites.length === 0) {
-            log.warn('Invite records of ' + smsLog.receiver.phone_number.local_number + ' is 0');
+            log.warn('[Sms Log API] Invite records of ' + smsLog.receiver.phone_number.local_number + ' is 0');
+          } else if(!smsLog.sender.user_id && !senderUserId) {
+            log.warn('[Sms Log API] Smslog ' + smsLog._id.toString() + ' has no sender.user_id and request body has no sender_id.');
           } else {
-            if (!smsLog.message || !smsLog.sender.user_id) {
-              if (!smsLog.message) {
-                smsLog.message = messageBody;
-              }
-              if (!smsLog.sender.user_id) {
-                smsLog.sender.user_id = mongoose.Types.ObjectId('59dcfe0df2289d0d39bec3e6');
-              }
+            let sendSms = false;
+            if (!smsLog.sender.user_id) {
+              smsLog.sender.user_id = senderUserId;
+              sendSms = true;
+            }
+            if (!smsLog.message) {
+              smsLog.message = messageBody;
+              sendSms = true;
+            }
+            if (sendSms) {
               validSmsLogs.push(smsLog.save());
             } else {
               validSmsLogs.push(Promise.resolve(smsLog));
