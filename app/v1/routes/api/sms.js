@@ -43,7 +43,7 @@ function _findCompanyUser(companyId) {
   })
 }
 
-function _createWorkerRecords(twiliophone, body, fromPhone, worker) {
+function _createWorkerRecords(savedInboundSms, twiliophone, body, fromPhone, worker) {
   if (twiliophone.company_ids.length === 1) {
     const companyId = twiliophone.company_ids[0];
     return _findCompanyUser(companyId).then(function (companyUser) {
@@ -105,7 +105,7 @@ function _createWorkerRecords(twiliophone, body, fromPhone, worker) {
             return _pushMessage(worker, companyId, body.Body, now);
           }).then(function () {
             return replyMessage;
-          });
+          })
       });
     });
   } else {
@@ -119,7 +119,7 @@ function _createWorkerRecords(twiliophone, body, fromPhone, worker) {
     } else {
       msg = 'Phone number ' + body.To + ' is being used by multiple companies.';
     }
-    return _rejectInboundSms(msg, body);
+    return _rejectInboundSms(savedInboundSms, msg);
   }
 }
 
@@ -154,16 +154,11 @@ function _pushMessage(senderUser, companyId, messageBody, datetime) {
     });
 }
 
-function _rejectInboundSms(msg, body) {
+function _rejectInboundSms(savedInboundSms, msg) {
   logger.debug('[SMS API Inbound] ' + msg);
-  const inboundSms = new InboundSms({
-    request: {
-      body: body,
-      rejected: true,
-      reject_reason: msg
-    }
-  });
-  return inboundSms.save().then(function () {
+  savedInboundSms.request.rejected = true;
+  savedInboundSms.request.reject_reason = msg;
+  return savedInboundSms.save().then(function () {
     return null;
   });
 }
@@ -179,58 +174,69 @@ router.post('/inbound', function (req, res) {
     if (!body.Body) {
       body.Body = ' '; // One signal doesnt allow sending null or empty body
     }
-    const fromPhone = _parseE164Number(body.From);
-    const toPhone = _parseE164Number(body.To);
-    logger.debug('[SMS API Inbound] Processing From ' + fromPhone.local_number + ' and To ' + toPhone.local_number + ' with body "' + body.Body + '".');
-    const userQ = {'phone_number.local_number': fromPhone.local_number};
-    if (fromPhone.country_code) {
-      userQ['phone_number.country_code'] = fromPhone.country_code;
-    }
-    const tQ = {'phone_number.local_number': toPhone.local_number};
-    if (toPhone.country_code) {
-      tQ['phone_number.country_code'] = toPhone.country_code;
-    }
-    return Promise.all([User.findOne(userQ), Twiliophone.findOne(tQ)]).then(function (promisesResult) {
-      const worker = promisesResult[0];
-      const twiliophone = promisesResult[1];
-      if (twiliophone) {
-        if (worker) {
-          const workerId = worker._id.toString();
-          logger.debug('[SMS API Inbound] Phone ' + fromPhone.local_number + ' is associated to user ' + workerId + '.');
-          return Myworker.findOne({worker_user_id: workerId})
-            .then(function (myworker) {
-              if (myworker) {
-                logger.debug('[SMS API Inbound] User ' + workerId + ' is associated to my_worker ' + myworker._id.toString() + '.');
-                const companyId = myworker.company_id;
-                return _pushMessage(worker, companyId, body.Body, Date.now()).then(function () {
-                  return Company.findById(companyId).then(function (company) {
-                    return 'Company ' + company.name.en + ' admins notified.';
+    const inboundSms = new InboundSms({request: {body: body}});
+    inboundSms.save().then(function (savedInboundSms) {
+      const fromPhone = _parseE164Number(body.From);
+      const toPhone = _parseE164Number(body.To);
+      logger.debug('[SMS API Inbound] Processing From ' + fromPhone.local_number + ' and To ' + toPhone.local_number + ' with body "' + body.Body + '".');
+      const userQ = {'phone_number.local_number': fromPhone.local_number};
+      if (fromPhone.country_code) {
+        userQ['phone_number.country_code'] = fromPhone.country_code;
+      }
+      const tQ = {'phone_number.local_number': toPhone.local_number};
+      if (toPhone.country_code) {
+        tQ['phone_number.country_code'] = toPhone.country_code;
+      }
+      return Promise.all([User.findOne(userQ), Twiliophone.findOne(tQ)]).then(function (promisesResult) {
+        const worker = promisesResult[0];
+        const twiliophone = promisesResult[1];
+        if (twiliophone) {
+          if (worker) {
+            const workerId = worker._id.toString();
+            logger.debug('[SMS API Inbound] Phone ' + fromPhone.local_number + ' is associated to user ' + workerId + '.');
+            return Myworker.findOne({worker_user_id: workerId})
+              .then(function (myworker) {
+                if (myworker) {
+                  logger.debug('[SMS API Inbound] User ' + workerId + ' is associated to my_worker ' + myworker._id.toString() + '.');
+                  const companyId = myworker.company_id;
+                  return _pushMessage(worker, companyId, body.Body, Date.now()).then(function () {
+                    return Company.findById(companyId).then(function (company) {
+                      return 'Company ' + company.name.en + ' admins notified.';
+                    });
                   });
-                });
-              } else {
-                logger.debug('[SMS API Inbound] User ' + workerId + ' is not associated to any my_worker. Creating worker records.');
-                return _createWorkerRecords(twiliophone, body, fromPhone, worker);
-              }
-            });
+                } else {
+                  logger.debug('[SMS API Inbound] User ' + workerId + ' is not associated to any my_worker. Creating worker records.');
+                  return _createWorkerRecords(savedInboundSms, twiliophone, body, fromPhone, worker);
+                }
+              });
+          } else {
+            logger.debug('[SMS API Inbound] Phone ' + fromPhone.local_number + ' is not associated to any user. Creating worker records.');
+            return _createWorkerRecords(savedInboundSms, twiliophone, body, fromPhone);
+          }
         } else {
-          logger.debug('[SMS API Inbound] Phone ' + fromPhone.local_number + ' is not associated to any user. Creating worker records.');
-          return _createWorkerRecords(twiliophone, body, fromPhone);
+          const msg = 'Phone ' + toPhone.local_number + ' is not associated to any twilio phones. Rejecting inbound sms.';
+          _rejectInboundSms(savedInboundSms, msg);
         }
-      } else {
-        logger.debug('[SMS API Inbound] Phone ' + toPhone.local_number + ' is not associated to twilio phones. Rejecting inbound sms.');
-        return _rejectInboundSms('To phone number ' + body.To + ' is not twilio registered number in our system.', body);
-      }
-    }).then(function (replyMessage) {
-      let messageEl = '';
-      if (replyMessage) { // If not rejected.
-        messageEl += '<Message>' + replyMessage + '</Message>';
-      }
-      res.send('<Response>' + messageEl + '</Response>');
-    }).catch(function (e) {
-      logger.error('[SMS API Inbound] Internal server error.');
-      logger.error(e);
-      res.send('<Response><Message>Failed to process request. Reason: Internal server error. Please contact ' + appConfig.support_mail + '</Message></Response>');
-    })
+      }).then(function (replyMessage) {
+        let messageEl = '';
+        if (replyMessage) { // If not rejected.
+          messageEl += '<Message>' + replyMessage + '</Message>';
+          savedInboundSms.response = {success_message: replyMessage};
+          savedInboundSms.save();
+        }
+        res.send('<Response>' + messageEl + '</Response>');
+      }).catch(function (e) {
+        logger.error('[SMS API Inbound] Internal server error.');
+        logger.error(e);
+        if (e instanceof 'string') {
+          savedInboundSms.response = {error_message: e};
+        } else {
+          savedInboundSms.response = {error_message: e.message};
+        }
+        savedInboundSms.save();
+        res.send('<Response><Message>Failed to process request. Reason: Internal server error. Please contact ' + appConfig.support_mail + '</Message></Response>');
+      })
+    });
   }
 })
 ;

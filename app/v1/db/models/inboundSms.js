@@ -8,6 +8,10 @@ const InboundSmsSchema = new Schema({
     rejected: {type: Boolean, default: false},
     reject_reason: String
   },
+  response: {
+    success_message: String,
+    error_message: String,
+  },
   from_user_id: {type: mongoose.Schema.Types.ObjectId, ref: 'User'},
   to_twilio_phone_id: {type: mongoose.Schema.Types.ObjectId, ref: 'Twiliophone'},
   datetime: Date
