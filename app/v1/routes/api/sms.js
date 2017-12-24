@@ -29,83 +29,89 @@ const _parseE164Number = function (num) {
   return o;
 };
 
-function _createWorkerRecords(twiliophone, body, fromPhone) {
+function _findCompanyUser(companyId) {
+  return Promise.join(
+    User.findOne({'company.company_id': companyId, type: 'company-admin'}),
+    User.findOne({'company.company_id': companyId, type: 'company-regular'})
+  ).then(function (promisesResult) {
+    const companyUser = promisesResult[0] ? promisesResult[0] : promisesResult[1];
+    if (!companyUser) {
+      return Promise.reject('[SMS API Inbound] No company-admin or company-regular user for company ' + companyId + '.');
+    } else {
+      return companyUser;
+    }
+  })
+}
+
+function _createWorkerRecords(twiliophone, body, fromPhone, worker) {
   if (twiliophone.company_ids.length === 1) {
     const companyId = twiliophone.company_ids[0];
-    // User.find({type: /^company-/, 'company.company_id': myworker.company_id})
-    return Promise.join(
-      User.findOne({'company.company_id': companyId, type: 'company-admin'}),
-      User.findOne({'company.company_id': companyId, type: 'company-regular'}),
-      Company.findById(companyId)
-    ).then(function (promisesResult) {
-      const now = Date.now();
-      const companyUser = promisesResult[0] ? promisesResult[0] : promisesResult[1];
-      const companyUserId = companyUser._id.toString();
-      const company = promisesResult[2];
-      /*
-      - New onboarding-user object will be created (Please refer to 1. User - Overview, Data Model)
-      - Invite object will be created
-      - SMS invitation will be sent out along with the download link to the app.
-      - This will also create new sms_log object.
-      - Add the onboarding user to my-workers list of company
-       */
-      const worker = new User({
-        type: 'onboarding-worker',
-        username: fromPhone.local_number,
-        phone_number: {
-          country: !fromPhone.country_code || fromPhone.country_code === '1' ? 'US' : '',
-          country_code: fromPhone.country_code ? fromPhone.country_code : '1',
-          local_number: fromPhone.local_number
-        },
-        worker: {
-          location: {address: '', loc: [0, 0]},
-          is_newjob_lock: true
-        },
-        created_at: now
-      });
-      const invite = new Invite({
-        company_id: twiliophone.company_ids[0],
-        user_id: companyUserId,
-        phone_number: worker.phone_number,
-        created_at: now
-      });
-      const messageBody = company.settings && company.settings.invitation_message ? company.settings.invitation_message
-        : company.name.en + ' quisiera recomendar que ud baje la aplicaci�n Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. http://www.GanazApp.com/download';
-      const smsLog = new Smslog({
-        sender: {user_id: companyUserId, company_id: companyId},
-        receiver: {phone_number: worker.phone_number},
-        billable: false,
-        datetime: now,
-        message: messageBody
-      });
-      const myworker = new Myworker({
-        company_id: companyId,
-        worker_user_id: worker._id.toString(),
-        twilio_phone_id: twiliophone._id,
-        created_at: now
-      });
-      const message = new Message({
-        job_id: "",
-        type: "message",
-        sender: {user_id: worker._id.toString(), company_id: ""},
-        receivers: [{user_id: companyUserId.toString(), company_id: companyId, status: 'new'}],
-        message: {en: body.Body, es: body.Body},
-        metadata: {is_from_sms: true},
-        auto_translate: false,
-        datetime: now
-      });
-      return Promise.join(worker.save(), invite.save(), myworker.save(), smsLog.save(), message.save())
-        .then(function (saveResult) {
-          const message = saveResult[4];
-          pushNotification.sendMessage(companyUser.player_ids, message);
-          // Reply with message invitation
-          return 'Company ' + company.name.en + ' admins notified.';
+    return _findCompanyUser(companyId).then(function (companyUser) {
+      return Company.findById(companyId).then(function (company) {
+        const now = Date.now();
+        const companyUserId = companyUser._id.toString();
+        /*
+        - New onboarding-user object will be created (Please refer to 1. User - Overview, Data Model) if not exists
+        - Invite object will be created
+        - SMS invitation will be sent out along with the download link to the app.
+        - This will also create new sms_log object.
+        - Add the onboarding user to my-workers list of company
+         */
+        if (!worker) {
+          logger.debug('[SMS API Inbound] Creating user/worker record for phone ' + fromPhone.local_number);
+          worker = new User({
+            type: 'onboarding-worker',
+            username: fromPhone.local_number,
+            phone_number: {
+              country: !fromPhone.country_code || fromPhone.country_code === '1' ? 'US' : '',
+              country_code: fromPhone.country_code ? fromPhone.country_code : '1',
+              local_number: fromPhone.local_number
+            },
+            worker: {
+              location: {address: '', loc: [0, 0]},
+              is_newjob_lock: true
+            },
+            created_at: now
+          });
+        } else {
+          logger.debug('[SMS API Inbound] Record user/worker ' + worker._id.toString() + ' is associated to phone ' + fromPhone.local_number);
+        }
+        logger.debug('[SMS API Inbound] Creating invite record for phone ' + fromPhone.local_number);
+        const invite = new Invite({
+          company_id: twiliophone.company_ids[0],
+          user_id: companyUserId,
+          phone_number: worker.phone_number,
+          created_at: now
         });
+        const replyMessage = company.settings && company.settings.invitation_message ? company.settings.invitation_message
+          : company.name.en + ' quisiera recomendar que ud baje la aplicaci�n Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. http://www.GanazApp.com/download';
+        logger.debug('[SMS API Inbound] Creating smslog record for phone ' + fromPhone.local_number);
+        const smsLog = new Smslog({
+          sender: {user_id: companyUserId, company_id: companyId},
+          receiver: {phone_number: worker.phone_number},
+          billable: false,
+          datetime: now,
+          message: replyMessage
+        });
+        logger.debug('[SMS API Inbound] Creating myworker record for phone ' + fromPhone.local_number);
+        const myworker = new Myworker({
+          company_id: companyId,
+          worker_user_id: worker._id.toString(),
+          twilio_phone_id: twiliophone._id,
+          created_at: now
+        });
+        return Promise.join(worker.save(), invite.save(), myworker.save(), smsLog.save())
+          .then(function () {
+            return _pushMessage(worker, companyId, body.Body, now);
+          }).then(function () {
+            return replyMessage;
+          });
+      });
     });
   } else {
     let msg = '';
     if (twiliophone.company_ids.length === 0) {
-      if(twiliophone.is_default) {
+      if (twiliophone.is_default) {
         msg = 'Phone number ' + body.To + ' is a default twilio phone and has no companies listed.';
       } else {
         msg = 'Phone number ' + body.To + ' has no companies listed.';
@@ -117,8 +123,39 @@ function _createWorkerRecords(twiliophone, body, fromPhone) {
   }
 }
 
+function _pushMessage(senderUser, companyId, messageBody, datetime) {
+  return User.find({type: /^company-/, 'company.company_id': companyId})
+    .then(function (companyUsers) {
+      logger.debug('[SMS API Inbound] Creating message record for phone ' + senderUser.phone_number.local_number);
+      const message = new Message({
+        job_id: "",
+        type: "message",
+        sender: {user_id: senderUser._id.toString(), company_id: ""},
+        receivers: [],
+        message: {en: messageBody, es: messageBody},
+        metadata: {is_from_sms: true},
+        auto_translate: false,
+        datetime: datetime
+      });
+      for (let i = 0; i < companyUsers.length; i++) {
+        message.receivers.push({
+          user_id: companyUsers[i]._id.toString(),
+          company_id: companyId,
+          status: 'new'
+        });
+      }
+      return message.save().then(function (savedMessage) {
+        logger.debug('[SMS API Inbound] Sending push notifications to company ' + companyId + ' users.');
+        for (let i = 0; i < companyUsers.length; i++) {
+          pushNotification.sendMessage(companyUsers[i].player_ids, savedMessage);
+        }
+        return savedMessage;
+      });
+    });
+}
+
 function _rejectInboundSms(msg, body) {
-  logger.debug('[SMS API] ' + msg);
+  logger.debug('[SMS API Inbound] ' + msg);
   const inboundSms = new InboundSms({
     request: {
       body: body,
@@ -127,20 +164,24 @@ function _rejectInboundSms(msg, body) {
     }
   });
   return inboundSms.save().then(function () {
-    return 'Failed to process request. Please contact ' + appConfig.support_mail + '.';
+    return null;
   });
 }
 
 // https://bitbucket.org/volasys-ss/ganaz-backend/issues/25/twilio-webhook-for-inbound-message
 router.post('/inbound', function (req, res) {
   const body = req.body.From ? req.body : req.query;
-  if (!body.From) {
+  if (!body.From || !body.To) {
+    logger.error('[SMS API Inbound] Request From and To are required.');
     // Should never happen unless https://www.twilio.com/docs/api/twiml/sms/twilio_request params have changed
-    res.send('<Response><Message>Cannot read From request parameter.</Message></Response>');
+    res.send('<Response><Message>Request From and To are required.</Message></Response>');
   } else {
+    if (!body.Body) {
+      body.Body = ' '; // One signal doesnt allow sending null or empty body
+    }
     const fromPhone = _parseE164Number(body.From);
     const toPhone = _parseE164Number(body.To);
-    
+    logger.debug('[SMS API Inbound] Processing From ' + fromPhone.local_number + ' and To ' + toPhone.local_number + ' with body "' + body.Body + '".');
     const userQ = {'phone_number.local_number': fromPhone.local_number};
     if (fromPhone.country_code) {
       userQ['phone_number.country_code'] = fromPhone.country_code;
@@ -154,58 +195,42 @@ router.post('/inbound', function (req, res) {
       const twiliophone = promisesResult[1];
       if (twiliophone) {
         if (worker) {
-          return Myworker.findOne({worker_user_id: worker._id.toString(), twilio_phone_id: twiliophone._id})
+          const workerId = worker._id.toString();
+          logger.debug('[SMS API Inbound] Phone ' + fromPhone.local_number + ' is associated to user ' + workerId + '.');
+          return Myworker.findOne({worker_user_id: workerId})
             .then(function (myworker) {
               if (myworker) {
-                return User.find({type: /^company-/, 'company.company_id': myworker.company_id})
-                  .then(function (companyUsers) {
-                    const promises = [];
-                    for (let i = 0; i < companyUsers.length; i++) {
-                      const message = new Message({
-                        job_id: "",
-                        type: "message",
-                        sender: {user_id: worker._id.toString(), company_id: ""},
-                        receivers: [
-                          {
-                            user_id: companyUsers[i]._id.toString(),
-                            company_id: myworker.company_id,
-                            status: 'new'
-                          }
-                        ],
-                        message: {en: body.Body, es: body.Body},
-                        metadata: {is_from_sms: true},
-                        auto_translate: false
-                      });
-                      promises.push(message.save());
-                    }
-                    return Promise.all(promises).then(function (savedMessages) {
-                      for (let i = 0; i < companyUsers.length; i++) {
-                        pushNotification.sendMessage(companyUsers[i].player_ids, savedMessages[i]);
-                      }
-                      return savedMessages;
-                    });
-                  }).then(function () {
-                    return Company.findById(myworker.company_id).then(function (company) {
-                      return 'Company ' + company.name.en + ' admins notified.';
-                    });
+                logger.debug('[SMS API Inbound] User ' + workerId + ' is associated to my_worker ' + myworker._id.toString() + '.');
+                const companyId = myworker.company_id;
+                return _pushMessage(worker, companyId, body.Body, Date.now()).then(function () {
+                  return Company.findById(companyId).then(function (company) {
+                    return 'Company ' + company.name.en + ' admins notified.';
                   });
+                });
               } else {
-                return _createWorkerRecords(twiliophone, body, fromPhone);
+                logger.debug('[SMS API Inbound] User ' + workerId + ' is not associated to any my_worker. Creating worker records.');
+                return _createWorkerRecords(twiliophone, body, fromPhone, worker);
               }
             });
         } else {
+          logger.debug('[SMS API Inbound] Phone ' + fromPhone.local_number + ' is not associated to any user. Creating worker records.');
           return _createWorkerRecords(twiliophone, body, fromPhone);
         }
       } else {
+        logger.debug('[SMS API Inbound] Phone ' + toPhone.local_number + ' is not associated to twilio phones. Rejecting inbound sms.');
         return _rejectInboundSms('To phone number ' + body.To + ' is not twilio registered number in our system.', body);
       }
-    }).then(function (resultMsg) {
+    }).then(function (replyMessage) {
       let messageEl = '';
-      if (resultMsg) {
-        messageEl += '<Message>' + resultMsg + '</Message>';
+      if (replyMessage) { // If not rejected.
+        messageEl += '<Message>' + replyMessage + '</Message>';
       }
       res.send('<Response>' + messageEl + '</Response>');
-    });
+    }).catch(function (e) {
+      logger.error('[SMS API Inbound] Internal server error.');
+      logger.error(e);
+      res.send('<Response><Message>Failed to process request. Reason: Internal server error. Please contact ' + appConfig.support_mail + '</Message></Response>');
+    })
   }
 })
 ;
