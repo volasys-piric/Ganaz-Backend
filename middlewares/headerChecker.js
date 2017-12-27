@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
+const appConfig = require('./../app/app_config');
 
+const excludedPaths = ['/sms/inbound'];
 // a middleware function with no mount path. This code is executed for every request to the router
 router.use(function (req, res, next) {
   /**
@@ -11,20 +13,25 @@ router.use(function (req, res, next) {
    version: 1.1
    build: 1025 [optional]
    */
-  console.log('Version header: ' + req.header('version'));
   const version = parseFloat(req.header('version'));
-  if (!version) {
-    res.status(403).json({
-      success: false,
-      msg: 'No Header with name "version" found.'
-    })
-  } else if (version < 1) {
-    res.status(403).json({
-      success: false,
-      msg: 'Header version ' + version + ' not acceptable.'
-    })
+  const path = req.path;
+  if (excludedPaths.indexOf(path) === -1) {
+    if (!version) {
+      res.status(403).json({
+        success: false,
+        msg: 'No Header with name "version" found.'
+      })
+    } else if (version < 1 || version > appConfig.version) {
+      res.status(403).json({
+        success: false,
+        msg: 'Header version ' + version + ' not acceptable.'
+      })
+    } else {
+      req.api_version = version;
+      next()
+    }
   } else {
-    req.api_version = version;
+    req.api_version = appConfig.version;
     next()
   }
 });

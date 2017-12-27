@@ -6,6 +6,7 @@ const logger = require('./utils/logger');
 
 const config = {
   emitter: new events.EventEmitter(),
+  version: 1.9,
   secret: "G@n4z-B4ck3nd",
   dbUrl: 'mongodb://localhost/ganaz',
   root: '/',
