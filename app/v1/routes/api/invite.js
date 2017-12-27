@@ -17,7 +17,7 @@ const Myworker = db.models.myworker;
 const Smslog = db.models.smslog;
 const Crew = db.models.crew;
 
-const dir = os.tmpDir() + '/ganaz-backend-uploads/';
+const dir = os.tmpdir() + '/ganaz-backend-uploads/';
 if (!fs.existsSync(dir)) {
   fs.mkdirSync(dir);
 }
