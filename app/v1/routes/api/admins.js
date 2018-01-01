@@ -13,6 +13,7 @@ const Admin = db.models.admin;
 const Myworker = db.models.myworker;
 const User = db.models.user;
 const Smslog = db.models.smslog;
+const Company = db.models.company;
 
 router.post('/login', function (req, res) {
   // find the user
@@ -94,6 +95,16 @@ router.post('/myworker/:id/sendSms', function (req, res) {
       }).catch(httpUtil.handleError(res));
     }
   }
+});
+
+router.get('/companies/:id/invitation_message', function(req, res) {
+  const companyId = req.params.id;
+  Company.findById(companyId).then(function(company) {
+    res.json({
+      success: true,
+      invitation_message: company.settings ? company.settings.invitation_message : null
+    });
+  }).catch(httpUtil.handleError(res));
 });
 
 module.exports = router;
