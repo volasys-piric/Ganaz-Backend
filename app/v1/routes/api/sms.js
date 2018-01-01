@@ -199,9 +199,7 @@ router.post('/inbound', function (req, res) {
                   logger.debug('[SMS API Inbound] User ' + workerId + ' is associated to my_worker ' + myworker._id.toString() + '.');
                   const companyId = myworker.company_id;
                   return _pushMessage(worker, companyId, body.Body, Date.now()).then(function () {
-                    return Company.findById(companyId).then(function (company) {
-                      return 'Company ' + company.name.en + ' admins notified.';
-                    });
+                   return null;
                   });
                 } else {
                   logger.debug('[SMS API Inbound] User ' + workerId + ' is not associated to any my_worker. Creating worker records.');
