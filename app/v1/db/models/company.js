@@ -46,4 +46,14 @@ CompanySchema.pre('save', function (next) {
   next();
 });
 
+CompanySchema.methods.getInvitationMessage = function(phoneNumber) {
+  let result = this.settings && this.settings.invitation_message ? this.settings.invitation_message
+    : `${this.name.en} quisiera recomendar que ud baje la aplicación Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. http://www.GanazApp.com/download`;
+  // https://ganaz.app.link?action=wsp&p=1234567890
+  if (phoneNumber) {
+    result += `--> https://ganaz.app.link?action=wsp&p=${phoneNumber}`;
+  }
+  return result;
+};
+
 module.exports = mongoose.model('Company', CompanySchema);

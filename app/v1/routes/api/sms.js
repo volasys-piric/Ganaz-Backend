@@ -83,8 +83,7 @@ function _createWorkerRecords(savedInboundSms, twiliophone, body, fromPhone, wor
           phone_number: worker.phone_number,
           created_at: now
         });
-        const replyMessage = company.settings && company.settings.invitation_message ? company.settings.invitation_message
-          : company.name.en + ' quisiera recomendar que ud baje la aplicaci�n Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. http://www.GanazApp.com/download';
+        const replyMessage = company.getInvitationMessage(worker.phone_number.local_number);
         logger.debug('[SMS API Inbound] Creating smslog record for phone ' + fromPhone.local_number);
         const smsLog = new Smslog({
           sender: {user_id: companyUserId, company_id: companyId},

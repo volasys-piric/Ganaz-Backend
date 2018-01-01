@@ -181,8 +181,7 @@ router.post('/', function (req, res) {
       const invite = result.invite;
       const company = result.company;
       const phoneNumber = invite.phone_number;
-      const messageBody = company.settings && company.settings.invitation_message ? company.settings.invitation_message
-        : company.name.en + ' quisiera recomendar que ud baje la aplicaci�n Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. http://www.GanazApp.com/download';
+      const messageBody = company.getInvitationMessage(phoneNumber.local_number);
       const smsLog = new Smslog({
         sender: {user_id: companyUserId, company_id: companyId},
         receiver: {phone_number: phoneNumber},
@@ -340,8 +339,6 @@ function _saveNoUserRows(now, companyId, companyUserId, company, noUserRows, sen
     // 4.d Send SMS (not billable when we log to SMS-LOG table) for invitation.
     // The invitation message will be same as what we do for Invite.
     const smsLogPromises = [];
-    const messageBody = company.settings && company.settings.invitation_message ? company.settings.invitation_message
-      : companyName + ' quisiera recomendar que ud baje la aplicaci�n Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro. http://www.GanazApp.com/download';
     for (let i = 0; i < noUserRows.length; i++) {
       const cellNumber = noUserRows[i].row[4].replace(/-/g, '');
       const phoneNumber = {
@@ -356,6 +353,7 @@ function _saveNoUserRows(now, companyId, companyUserId, company, noUserRows, sen
       } else {
         phoneNumber.country = 'US';
       }
+      const messageBody = company.getInvitationMessage(phoneNumber.local_number);
       const smsLog = new Smslog({
         sender: {user_id: companyUserId, company_id: companyId},
         receiver: {phone_number: phoneNumber},
