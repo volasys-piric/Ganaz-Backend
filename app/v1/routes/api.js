@@ -14,7 +14,6 @@ app.use('/', express_jwt({
   {
     path: [
       /v[\d]+\/status/,
-      /\/smslogs/,
       /\/admins\/login$/,
       /\/user\/login$/,
       /\/user\/search$/,
@@ -62,7 +61,6 @@ router.get('/status', function (req, res) {
 });
 
 app.use('/', router);
-app.use('/smslogs', require('./api/smslog'));
 app.use('/admins', require('./api/admins'));
 app.use('/user', require('./api/user'));
 app.use('/company', require('./api/company'));
