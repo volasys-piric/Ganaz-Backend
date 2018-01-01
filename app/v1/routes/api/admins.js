@@ -50,15 +50,15 @@ router.post('/login', function (req, res) {
   });
 });
 
-router.post('/myworker/:id/sendSms', function (req, res) {
+router.post('/myworker/sendSms', function(req, res) {
   const adminUser = req.user;
-  if(!adminUser.admin) {
+  if (!adminUser.admin) {
     res.status(403);
   } else {
     const body = req.body;
     let errMessage = '';
-    if (!body.message) {
-      errMessage += ' Request body message is required.';
+    if (!body.ids || body.ids.length < 1 || !body.message) {
+      errMessage += ' Request body ids and message are required.';
     }
     if (errMessage) {
       res.json({
@@ -66,31 +66,65 @@ router.post('/myworker/:id/sendSms', function (req, res) {
         msg: errMessage
       });
     } else {
-      const myworkerId = req.params.id;
-      Myworker.findById(myworkerId).then(function(myworker) {
-        if (myworker === null) {
-          return Promise.reject('Myworker ' + myworkerId + ' does not exists.');
-        } else {
-          return myworker;
+      const myworkerIds = body.ids;
+      const findMyworkerPromises = [];
+      const uniqueMyworkerIds = [];
+      for (let i = 0; i < myworkerIds.length; i++) {
+        const myworkerId = myworkerIds[i];
+        // Remove duplicates. Just in case
+        if (uniqueMyworkerIds.indexOf(myworkerId) === -1) {
+          findMyworkerPromises.push(Myworker.findById(myworkerId));
+          uniqueMyworkerIds.push(myworkerId);
         }
-      }).then(function(myworker) {
-        return User.findById(myworker.worker_user_id).then(function(worker) {
-          const smslog = new Smslog({
-            sender: {admin_id: adminUser._id},
-            receiver: {phone_number: worker.phone_number},
-            billable: false,
-            message: body.message
-          });
-          return {
-            myworker: myworker,
-            smslog: smslog
-          };
-        });
-      }).then(function(result) {
-        twiliophoneService.findAndSendToAvailTwiliophone(result.smslog, result.myworker);
+      }
+      return Promise.all(findMyworkerPromises).then(function(myworkers) {
+        let errorMessages = '';
+        const findUserPromises = [];
+        for (let i = 0; i < uniqueMyworkerIds.length; i++) {
+          const myworker = myworkers[i];
+          if (myworker === null) {
+            errorMessages += ' Myworker ' + uniqueMyworkerIds[i] + ' does not exists.';
+          } else {
+            findUserPromises.push(User.findById(myworker.worker_user_id));
+          }
+        }
+        if (errorMessages) {
+          return Promise.rejected(errorMessages);
+        } else {
+          return Promise.all(findUserPromises).then(function(users) {
+            const saveSmslogPromises = [];
+            for (let i = 0; i < users.length; i++) {
+              const user = users[i];
+              const smslog = new Smslog({
+                sender: {admin_id: adminUser._id},
+                receiver: {phone_number: user.phone_number},
+                billable: false,
+                message: body.message
+              });
+              saveSmslogPromises.push(smslog.save());
+            }
+            return Promise.all(saveSmslogPromises).then(function(smslogs) {
+              return {
+                smslogs: smslogs,
+                myworkers: myworkers
+              }
+            });
+          })
+        }
+      }).then(function(models) {
+        const myworkers = models.myworkers;
+        const smslogs = models.smslogs;
+        for (let i = 0; i < myworkers.length; i++) {
+          const myworker = myworkers[i];
+          const smslog = smslogs[i];
+          // Send asynchronously
+          twiliophoneService.findAndSendToAvailTwiliophone(smslog, myworker);
+        }
+        return models;
+      }).then(function() {
         res.json({
           success: true,
-          msg: 'Message is in queue.'
+          msg: 'Message(s) is/are in queue.'
         });
       }).catch(httpUtil.handleError(res));
     }
