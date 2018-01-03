@@ -188,9 +188,8 @@ router.post('/', function (req, res) {
         billable: false,
         message: messageBody
       });
-      const myworkerId = result.myworker ? result.myworker._id.toString() : null;
       return smsLog.save().then(function (savedSmsLog) {
-        twiliophoneService.sendMessage(savedSmsLog, myworkerId);
+        twiliophoneService.findAndSendToAvailTwiliophone(savedSmsLog, result.myworker );
         return result;
       });
     }).then(function (result) {
@@ -331,7 +330,7 @@ function _saveNoUserRows(now, companyId, companyUserId, company, noUserRows, sen
     return Promise.all(myworkerPromises).then(function (savedMyworkers) {
       for (let i = 0; i < noUserRows.length; i++) {
         noUserRows[i].msg += ' Myworker created.';
-        noUserRows[i].myworkerId = savedMyworkers[i]._id.toString();
+        noUserRows[i].myworker = savedMyworkers[i];
       }
       return noUserRows;
     });
@@ -366,7 +365,7 @@ function _saveNoUserRows(now, companyId, companyUserId, company, noUserRows, sen
     return Promise.all(smsLogPromises).then(function (savedSmsLogs) {
       if (sendSms) {
         for (let i = 0; i < noUserRows.length; i++) {
-          twiliophoneService.sendMessage(savedSmsLogs[i], noUserRows[i].myworkerId);
+          twiliophoneService.findAndSendToAvailTwiliophone(savedSmsLogs[i], noUserRows[i].myworker);
         }
       } else {
         log.info('[Invite Bulk] Skipping sending SMS.');

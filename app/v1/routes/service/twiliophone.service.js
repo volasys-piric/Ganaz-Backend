@@ -108,9 +108,7 @@ function _sendIfTwiliophoneNotInUsed(twiliophoneId, smsLog, myworker, retry) {
 }
 
 function _findAndSendToAvailTwiliophone(smsLog, myworker) {
-  const companyId = myworker.company_id;
-  return Promise.join(
-    Twiliophone.find({is_default: false, company_ids: companyId}),
+  const promises = [
     Twiliophone.find({
       is_default: true,
       $or: [
@@ -118,9 +116,14 @@ function _findAndSendToAvailTwiliophone(smsLog, myworker) {
         {company_ids: {$size: 0}},
       ]
     })
-  ).then(function (promiseResults) {
-    const companyPhones = promiseResults[0];
-    const defaultPhones = promiseResults[1];
+  ];
+  if(myworker) {
+    promises.push(Twiliophone.find({is_default: false, company_ids: myworker.company_id}));
+  }
+  return Promise.all(promises).then(function (promiseResults) {
+    const defaultPhones = promiseResults[0];
+    const companyPhones = myworker ? promiseResults[1] : [];
+    
     const iteratePhones = function(phones) {
       let phone = null;
       for (let i = 0; i < phones.length; i++) {
@@ -141,7 +144,7 @@ function _findAndSendToAvailTwiliophone(smsLog, myworker) {
           }
         });
       } else {
-        logger.debug('[TwiliophoneService] All phone numbers for company ' + companyId + ' is in use. Will retry sending smslog '
+        logger.debug('[TwiliophoneService] All phone numbers are in use. Will retry sending smslog '
           + smsLog._id.toString() + ' after 1 second.');
         setTimeout(function () {
           _findAndSendToAvailTwiliophone(smsLog, myworker);
@@ -153,7 +156,7 @@ function _findAndSendToAvailTwiliophone(smsLog, myworker) {
     } else if(defaultPhones && defaultPhones.length > 0) {
       iteratePhones(defaultPhones);
     } else {
-      logger.error('[TwiliophoneService] No phone configured for company ' + companyId + ' and no default phones found.');
+      logger.error('[TwiliophoneService] No phone configured phones configured.');
     }
   });
 }
