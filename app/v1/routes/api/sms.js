@@ -178,12 +178,12 @@ router.post('/inbound', function(req, res) {
         if (twiliophone) {
           if (twiliophone.company_ids.length === 1) {
             if (worker) {
+              const companyId = twiliophone.company_ids[0];
               const workerId = worker._id.toString();
               logger.info('[SMS API Inbound] Phone ' + fromPhone.local_number + ' is associated to user ' + workerId + '.');
-              return Myworker.findOne({worker_user_id: workerId}).then(function(myworker) {
+              return Myworker.findOne({worker_user_id: workerId, company_id: companyId}).then(function(myworker) {
                 if (myworker) {
                   logger.info('[SMS API Inbound] User ' + workerId + ' is associated to my_worker ' + myworker._id.toString() + '.');
-                  const companyId = myworker.company_id;
                   return _pushMessage(worker, companyId, body.Body, Date.now()).then(function() {
                     savedInboundSms.response = {success_message: `Company ${companyId} users notified.`};
                     return savedInboundSms.save().then(function() {
