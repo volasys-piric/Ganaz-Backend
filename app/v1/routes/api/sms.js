@@ -58,7 +58,7 @@ function _createWorkerRecords(savedInboundSms, twiliophone, body, fromPhone, wor
         - Add the onboarding user to my-workers list of company
          */
         if (!worker) {
-          logger.debug('[SMS API Inbound] Creating user/worker record for phone ' + fromPhone.local_number);
+          logger.info('[SMS API Inbound] Creating user/worker record for phone ' + fromPhone.local_number);
           worker = new User({
             type: 'onboarding-worker',
             username: fromPhone.local_number,
@@ -74,9 +74,9 @@ function _createWorkerRecords(savedInboundSms, twiliophone, body, fromPhone, wor
             created_at: now
           });
         } else {
-          logger.debug('[SMS API Inbound] Record user/worker ' + worker._id.toString() + ' is associated to phone ' + fromPhone.local_number);
+          logger.info('[SMS API Inbound] Record user/worker ' + worker._id.toString() + ' is associated to phone ' + fromPhone.local_number);
         }
-        logger.debug('[SMS API Inbound] Creating invite record for phone ' + fromPhone.local_number);
+        logger.info('[SMS API Inbound] Creating invite record for phone ' + fromPhone.local_number);
         const invite = new Invite({
           company_id: twiliophone.company_ids[0],
           user_id: companyUserId,
@@ -84,7 +84,7 @@ function _createWorkerRecords(savedInboundSms, twiliophone, body, fromPhone, wor
           created_at: now
         });
         const replyMessage = company.getInvitationMessage(worker.phone_number.local_number);
-        logger.debug('[SMS API Inbound] Creating smslog record for phone ' + fromPhone.local_number);
+        logger.info('[SMS API Inbound] Creating smslog record for phone ' + fromPhone.local_number);
         const smsLog = new Smslog({
           sender: {user_id: companyUserId, company_id: companyId},
           receiver: {phone_number: worker.phone_number},
@@ -92,7 +92,7 @@ function _createWorkerRecords(savedInboundSms, twiliophone, body, fromPhone, wor
           datetime: now,
           message: replyMessage
         });
-        logger.debug('[SMS API Inbound] Creating myworker record for phone ' + fromPhone.local_number);
+        logger.info('[SMS API Inbound] Creating myworker record for phone ' + fromPhone.local_number);
         const myworker = new Myworker({
           company_id: companyId,
           worker_user_id: worker._id.toString(),
@@ -125,7 +125,7 @@ function _createWorkerRecords(savedInboundSms, twiliophone, body, fromPhone, wor
 function _pushMessage(senderUser, companyId, messageBody, datetime) {
   return User.find({type: /^company-/, 'company.company_id': companyId})
     .then(function(companyUsers) {
-      logger.debug('[SMS API Inbound] Creating message record for phone ' + senderUser.phone_number.local_number);
+      logger.info('[SMS API Inbound] Creating message record for phone ' + senderUser.phone_number.local_number);
       const message = new Message({
         job_id: "",
         type: "message",
@@ -144,7 +144,7 @@ function _pushMessage(senderUser, companyId, messageBody, datetime) {
         });
       }
       return message.save().then(function(savedMessage) {
-        logger.debug('[SMS API Inbound] Sending push notifications to company ' + companyId + ' users.');
+        logger.info('[SMS API Inbound] Sending push notifications to company ' + companyId + ' users.');
         for (let i = 0; i < companyUsers.length; i++) {
           pushNotification.sendMessage(companyUsers[i].player_ids, savedMessage);
         }
@@ -154,7 +154,7 @@ function _pushMessage(senderUser, companyId, messageBody, datetime) {
 }
 
 function _rejectInboundSms(savedInboundSms, msg) {
-  logger.debug('[SMS API Inbound] ' + msg);
+  logger.info('[SMS API Inbound] ' + msg);
   savedInboundSms.request.rejected = true;
   savedInboundSms.request.reject_reason = msg;
   return savedInboundSms.save().then(function() {
@@ -177,7 +177,7 @@ router.post('/inbound', function(req, res) {
     inboundSms.save().then(function(savedInboundSms) {
       const fromPhone = _parseE164Number(body.From);
       const toPhone = _parseE164Number(body.To);
-      logger.debug('[SMS API Inbound] Processing From ' + fromPhone.local_number + ' and To ' + toPhone.local_number + ' with body "' + body.Body + '".');
+      logger.info('[SMS API Inbound] Processing From ' + fromPhone.local_number + ' and To ' + toPhone.local_number + ' with body "' + body.Body + '".');
       const userQ = {'phone_number.local_number': fromPhone.local_number};
       if (fromPhone.country_code) {
         userQ['phone_number.country_code'] = fromPhone.country_code;
@@ -192,21 +192,24 @@ router.post('/inbound', function(req, res) {
         if (twiliophone) {
           if (worker) {
             const workerId = worker._id.toString();
-            logger.debug('[SMS API Inbound] Phone ' + fromPhone.local_number + ' is associated to user ' + workerId + '.');
+            logger.info('[SMS API Inbound] Phone ' + fromPhone.local_number + ' is associated to user ' + workerId + '.');
             return Myworker.findOne({worker_user_id: workerId}).then(function(myworker) {
               if (myworker) {
-                logger.debug('[SMS API Inbound] User ' + workerId + ' is associated to my_worker ' + myworker._id.toString() + '.');
+                logger.info('[SMS API Inbound] User ' + workerId + ' is associated to my_worker ' + myworker._id.toString() + '.');
                 const companyId = myworker.company_id;
                 return _pushMessage(worker, companyId, body.Body, Date.now()).then(function() {
-                  return null;
+                  savedInboundSms.response = {success_message: `Company ${companyId} users notified.`};
+                  return savedInboundSms.save().then(function() {
+                    return null;
+                  });
                 });
               } else {
-                logger.debug('[SMS API Inbound] User ' + workerId + ' is not associated to any my_worker. Creating worker records.');
+                logger.info('[SMS API Inbound] User ' + workerId + ' is not associated to any my_worker. Creating worker records.');
                 return _createWorkerRecords(savedInboundSms, twiliophone, body, fromPhone, worker);
               }
             });
           } else {
-            logger.debug('[SMS API Inbound] Phone ' + fromPhone.local_number + ' is not associated to any user. Creating worker records.');
+            logger.info('[SMS API Inbound] Phone ' + fromPhone.local_number + ' is not associated to any user. Creating worker records.');
             return _createWorkerRecords(savedInboundSms, twiliophone, body, fromPhone);
           }
         } else {
@@ -215,6 +218,7 @@ router.post('/inbound', function(req, res) {
         }
       }).then(function(replyMessage) {
         if (replyMessage) { // If _createWorkerRecords
+          savedInboundSms.response = {success_message: replyMessage};
           return savedInboundSms.save().then(function() {
             return replyMessage;
           });
