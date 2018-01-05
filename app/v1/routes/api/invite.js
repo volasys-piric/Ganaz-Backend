@@ -44,6 +44,7 @@ router.post('/', function (req, res) {
            "country_code": "1",
            "local_number": "{local phone number}"
        },
+       "crew_name" : '', // optional
        "invite_only": true / false             // optional
    }
    */
@@ -161,9 +162,15 @@ router.post('/', function (req, res) {
         if(body.nickname) {
           myworker.nickname = body.nickname;
         }
-        if(body.crew_name) {
-          const crew = new Crew({company_id: companyId, title: body.crew_name});
-          return crew.save().then(function(crew) {
+        if (body.crew_name) {
+          return Crew.findOne({company_id: companyId, title: body.crew_name}).then(function(crew) {
+            if (crew) {
+              return crew;
+            } else {
+              const crew = new Crew({company_id: companyId, title: body.crew_name});
+              return crew.save()
+            }
+          }).then(function(crew) {
             myworker.crew_id = crew._id.toString();
             return myworker.save();
           }).then(function() {
