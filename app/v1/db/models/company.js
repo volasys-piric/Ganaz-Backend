@@ -49,11 +49,7 @@ CompanySchema.pre('save', function (next) {
 CompanySchema.methods.getInvitationMessage = function(phoneNumber) {
   let result = this.settings && this.settings.invitation_message ? this.settings.invitation_message
     : `${this.name.en} quisiera recomendar que ud baje la aplicación Ganaz para poder recibir mensajes sobre el trabajo y tambien buscar otros trabajos en el futuro.`;
-  result = result.trim();
-  if (!result.endsWith('.')) {
-    result += '.';
-  }
-  result += ` Haga click aqui--> https://ganaz.app.link?action=wsp&p=${phoneNumber}`;
+  result += ` Haga click aquí--> https://ganaz.app.link?action=wsp&p=${phoneNumber}`;
   return result;
 };
 
