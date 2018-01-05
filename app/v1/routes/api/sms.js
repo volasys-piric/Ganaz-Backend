@@ -228,7 +228,7 @@ router.post('/inbound', function(req, res) {
       }).catch(function(e) {
         logger.error('[SMS API Inbound] Internal server error.');
         logger.error(e);
-        if (e instanceof 'string') {
+        if (typeof e === 'string') {
           savedInboundSms.response = {error_message: e};
         } else {
           savedInboundSms.response = {error_message: e.message};
