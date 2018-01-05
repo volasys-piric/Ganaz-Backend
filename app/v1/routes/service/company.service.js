@@ -21,15 +21,26 @@ const getCompany = function (companyId, includeStats) {
   });
 };
 
-const create = function (body) {
-  return stripeService.createCustomer(body.name.en).then(function (stripeCustomer) {
-    logger.info('Customer ' + body.name.en + ' generated stripe customer id: ' + stripeCustomer.id);
-    body.payment_stripe_customer_id = stripeCustomer.id;
+const validateRequestBody = function(body, existingCompany) {
+  return Company.findOne({'name.en': body.name.en}).then(function(company) {
+    if (!company || (existingCompany && existingCompany._id.toString() === company._id.toString() )) {
+      return Promise.resolve();
+    } else {
+      return Promise.reject('Company with name ' + body.name.en + ' already exists.');
+    }
+  });
+};
 
-    const company = new Company(body);
-    return company.save();
-  }).then(function (company) {
-    return _includeCompanyStats(company);
+const create = function (body) {
+  return validateRequestBody(body).then(function() {
+    return stripeService.createCustomer(body.name.en).then(function (stripeCustomer) {
+      logger.info('Customer ' + body.name.en + ' generated stripe customer id: ' + stripeCustomer.id);
+      body.payment_stripe_customer_id = stripeCustomer.id;
+      const company = new Company(body);
+      return company.save();
+    }).then(function (company) {
+      return _includeCompanyStats(company);
+    });
   });
 };
 
@@ -43,11 +54,22 @@ const findByCode = function (code) {
   });
 };
 
-const update = function (id, updatedCompanyDetails) {
-  return Company.findById(id).then(function (company) {
-    const updatedCompany = Object.assign(company, updatedCompanyDetails);
-    return updatedCompany.save();
-  }).then(function (company) {
+const update = function(id, updatedCompanyDetails) {
+  return Company.findById(id).then(function(company) {
+    if (!company) {
+      return Promise.reject('Company with id ' + id + ' does not exists.');
+    } else {
+      if (updatedCompanyDetails.name && updatedCompanyDetails.name.en) {
+        return validateRequestBody(updatedCompanyDetails, company).then(function() {
+          const updatedCompany = Object.assign(company, updatedCompanyDetails);
+          return updatedCompany.save();
+        });
+      } else {
+        const updatedCompany = Object.assign(company, updatedCompanyDetails);
+        return updatedCompany.save();
+      }
+    }
+  }).then(function(company) {
     return _includeCompanyStats(company);
   });
 };
