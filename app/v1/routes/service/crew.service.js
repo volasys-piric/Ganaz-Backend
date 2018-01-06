@@ -5,20 +5,35 @@ const Crew = db.models.crew;
 const Myworker = db.models.myworker;
 const Company = db.models.company;
 
+const _findByCompanyIdAndTitle = function(companyId, title) {
+  const titleRegex = new RegExp('^' + title + '$', 'i');
+  return Crew.findOne({company_id: companyId, title: titleRegex});
+};
+
 module.exports = {
   findByCompanyId: function (companyId) {
     return Crew.find({company_id: companyId});
   },
-  create: function (companyId, title) {
-    return Company.findById(companyId).then(function (company) {
-      if (company === null) {
-        return Promise.reject('Company with id ' + companyId + ' does not exists.');
-      } else {
+  create: function(companyId, title, skipCompanyValidation) {
+    const verifyCompany = skipCompanyValidation ? Promise.resolve(companyId)
+      : Company.findById(companyId).then(function(company) {
+        if (company === null) {
+          return Promise.reject('Company with id ' + companyId + ' does not exists.');
+        } else {
+          return companyId;
+        }
+      });
+    return verifyCompany.then(function() {
+      return _findByCompanyIdAndTitle(companyId, title);
+    }).then(function(existingCrew) {
+      if (!existingCrew) {
         const crew = new Crew({
           company_id: companyId,
           title: title
         });
         return crew.save();
+      } else {
+        return existingCrew;
       }
     });
   },
@@ -45,4 +60,5 @@ module.exports = {
       return Crew.findByIdAndRemove(id)
     })
   },
+  findByCompanyIdAndTitle: _findByCompanyIdAndTitle
 };

@@ -5,6 +5,7 @@ const XLSX = require('xlsx');
 const os = require('os');
 const fs = require('fs');
 const twiliophoneService = require('./../service/twiliophone.service');
+const crewService = require('./../service/crew.service');
 const formatter = require('./../../../../app/utils/formatter');
 const httpUtil = require('./../../../utils/http');
 const log = require('./../../../utils/logger');
@@ -163,14 +164,7 @@ router.post('/', function (req, res) {
           myworker.nickname = body.nickname;
         }
         if (body.crew_name) {
-          return Crew.findOne({company_id: companyId, title: body.crew_name}).then(function(crew) {
-            if (crew) {
-              return crew;
-            } else {
-              const crew = new Crew({company_id: companyId, title: body.crew_name});
-              return crew.save()
-            }
-          }).then(function(crew) {
+          return crewService.create(companyId, body.crew_name, true).then(function(crew) {
             myworker.crew_id = crew._id.toString();
             return myworker.save();
           }).then(function() {
