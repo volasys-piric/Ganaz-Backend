@@ -172,10 +172,19 @@ router.post('/inbound', function(req, res) {
       if (toPhone.country_code) {
         tQ['phone_number.country_code'] = toPhone.country_code;
       }
+
       return Promise.all([User.findOne(userQ), Twiliophone.findOne(tQ)]).then(function(promisesResult) {
         const worker = promisesResult[0];
         const twiliophone = promisesResult[1];
         if (twiliophone) {
+          const _pushMessageToCompanyUsers = function(user, companyId) {
+            return _pushMessage(user, companyId, body.Body, Date.now()).then(function() {
+              savedInboundSms.response = {success_message: `Company ${companyId} users notified.`};
+              return savedInboundSms.save().then(function() {
+                return null;
+              });
+            });
+          };
           if (twiliophone.company_ids.length === 1) {
             if (worker) {
               const companyId = twiliophone.company_ids[0];
@@ -184,32 +193,44 @@ router.post('/inbound', function(req, res) {
               return Myworker.findOne({worker_user_id: workerId, company_id: companyId}).then(function(myworker) {
                 if (myworker) {
                   logger.info('[SMS API Inbound] User ' + workerId + ' is associated to my_worker ' + myworker._id.toString() + '.');
-                  return _pushMessage(worker, companyId, body.Body, Date.now()).then(function() {
-                    savedInboundSms.response = {success_message: `Company ${companyId} users notified.`};
-                    return savedInboundSms.save().then(function() {
-                      return null;
-                    });
-                  });
+                  return _pushMessageToCompanyUsers(worker, companyId);
                 } else {
                   logger.info('[SMS API Inbound] User ' + workerId + ' is not associated to any my_worker. Creating worker records.');
                   return _createWorkerRecords(twiliophone, body, fromPhone, worker);
                 }
               });
             } else {
-              logger.info('[SMS API Inbound] Phone ' + fromPhone.local_number + ' is not associated to any user. Creating worker records.');
+              logger.info('[SMmyworkerS API Inbound] Phone ' + fromPhone.local_number + ' is not associated to any user. Creating worker records.');
               return _createWorkerRecords(twiliophone, body, fromPhone);
             }
-          } else {
-            let msg = '';
-            if (twiliophone.company_ids.length === 0) {
-              if (twiliophone.is_default) {
-                msg = 'Phone number ' + body.To + ' is a default twilio phone and has no companies listed.';
-              } else {
-                msg = 'Phone number ' + body.To + ' has no companies listed.';
-              }
+          } else if(worker) {
+            const workerId = worker._id.toString();
+            if (twiliophone.is_default) {
+              return Myworker.find({worker_user_id: workerId}).sort({created_at: -1}).limit(1).then(function(myworkers) {
+                if (myworkers.length > 0) {
+                  return _pushMessageToCompanyUsers(worker, myworkers[0].company_id);
+                } else {
+                  const msg = 'Cannot determine company id of `To` phone ' + toPhone.local_number + '. Rejecting inbound sms.';
+                  return _rejectInboundSms(savedInboundSms, msg);
+                }
+              });
+            } else if (twiliophone.company_ids.length > 1) {
+              return Myworker.find({worker_user_id: workerId, company_id: {$in: twiliophone.company_ids}})
+              .sort({created_at: -1}).limit(1).then(function(myworkers) {
+                if (myworkers.length > 0) {
+                  return _pushMessageToCompanyUsers(worker, myworkers[0].company_id);
+                } else {
+                  const msg = 'Cannot determine company id of `To` phone ' + toPhone.local_number + '. Rejecting inbound sms.';
+                  return _rejectInboundSms(savedInboundSms, msg);
+                }
+              });
             } else {
-              msg = 'Phone number ' + body.To + ' is being used by multiple companies.';
+              const msg = 'Cannot determine company id of `To` phone ' + toPhone.local_number + '. Rejecting inbound sms.';
+              return _rejectInboundSms(savedInboundSms, msg);
             }
+          } else {
+            const msg = 'Phone number ' + body.To + ' is being used by multiple companies and From number '
+              + fromPhone.local_number + ' has no worker record.';
             return _rejectInboundSms(savedInboundSms, msg);
           }
         } else {
