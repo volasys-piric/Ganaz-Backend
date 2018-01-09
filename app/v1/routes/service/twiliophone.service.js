@@ -1,15 +1,18 @@
 const Promise = require('bluebird');
 const twilio = require('twilio');
+const AsyncLock = require('async-lock');
+const lock = new AsyncLock({Promise: Promise});
 const appConfig = require('./../../../app_config');
 const logger = require('./../../../utils/logger');
 const db = require('./../../db');
+
 
 const Twiliophone = db.models.twiliophone;
 const Myworker = db.models.myworker;
 
 const twilio_client = twilio(appConfig.TWILIO_ACCOUNT_SID, appConfig.TWILIO_AUTH_TOKEN);
 
-function _updateTwilioField(smsLog, response, exception) {
+function _updateSmsLogTwilioField(smsLog, response, exception) {
   const id = smsLog._id.toString();
   if (response) {
     logger.info('[TwiliophoneService] Smslog ' + id + ' successfully sent with response status ' + response.status + '.');
@@ -26,179 +29,137 @@ function _updateTwilioField(smsLog, response, exception) {
   return smsLog.save();
 }
 
-/**
- * Send if given twilio phone id is not in use - Twiliophone.usage_count = 0
- * @param twiliophoneId
- * @param smsLog
- * @param myworker
- * @param retry
- * @returns {Promise}
- * @private
- */
-function _sendIfTwiliophoneNotInUsed(twiliophoneId, smsLog, myworker, retry) {
-  return Twiliophone.findByIdAndUpdate(twiliophoneId, {$inc: {usage_count: 1}}, {'new': true})
-    .then(function (twilioPhone) {
-      // Send SMS
-      if (twilioPhone.usage_count === 1) {
-        const fromFullNumber = `+${twilioPhone.phone_number.country_code}${twilioPhone.phone_number.local_number}`;
-        const phoneNumber = smsLog.receiver.phone_number;
-        const countryCode = phoneNumber.country_code ? phoneNumber.country_code : '1';
-        const toFullNumber = `+${countryCode}${phoneNumber.local_number}`;
-        const messageBody = smsLog.message;
-        twilio_client.messages.create({
-          from: fromFullNumber,
-          to: toFullNumber,
-          body: messageBody
-        }).then(function (response) {
-          logger.debug('[TwiliophoneService] Sending smslog ' + smsLog._id.toString()
-            + ' to twilio phone ' + twiliophoneId + ' successful.');
-          Twiliophone.findByIdAndUpdate(twiliophoneId, {$inc: {usage_count: -1}})
-            .then(function () {
-              const promises = [_updateTwilioField(smsLog, response, null)];
-              if (myworker && !myworker.twilio_phone_id) {
-                myworker.twilio_phone_id = twiliophoneId;
-                promises.push(myworker.save());
-              } else {
-                promises.push(Promise.resolve(null));
-              }
-              Promise.all(promises).catch(function (e) {
-                logger.error(e)
-              })
-            });
-        }).catch(function (err) {
-          // https://www.twilio.com/docs/api/errors/20429#error-20429
-          if (err.code === 20429) {
-            logger.debug('[TwiliophoneService] Sending smslog ' + smsLog._id.toString()
-              + ' to twilio phone ' + twiliophoneId + ' failed. Reason: Too many requests. Retrying after 1 second.');
-            Twiliophone.findByIdAndUpdate(twiliophoneId, {$inc: {usage_count: -1}})
-              .then(function () {
-                // setTimeout(_sendIfTwiliophoneNotInUsed, 1000, twiliophoneId, smsLog, myworker, true);
-                setTimeout(function () {
-                  return _sendIfTwiliophoneNotInUsed(twiliophoneId, smsLog, myworker, true);
-                }, 1000);
-              });
-          } else {
-            logger.debug('[TwiliophoneService] Sending smslog ' + smsLog._id.toString()
-              + ' to twilio phone ' + twiliophoneId + ' failed. Error code: ' + err.code);
-            Twiliophone.findByIdAndUpdate(twiliophoneId, {$inc: {usage_count: -1}})
-              .then(function () {
-                _updateTwilioField(smsLog, null, err).catch(function (e) {
-                  logger.error(e)
-                })
-              });
-          }
-        });
-        return true;
+function _sendToTwilio(phone, smsLog, myworker) {
+  const twiliophoneId = phone._id.toString();
+  
+  function doSend() {
+    const fromFullNumber = `+${phone.phone_number.country_code}${phone.phone_number.local_number}`;
+    const phoneNumber = smsLog.receiver.phone_number;
+    const countryCode = phoneNumber.country_code ? phoneNumber.country_code : '1';
+    const toFullNumber = `+${countryCode}${phoneNumber.local_number}`;
+    const messageBody = smsLog.message;
+    return twilio_client.messages.create({
+      from: fromFullNumber,
+      to: toFullNumber,
+      body: messageBody
+    }).then(function(response) {
+      logger.debug('[TwiliophoneService] Sending smslog ' + smsLog._id.toString()
+        + ' to twilio phone ' + twiliophoneId + ' successful.');
+      const promises = [_updateSmsLogTwilioField(smsLog, response, null)];
+      if (myworker && !myworker.twilio_phone_id) {
+        myworker.twilio_phone_id = twiliophoneId;
+        promises.push(myworker.save());
       } else {
-        logger.debug('[TwiliophoneService] Twilio phone ' + twiliophoneId + ' is in use.');
-        return Twiliophone.findByIdAndUpdate(twiliophoneId, {$inc: {usage_count: -1}})
-          .then(function () {
-            if (retry) {
-              logger.debug('[TwiliophoneService] Retry sending sms ' + smsLog._id.toString()
-                + ' to twilio phone ' + twiliophoneId + ' after 1 second.');
-              setTimeout(function () {
-                return _sendIfTwiliophoneNotInUsed(twiliophoneId, smsLog, myworker, true);
-              }, 1000);
-            } else {
-              return false;
-            }
+        promises.push(Promise.resolve(null));
+      }
+      return Promise.all(promises).then(function() {
+        return "sent"
+      })
+    }).catch(function(err) {
+      // https://www.twilio.com/docs/api/errors/20429#error-20429
+      if (err.code === 20429) {
+        logger.debug('[TwiliophoneService] Sending smslog ' + smsLog._id.toString()
+          + ' to twilio phone ' + twiliophoneId + ' failed. Reason: Too many requests. Retrying after 1 second.');
+        smsLog.retry_count++;
+        if (smsLog.retry_count === 60) { // Will stop spamming twilio if given twilio phone could not be used for sending.
+          return _updateSmsLogTwilioField(smsLog, null, err).then(function() {
+            return "retry exhausted"
           });
+        } else {
+          setTimeout(function() {
+            return _sendToTwilio(phone, smsLog, myworker);
+          }, 1000);
+          return "retry.";
+        }
+      } else {
+        logger.debug('[TwiliophoneService] Sending smslog ' + smsLog._id.toString()
+          + ' to twilio phone ' + twiliophoneId + ' failed. Error code: ' + err.code);
+        return _updateSmsLogTwilioField(smsLog, null, err).then(function() {
+          return "failed"
+        });
       }
     });
+  }
+  
+  if (phone.usage_count === Number.MAX_SAFE_INTEGER) {
+    return _resetUsageCount(phone.company_ids).then(function() {
+      return doSend();
+    });
+  } else {
+    return doSend();
+  }
 }
 
-function _findAndSendToAvailTwiliophone(smsLog, myworker) {
-  const promises = [
-    Twiliophone.find({
-      is_default: true,
-      $or: [
-        {company_ids: {$exists: false}},
-        {company_ids: {$size: 0}},
-      ]
-    })
-  ];
-  if(myworker) {
-    promises.push(Twiliophone.find({is_default: false, company_ids: myworker.company_id}));
+function _findTwilioPhoneAndIncrementUsageCount(companyId) {
+  function findDefaultPhone() {
+    return Twiliophone.find({
+        is_default: true,
+        $or: [{company_ids: {$exists: false}}, {company_ids: {$size: 0}},]
+      })
+      .sort({usage_count: 1})
+      .limit(1).then(function(phones) {
+        return phones[0];
+      });
   }
-  return Promise.all(promises).then(function (promiseResults) {
-    const defaultPhones = promiseResults[0];
-    const companyPhones = myworker ? promiseResults[1] : [];
+  
+  return lock.acquire('key1', function() {
+    function incUsageCount(phone) {
+      return Twiliophone.findByIdAndUpdate(phone._id.toString(), {$inc: {usage_count: 1}}, {'new': true});
+    }
     
-    const iteratePhones = function(phones) {
-      let phone = null;
-      for (let i = 0; i < phones.length; i++) {
-        if (phones[i].usage_count === 0) {
-          phone = phones[i];
-          break;
-        }
-      }
-      if (phone !== null) {
-        // Try to send smslog given avail twiliophone.
-        _sendIfTwiliophoneNotInUsed(phone._id.toString(), smsLog, myworker).then(function(sent) {
-          if (!sent) {
-            // At some instant (usually split of milliseconds), the avail phone was used by other request.
-            logger.debug('[TwiliophoneService] Will look for available phone after 1 second.');
-            setTimeout(function () {
-              _findAndSendToAvailTwiliophone(smsLog, myworker);
-            }, 1000);
-          }
-        });
-      } else {
-        logger.debug('[TwiliophoneService] All phone numbers are in use. Will retry sending smslog '
-          + smsLog._id.toString() + ' after 1 second.');
-        setTimeout(function () {
-          _findAndSendToAvailTwiliophone(smsLog, myworker);
-        }, 1000);
-      }
-    };
-    if (companyPhones && companyPhones.length > 0) {
-      iteratePhones(companyPhones);
-    } else if(defaultPhones && defaultPhones.length > 0) {
-      iteratePhones(defaultPhones);
+    if (!companyId) {
+      return findDefaultPhone().then(incUsageCount)
     } else {
-      logger.error('[TwiliophoneService] No phone configured phones configured.');
+      return Twiliophone.find({is_default: false, company_ids: companyId})
+        .sort({usage_count: 1})
+        .limit(1).then(function(phones) {
+          return phones.length > 0 ? phones[0] : findDefaultPhone();
+        }).then(incUsageCount)
     }
   });
 }
 
-/**
- * Sends smslog asynchronously
- *
- * @param smsLog
- * @param myworkerId
- * @private
- */
-function _sendMessage(smsLog, myworkerId) {
-  if (myworkerId) {
-    Myworker.findById(myworkerId).then(function (myworker) {
-      if (myworker) {
-        if (!smsLog.sender.admin_id && myworker.company_id !== smsLog.sender.company_id.toString()) {
-          logger.error('[TwiliophoneService] Not sending smslog ' + smsLog._id.toString()
-            + '. Myworker ' + myworkerId + ' company is not the same as smslog sender company.');
-        } else if (myworker.twilio_phone_id) {
-          _sendIfTwiliophoneNotInUsed(myworker.twilio_phone_id, smsLog, myworker).then(function (sent) {
-            if (!sent) {
-              logger.debug('[TwiliophoneService] Retry sending sms ' + smsLog._id.toString() + ' to phone '
-                + myworker.twilio_phone_id + 'after 1 second.');
-              setTimeout(function () {
-                return _sendIfTwiliophoneNotInUsed(myworker.twilio_phone_id, smsLog);
-              }, 1000);
-            }
-          });
-        } else {
-          _findAndSendToAvailTwiliophone(smsLog, myworker);
-        }
-      } else {
-        _findAndSendToAvailTwiliophone(smsLog);
-      }
+function _sendSmsLog(smsLog) {
+  return _findTwilioPhoneAndIncrementUsageCount().then(function(phone) {
+    return _sendToTwilio(phone, smsLog);
+  });
+}
+
+function _sendSmsLogByWorkerId(smsLog, myworkerId) {
+  return Myworker.findById(myworkerId).then(function(myworker) {
+    return _sendSmsLogByWorker(smsLog, myworker);
+  });
+}
+
+function _sendSmsLogByWorker(smsLog, myworker) {
+  if (!smsLog.sender.admin_id && myworker.company_id !== smsLog.sender.company_id.toString()) {
+    const msg = 'Not sending smslog ' + smsLog._id.toString()
+      + '. Myworker ' + myworkerId + ' company is not the same as smslog sender company.';
+    logger.error('[TwiliophoneService] ' + msg);
+    return Promise.reject(msg);
+  } else if (myworker.twilio_phone_id) {
+    return Twiliophone.findByIdAndUpdate(myworker.twilio_phone_id, {$inc: {usage_count: 1}}, {'new': true}).then(function(phone) {
+      return _sendToTwilio(phone, smsLog, myworker);
     });
   } else {
-    _findAndSendToAvailTwiliophone(smsLog);
+    return _findTwilioPhoneAndIncrementUsageCount(myworker.company_id).then(function(phone) {
+      return _sendToTwilio(phone, smsLog, myworker);
+    });
   }
 }
 
+function _resetUsageCount(companyIds) {
+  const q = companyIds ?
+    {company_ids: {$in: companyIds}} :
+    {
+      is_default: true,
+      $or: [{company_ids: {$exists: false}}, {company_ids: {$size: 0}},]
+    };
+  return Twiliophone.update(q, {usage_count: 0}, {multi: true});
+}
+
 module.exports = {
-  search: function (sParams) {
+  search: function(sParams) {
     const dbQ = {};
     if (sParams.company_id) {
       dbQ.company_ids = sParams.company_id
@@ -207,20 +168,23 @@ module.exports = {
       dbQ.is_default = sParams.is_default;
     }
     if (sParams.phone_number) {
-      const regex = new RegExp('^' + sParams.phone_number, 'i');
-      dbQ['phone_number.local_number'] = regex;
+      dbQ['phone_number.local_number'] = new RegExp('^' + sParams.phone_number, 'i');
     }
     return Twiliophone.find(dbQ);
   },
-  findById: function (id) {
+  findById: function(id) {
     return Twiliophone.findById(id);
   },
-  create: function (body) {
+  create: function(body) {
     const twiliophone = new Twiliophone(body);
-    return twiliophone.save();
+    return twiliophone.save().then(function() {
+      return _resetUsageCount(body.company_ids).then(function() {
+        return twiliophone;
+      });
+    })
   },
-  update: function (id, body) {
-    return Twiliophone.findById(id).then(function (existingTwiliophone) {
+  update: function(id, body) {
+    return Twiliophone.findById(id).then(function(existingTwiliophone) {
       if (existingTwiliophone === null) {
         return Promise.reject('Twilio phone with id ' + id + ' does not exists.');
       } else {
@@ -229,9 +193,10 @@ module.exports = {
       }
     });
   },
-  deleteById: function (id) {
+  deleteById: function(id) {
     return Twiliophone.findByIdAndRemove(id);
   },
-  sendMessage: _sendMessage,
-  findAndSendToAvailTwiliophone: _findAndSendToAvailTwiliophone
+  sendSmsLog: _sendSmsLog,
+  sendSmsLogByWorkerId: _sendSmsLogByWorkerId,
+  sendSmsLogByWorker: _sendSmsLogByWorker,
 };

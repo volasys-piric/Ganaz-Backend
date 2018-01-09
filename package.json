@@ -24,6 +24,7 @@
   "email": "ramirezag@gmail.com",
   "license": "ISC",
   "dependencies": {
+    "async-lock": "^1.1.0",
     "bcrypt-nodejs": "0.0.3",
     "bluebird": "^3.5.0",
     "body-parser": "^1.16.1",

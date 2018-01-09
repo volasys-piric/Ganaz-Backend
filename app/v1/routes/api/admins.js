@@ -118,7 +118,7 @@ router.post('/myworker/sendSms', function(req, res) {
           const myworker = myworkers[i];
           const smslog = smslogs[i];
           // Send asynchronously
-          twiliophoneService.findAndSendToAvailTwiliophone(smslog, myworker);
+          twiliophoneService.sendSmsLogByWorker(smslog, myworker);
         }
         return models;
       }).then(function() {

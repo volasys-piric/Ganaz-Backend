@@ -367,7 +367,7 @@ const recoverPassRequestPin = function (username) {
           message: 'Ganaz Pin Code: ' + pin
         });
         return smsLog.save().then(function(savedSmsLog) {
-          twiliophoneService.sendMessage(savedSmsLog);
+          twiliophoneService.sendSmsLog(savedSmsLog);
           return {pin, access_token};
         });
       });

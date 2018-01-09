@@ -396,7 +396,7 @@ const create = function (body, smsMessageComplete) {
             return Promise.all(saveSmsLogPromises).then(function(savedSmsLogs) {
               let counter = 0;
               const sendSms = function(models) {
-                twiliophoneService.findAndSendToAvailTwiliophone(savedSmsLogs[counter], models.myworker);
+                twiliophoneService.sendSmsLogByWorker(savedSmsLogs[counter], models.myworker);
                 counter++;
               };
               for (let i = 0; i < myworkerInviteMessageForOnboardingWorkerModels.length; i++) {

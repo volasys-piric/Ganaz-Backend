@@ -23,6 +23,7 @@ const SmslogSchema = new Schema({
   cost: {$type: Number, required: true, default: 0.5}, // Default: 0.05
   billable: {$type: Boolean, required: true, default: true}, // Default: true
   status: {$type: String, required: true, enum: ['new', 'paid'], default: 'new'},
+  retry_count: {$type: Number, default: 0},
   datetime: {$type: Date}
 }, {typeKey: '$type'});
 

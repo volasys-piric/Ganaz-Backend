@@ -190,7 +190,7 @@ router.post('/', function (req, res) {
         message: messageBody
       });
       return smsLog.save().then(function (savedSmsLog) {
-        twiliophoneService.findAndSendToAvailTwiliophone(savedSmsLog, result.myworker );
+        twiliophoneService.sendSmsLogByWorker(savedSmsLog, result.myworker );
         return result;
       });
     }).then(function (result) {
@@ -366,7 +366,7 @@ function _saveNoUserRows(now, companyId, companyUserId, company, noUserRows, sen
     return Promise.all(smsLogPromises).then(function (savedSmsLogs) {
       if (sendSms) {
         for (let i = 0; i < noUserRows.length; i++) {
-          twiliophoneService.findAndSendToAvailTwiliophone(savedSmsLogs[i], noUserRows[i].myworker);
+          twiliophoneService.sendSmsLogByWorker(savedSmsLogs[i], noUserRows[i].myworker);
         }
       } else {
         log.info('[Invite Bulk] Skipping sending SMS.');
