@@ -132,9 +132,10 @@ function _sendSmsLogByWorkerId(smsLog, myworkerId) {
 }
 
 function _sendSmsLogByWorker(smsLog, myworker) {
-  if (!smsLog.sender.admin_id && myworker.company_id !== smsLog.sender.company_id.toString()) {
+  const smslogCompanyId = smsLog.sender.company_id ? smsLog.sender.company_id.toString() : '';
+  if (!smsLog.sender.admin_id && myworker.company_id !== smslogCompanyId) {
     const msg = 'Not sending smslog ' + smsLog._id.toString()
-      + '. Myworker ' + myworkerId + ' company is not the same as smslog sender company.';
+      + '. Myworker ' + myworker._id.toString() + ' company is not the same as smslog sender company.';
     logger.error('[TwiliophoneService] ' + msg);
     return Promise.reject(msg);
   } else if (myworker.twilio_phone_id) {
