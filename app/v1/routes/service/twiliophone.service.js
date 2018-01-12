@@ -133,17 +133,18 @@ function _sendSmsLogByWorkerId(smsLog, myworkerId) {
 
 function _sendSmsLogByWorker(smsLog, myworker) {
   const smslogCompanyId = smsLog.sender.company_id ? smsLog.sender.company_id.toString() : '';
-  if (!smsLog.sender.admin_id && myworker.company_id !== smslogCompanyId) {
+  const myworkerCompanyId = myworker ? myworker.company_id : '';
+  if (myworker && !smsLog.sender.admin_id && myworkerCompanyId !== smslogCompanyId) {
     const msg = 'Not sending smslog ' + smsLog._id.toString()
       + '. Myworker ' + myworker._id.toString() + ' company is not the same as smslog sender company.';
     logger.error('[TwiliophoneService] ' + msg);
     return Promise.reject(msg);
-  } else if (myworker.twilio_phone_id) {
+  } else if (myworker && myworker.twilio_phone_id) {
     return Twiliophone.findByIdAndUpdate(myworker.twilio_phone_id, {$inc: {usage_count: 1}}, {'new': true}).then(function(phone) {
       return _sendToTwilio(phone, smsLog, myworker);
     });
   } else {
-    return _findTwilioPhoneAndIncrementUsageCount(myworker.company_id).then(function(phone) {
+    return _findTwilioPhoneAndIncrementUsageCount(myworkerCompanyId).then(function(phone) {
       return _sendToTwilio(phone, smsLog, myworker);
     });
   }
