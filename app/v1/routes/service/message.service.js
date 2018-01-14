@@ -13,6 +13,8 @@ const Myworker = db.models.myworker;
 const Invite = db.models.invite;
 const Smslog = db.models.smslog;
 
+const PhoneNumberSchema = db.schema.phonenumber;
+
 const find = function (body) {
   const $or = [];
   if (body) {
@@ -250,7 +252,7 @@ function _createUserInviteMyworkerMessageForNotRegisteredUsers(noUserPhoneNumber
     const models = {user: null, invite: null, myworker: null, message: null};
     // 1) New onboarding-user object will be created (Please refer to 1. User - Overview, Data Model)
     const localNumber = noUserPhoneNumbers[i];
-    const phoneNumber = {country: 'US', country_code: '1', local_number: localNumber};
+    const phoneNumber =  {country: 'US', country_code: '1', local_number: localNumber};
     models.user = new User({
       access_token: '',
       type: 'onboarding-worker',

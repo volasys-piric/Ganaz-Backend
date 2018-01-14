@@ -57,7 +57,7 @@ function _createWorkerRecords(twiliophone, body, fromPhone, worker) {
       - Add the onboarding user to my-workers list of company
        */
       if (!worker) {
-        logger.info('[SMS API Inbound] Creating user/worker record for phone ' + fromPhone.local_number);
+        logger.info(`[SMS API Inbound] Creating user/worker record for phone +${fromPhone.country_code}${fromPhone.local_number}`);
         worker = new User({
           type: 'onboarding-worker',
           username: fromPhone.local_number,

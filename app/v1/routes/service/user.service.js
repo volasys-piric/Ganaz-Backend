@@ -71,26 +71,24 @@ const validate = function (id, body) {
         return Promise.resolve(existingUser);
       }
     };
-    const checkIfValidPhoneNumber = function (existingUser) {
-      if (!existingUser || (
-        body.phone_number && body.phone_number.local_number &&
-        existingUser.phone_number.local_number !== body.phone_number.local_number)
-      ) {
-        const phoneNumber = body.phone_number;
-        if (!phoneNumber.country) {
-          phoneNumber.country = 'US';
-        }
-        if (!phoneNumber.country_code) {
-          phoneNumber.country_code = '1';
-        }
+    const checkIfValidPhoneNumber = function(existingUser) {
+      const phoneNumber = body.phone_number;
+      if (!phoneNumber.country) {
+        phoneNumber.country = 'US';
+      }
+      if (!phoneNumber.country_code) {
+        phoneNumber.country_code = '1';
+      }
+    
+      if (!existingUser || !existingUser.phone_number.samePhone(body.phone_number)) {
         return User.findOne({
           'phone_number.country_code': phoneNumber.country_code,
           'phone_number.local_number': phoneNumber.local_number
-        }).then(function (user) {
+        }).then(function(user) {
           if (user) {
-            return Promise.reject('Phone number local number ' + phoneNumber.local_number + ' already exists.');
+            return Promise.reject('Phone number country_code ' + phoneNumber.country_code + ' and local number ' + phoneNumber.local_number + ' already exists.');
           } else {
-            if(validation.isUSPhoneNumber(phoneNumber.local_number)) {
+            if (validation.isUSPhoneNumber(phoneNumber.local_number)) {
               // Convert to plain xxxxxxxxxx
               phoneNumber.local_number = phoneNumber.local_number.replace(new RegExp('[()\\s-]', 'g'), '');
               return Promise.resolve(body);

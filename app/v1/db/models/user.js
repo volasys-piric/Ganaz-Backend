@@ -5,12 +5,7 @@ const Promise = require('bluebird');
 const Company = require('./company');
 const logger = require('./../../../utils/logger');
 const validation = require('./../../../utils/validation');
-
-const PhoneNumberSchema = new Schema({
-  country: String,
-  country_code: String,
-  local_number: String
-});
+const PhoneNumberSchema = require('../schema/phonenumber');
 
 const CompanySchema = new Schema({
   company_id: String
@@ -40,7 +35,7 @@ const UserSchema = new Schema({
   lastname: String,
   email_address: String,
   type: {type: String, required: true}, // worker/onboarding-worker/company-regular/company-admin
-  phone_number: {type: PhoneNumberSchema},
+  phone_number: {type: PhoneNumberSchema, required: true},
   company: {type: CompanySchema},
   worker: {type: WorkerSchema},
   auth_type: String,

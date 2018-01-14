@@ -27,5 +27,8 @@ module.exports = {
     answer: require('./models/answer'),
     twiliophone: require('./models/twiliophone'),
     inboundSms: require('./models/inboundSms'),
+  },
+  schema: {
+    phonenumber: require('./schema/phonenumber')
   }
 };

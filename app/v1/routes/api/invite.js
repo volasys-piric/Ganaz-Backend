@@ -18,6 +18,8 @@ const Myworker = db.models.myworker;
 const Smslog = db.models.smslog;
 const Crew = db.models.crew;
 
+const PhoneNumberSchema = db.schema.phonenumber;
+
 const dir = os.tmpdir() + '/ganaz-backend-uploads/';
 if (!fs.existsSync(dir)) {
   fs.mkdirSync(dir);
@@ -254,8 +256,9 @@ function _parseSheet(sheet) {
 function _populateUsers(rows) {
   const promises = [];
   for (let i = 0; i < rows.length; i++) {
-    const localNumber = rows[i].row[8];
-    promises.push(User.findOne({'phone_number.country_code': '1', 'phone_number.local_number': localNumber}));
+    const number = rows[i].row[8];
+    const phoneNumber = PhoneNumberSchema.toPhoneNumber(number);
+    promises.push(User.findOne({'phone_number.country_code': phoneNumber.country_code, 'phone_number.local_number': phoneNumber.local_number}));
   }
   return Promise.all(promises).then(function (users) {
     for (let i = 0; i < users.length; i++) {
@@ -341,19 +344,8 @@ function _saveNoUserRows(now, companyId, companyUserId, company, noUserRows, sen
     const smsLogPromises = [];
     for (let i = 0; i < noUserRows.length; i++) {
       const cellNumber = noUserRows[i].row[4].replace(/-/g, '');
-      const phoneNumber = {
-        country: '',
-        country_code: '1',
-        local_number: cellNumber
-      };
-      if (cellNumber.length > 10) {
-        // Mexican, eg, 011526531293095
-        phoneNumber.country_code = cellNumber.substr(0, cellNumber.length - 10);
-        phoneNumber.local_number = cellNumber.slice(cellNumber.length - 10);
-      } else {
-        phoneNumber.country = 'US';
-      }
-      const messageBody = company.getInvitationMessage(phoneNumber.local_number);
+      const phoneNumber = PhoneNumberSchema.toPhoneNumber(cellNumber);
+      const messageBody = company.getInvitationMessage(`+${phoneNumber.country_code}${phoneNumber.local_number}`);
       const smsLog = new Smslog({
         sender: {user_id: companyUserId, company_id: companyId},
         receiver: {phone_number: phoneNumber},
