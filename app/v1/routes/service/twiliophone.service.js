@@ -46,7 +46,7 @@ function _sendToTwilio(phone, smsLog, myworker) {
       logger.debug('[TwiliophoneService] Sending smslog ' + smsLog._id.toString()
         + ' to twilio phone ' + twiliophoneId + ' successful.');
       const promises = [_updateSmsLogTwilioField(smsLog, response, null)];
-      if (myworker && !myworker.twilio_phone_id) {
+      if (myworker && !myworker.twilio_phone_id && !phone.is_default) {
         myworker.twilio_phone_id = twiliophoneId;
         promises.push(myworker.save());
       } else {
