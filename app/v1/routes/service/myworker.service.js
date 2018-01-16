@@ -1,3 +1,4 @@
+const Promise = require('bluebird');
 const db = require('./../../db');
 
 const Myworker = db.models.myworker;
@@ -132,10 +133,19 @@ module.exports = {
       }
     })
   },
-  unsetTwilioPhones: function(twilioPhoneId, companyIds) {
-    return Myworker.update({
-      twilio_phone_id: twilioPhoneId,
-      company_id: {$in: companyIds}
-    }, {$unset: {twilio_phone_id: 1}}, {multi: true});
+  unsetTwilioPhones: function(twiliophone, companyIds) {
+    const id = twiliophone._id.toString();
+    if (companyIds.length > 0) {
+      return Myworker.update({
+        twilio_phone_id: id,
+        company_id: {$in: companyIds}
+      }, {$unset: {twilio_phone_id: 1}}, {multi: true});
+    } else if(twiliophone.is_default) {
+      return Myworker.update({
+        twilio_phone_id: id
+      }, {$unset: {twilio_phone_id: 1}}, {multi: true});
+    } else {
+      return Promise.resolve();
+    }
   }
 };

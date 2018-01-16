@@ -205,13 +205,9 @@ module.exports = {
             return twiliophone;
           })
         }).then(function(twiliophone) {
-          if (oldCompanyIds.length > 0) {
-            return myworkerService.unsetTwilioPhones(id, oldCompanyIds).then(function() {
-              return twiliophone;
-            });
-          } else {
+          return myworkerService.unsetTwilioPhones(twiliophone, oldCompanyIds).then(function() {
             return twiliophone;
-          }
+          });
         });
       }
     });
@@ -221,13 +217,9 @@ module.exports = {
       const oldCompanyIds = twiliophone.company_ids.map(function(oid) {
         return oid.toString()
       });
-      if (oldCompanyIds.length > 0) {
-        return myworkerService.unsetTwilioPhones(id, oldCompanyIds).then(function() {
-          return twiliophone;
-        });
-      } else {
+      return myworkerService.unsetTwilioPhones(twiliophone, oldCompanyIds).then(function() {
         return twiliophone;
-      }
+      });
     })
   },
   sendSmsLog: _sendSmsLog,
