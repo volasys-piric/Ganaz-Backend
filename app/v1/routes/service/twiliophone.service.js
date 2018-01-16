@@ -4,8 +4,8 @@ const AsyncLock = require('async-lock');
 const lock = new AsyncLock({Promise: Promise});
 const appConfig = require('./../../../app_config');
 const logger = require('./../../../utils/logger');
+const myworkerService = require('./myworker.service');
 const db = require('./../../db');
-
 
 const Twiliophone = db.models.twiliophone;
 const Myworker = db.models.myworker;
@@ -190,13 +190,41 @@ module.exports = {
       if (existingTwiliophone === null) {
         return Promise.reject('Twilio phone with id ' + id + ' does not exists.');
       } else {
+        const oldCompanyIds = existingTwiliophone.company_ids.map(function(oid) {
+          return oid.toString()
+        });
+        for(let i = 0; i < body.company_ids.length; i++) {
+          const idx = oldCompanyIds.indexOf(body.company_ids[i]);
+          if(idx !== -1) {
+            oldCompanyIds.splice(idx, 1);
+          }
+        }
         const twiliophone = Object.assign(existingTwiliophone, body);
-        return twiliophone.save();
+        return twiliophone.save().then(function(twiliophone) {
+          if (oldCompanyIds.length > 0) {
+            return myworkerService.unsetTwilioPhones(id, oldCompanyIds).then(function() {
+              return twiliophone;
+            });
+          } else {
+            return twiliophone;
+          }
+        });
       }
     });
   },
   deleteById: function(id) {
-    return Twiliophone.findByIdAndRemove(id);
+    return Twiliophone.findByIdAndRemove(id).then(function(twiliophone) {
+      const oldCompanyIds = twiliophone.company_ids.map(function(oid) {
+        return oid.toString()
+      });
+      if (oldCompanyIds.length > 0) {
+        return myworkerService.unsetTwilioPhones(id, oldCompanyIds).then(function() {
+          return twiliophone;
+        });
+      } else {
+        return twiliophone;
+      }
+    })
   },
   sendSmsLog: _sendSmsLog,
   sendSmsLogByWorkerId: _sendSmsLogByWorkerId,

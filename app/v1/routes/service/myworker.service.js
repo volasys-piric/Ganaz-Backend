@@ -1,4 +1,3 @@
-const mongoose = require('mongoose');
 const db = require('./../../db');
 
 const Myworker = db.models.myworker;
@@ -133,4 +132,10 @@ module.exports = {
       }
     })
   },
+  unsetTwilioPhones: function(twilioPhoneId, companyIds) {
+    return Myworker.update({
+      twilio_phone_id: twilioPhoneId,
+      company_id: {$in: companyIds}
+    }, {$unset: {twilio_phone_id: 1}}, {multi: true});
+  }
 };
