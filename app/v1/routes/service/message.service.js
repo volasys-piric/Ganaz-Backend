@@ -210,7 +210,7 @@ function _createMyworkerInviteMessageForOnboardingWorkers(userIdMap, body) {
       const userId = user._id.toString();
       let myworker = promisesResults[i + 1];
       let invite = promisesResults[i + 2];
-      const models = {myworker: null, invite: null, message: null};
+      const models = {myworker: myworker, invite: null, message: null};
       if (!myworker) {
         // 1) Add the onboarding user to my-workers list of company if not added yet.
         models.myworker = new Myworker({company_id: companyId, worker_user_id: userId});
