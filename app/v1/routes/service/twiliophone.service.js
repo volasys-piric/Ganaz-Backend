@@ -201,6 +201,10 @@ module.exports = {
         }
         const twiliophone = Object.assign(existingTwiliophone, body);
         return twiliophone.save().then(function(twiliophone) {
+          return _resetUsageCount(body.company_ids).then(function() {
+            return twiliophone;
+          })
+        }).then(function(twiliophone) {
           if (oldCompanyIds.length > 0) {
             return myworkerService.unsetTwilioPhones(id, oldCompanyIds).then(function() {
               return twiliophone;
