@@ -73,6 +73,14 @@ const validate = function (id, body) {
     };
     const checkIfValidPhoneNumber = function(existingUser) {
       const phoneNumber = body.phone_number;
+      if(!phoneNumber) {
+        if(!existingUser) {
+          // For new users, make phone number required.
+          return Promise.reject('Request body phone_number.local_number is required.');
+        } else {
+          return Promise.resolve();
+        }
+      }
       if (!phoneNumber.country) {
         phoneNumber.country = 'US';
       }
