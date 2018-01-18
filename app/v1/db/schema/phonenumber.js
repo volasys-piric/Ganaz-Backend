@@ -11,7 +11,7 @@ PhoneNumberSchema.methods.toString = function() {
   return `+${this.country_code}${this.local_number}`;
 };
 
-PhoneNumberSchema.statics.samePhone = function(phoneNumber) {
+PhoneNumberSchema.methods.samePhone = function(phoneNumber) {
   let cc1 = '';
   let ln1 = '';
   let cc2 = '';
