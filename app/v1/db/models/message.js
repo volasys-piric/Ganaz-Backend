@@ -8,7 +8,8 @@ const MessageSchema = new Schema({
   type: {
     $type: String,
     required: true,
-    enum: ['message', 'recruit', 'application', 'suggest', 'survey-choice-single', 'survey-open-text', 'survey-answer']
+    enum: ['message', 'recruit', 'application', 'suggest', 'survey-choice-single', 'survey-open-text', 'survey-answer',
+    'facebook-message']
   },
   sender: {
     user_id: String,

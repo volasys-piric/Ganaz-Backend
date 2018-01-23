@@ -47,7 +47,13 @@ const JobSchema = new Schema({
   },
   auto_translate: Boolean,
   created_at: Date,
-  status: String
+  status: String,
+  external_reference: {
+    facebook: {
+      page_id: String,
+      ad_id: String
+    }
+  }
 });
 
 JobSchema.pre('save', function (next) {

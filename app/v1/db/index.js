@@ -27,6 +27,7 @@ module.exports = {
     answer: require('./models/answer'),
     twiliophone: require('./models/twiliophone'),
     inboundSms: require('./models/inboundSms'),
+    fbwebhook: require('./models/fbWebhook'),
   },
   schema: {
     phonenumber: require('./schema/phonenumber')

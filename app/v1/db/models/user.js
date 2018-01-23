@@ -25,6 +25,13 @@ const WorkerSchema = new Schema({
   job_search_lock: {
     lock: {type: Boolean, default: false},
     allowed_company_ids: [{type: mongoose.Schema.Types.ObjectId, ref: 'Company'}]
+  },
+  facebook_lead: {
+    psid: String,
+    page_id: String,
+    ad_id: String,
+    company_id:  {type: mongoose.Schema.Types.ObjectId, ref: 'Company'},
+    job_id:  {type: mongoose.Schema.Types.ObjectId, ref: 'Job'}
   }
 });
 
@@ -34,17 +41,16 @@ const UserSchema = new Schema({
   firstname: String,
   lastname: String,
   email_address: String,
-  type: {type: String, required: true}, // worker/onboarding-worker/company-regular/company-admin
-  phone_number: {type: PhoneNumberSchema, required: true},
-  company: {type: CompanySchema},
-  worker: {type: WorkerSchema},
+  type: {$type: String, required: true}, // worker/onboarding-worker/company-regular/company-admin
+  phone_number: {$type: PhoneNumberSchema, required: true},
+  company: {$type: CompanySchema},
+  worker: {$type: WorkerSchema},
   auth_type: String,
   external_id: String,
   player_ids: [String],
   last_login: Date,
   created_at: Date
-});
-
+}, {typeKey: '$type'});
 
 const validateCompanyId = function (user) {
   if (user.type && user.type.startsWith("company") && user.company && user.company.company_id) {

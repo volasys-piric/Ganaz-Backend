@@ -19,7 +19,9 @@ const config = {
   STRIPE_SECRET_KEY: 'sk_test_RhXr4017wVdvnotlxgtS9gOq',
   STRIPE_PUBLISHABLE_KEY: 'pk_test_JZqzrp7oWZSWPvfhZHoGvWH3',
   ONE_SIGNAL_API_KEY: 'NmNmZTQyNDItNWI3Yy00M2I1LWEwNWMtY2RiMTkwNTQ3MWY2',
-  ONE_SIGNAL_API_ID: 'ade7e4b5-b439-4d82-9bb2-c040372c1f14'
+  ONE_SIGNAL_API_ID: 'ade7e4b5-b439-4d82-9bb2-c040372c1f14',
+  FB_VERIFY_TOKEN: '',
+  FB_PAGE_ACCESS_TOKEN: '',
 };
 
 config.load = function () {
@@ -42,7 +44,8 @@ config.load = function () {
         // TODO: Make this dynamic
         updateConfig(['secret', 'dbUrl', 'root', 'port', 'appstore_url',
           'TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_PHONE_NUMBER', 'support_mail',
-          'STRIPE_SECRET_KEY', 'STRIPE_PUBLISHABLE_KEY', 'ONE_SIGNAL_API_KEY', 'ONE_SIGNAL_API_ID']);
+          'STRIPE_SECRET_KEY', 'STRIPE_PUBLISHABLE_KEY', 'ONE_SIGNAL_API_KEY', 'ONE_SIGNAL_API_ID',
+          'FB_VERIFY_TOKEN', 'FB_PAGE_ACCESS_TOKEN']);
         config.emitter.emit('ready');
       }, function (error) {
         logger.warn('Error reading ' + overrideFile + '. Error: ' + error.message);
