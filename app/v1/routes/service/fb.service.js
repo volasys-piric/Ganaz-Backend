@@ -61,6 +61,7 @@ module.exports = {
                 });
               })(users[i]);
             }
+            return [messageModel];
           });
         }
       });
