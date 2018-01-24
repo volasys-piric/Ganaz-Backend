@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const messageService = require('./../service/message.service');
+const fbService = require('./../service/fb.service');
 const httpUtil = require('./../../../utils/http');
 
 router.post('/search', function (req, res) {
@@ -31,7 +32,7 @@ router.post('/', function (req, res) {
   /** Expected req.body
    {
        "job_id": "{id of job related to this message, empty string if no job is related}",
-       "type": "message/recruit/application",
+       "type": "message/recruit/application/facebook-message",
        "sender": {
            "user_id": "{user object id}",
            "company_id": "{company object id, empty in case of worker}"
@@ -66,7 +67,13 @@ router.post('/', function (req, res) {
   if (!body.sender.company_id) {
     body.sender.company_id = "";
   }
-  messageService.create(body).then(function (messages) {
+  let promise = null;
+  if (body.type === 'facebook-message') {
+    promise = fbService.sendMesssage(body);
+  } else {
+    promise = messageService.create(body);
+  }
+  promise.then(function(messages) {
     res.json({
       success: true,
       messages: messages

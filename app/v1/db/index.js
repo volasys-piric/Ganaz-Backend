@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 mongoose.Promise = Promise;
 mongoose.connect(appConfig.dbUrl, {useMongoClient: true});
 
+const fb = require('./models/fb');
 module.exports = {
   models: {
     admin: require('./models/admin'),
@@ -27,7 +28,8 @@ module.exports = {
     answer: require('./models/answer'),
     twiliophone: require('./models/twiliophone'),
     inboundSms: require('./models/inboundSms'),
-    fbwebhook: require('./models/fbWebhook'),
+    fbwebhook: fb.webhook,
+    fbmessage: fb.message
   },
   schema: {
     phonenumber: require('./schema/phonenumber')

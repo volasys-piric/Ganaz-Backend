@@ -270,7 +270,6 @@ router.post('/inbound', function(req, res) {
       res.send('<Response><Message>Internal server error. Please contact ' + appConfig.support_mail + '</Message></Response>');
     });
   }
-})
-;
+});
 
 module.exports = router;

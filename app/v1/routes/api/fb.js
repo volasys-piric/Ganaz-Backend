@@ -8,6 +8,7 @@ const logger = require('./../../../utils/logger');
 const db = require('./../../db');
 
 const FbWebhook = db.models.fbwebhook;
+const FbMesssage = db.models.fbmessage;
 
 const PAGE_ACCESS_TOKEN = appConfig.FB_PAGE_ACCESS_TOKEN;
 
@@ -40,7 +41,6 @@ router.post('/webhook', (req, res) => {
     const fbwebhook = new FbWebhook(body);
     fbwebhook.save().then(function(fbwebhook) {
       const processedEvents = [];
-      const promises = [];
       const messageEvents = [];
       const postbackEvents = [];
       const referralEvents = [];
@@ -57,17 +57,21 @@ router.post('/webhook', (req, res) => {
         // pass the event to the appropriate handler function
         if (webhookEvent.message) {
           messageEvents.push({psid: senderPsid, pageId: pageId, message: webhookEvent.message});
+          processedEvents.push('MESSAGE');
         } else if (webhookEvent.postback) {
           postbackEvents.push({psid: senderPsid, pageId: pageId, postback: webhookEvent.postback});
+          processedEvents.push('POSTBACKS');
         } else if (webhookEvent.referral) {
           referralEvents.push({psid: senderPsid, pageId: pageId, referral: webhookEvent.referral});
+          processedEvents.push('REFERRALS');
         }
       });
       if (processedEvents.length < 1) {
-        processedEvents.push('NONE');
+        logger.info('[FB Webhook] No events processed.');
+        res.status(200).send('Processed Events: NONE');
+      } else {
+
       }
-      // Return a '200 OK' response to all events
-      res.status(200).send('EVENT_RECEIVED');
     });
   } else {
     // Return a '404 Not Found' if event is not from a page subscription
@@ -95,9 +99,8 @@ function handleMessage(senderPsid, pageId, receivedMessage) {
   } else if (receivedMessage.attachments) {
     // Gets the URL of the message attachment
     let attachment_url = receivedMessage.attachments[0].payload.url;
+
   }
-  // Sends the response message
-  callSendAPI(senderPsid, response);
 }
 
 /**
@@ -143,7 +146,7 @@ function callSendAPI(senderPsid, response) {
     },
     "message": response
   };
-  
+
   // Send the HTTP request to the Messenger Platform
   request({
     "uri": "https://graph.facebook.com/v2.6/me/messages",
