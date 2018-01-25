@@ -125,6 +125,7 @@ module.exports = {
         return fbwebhook.save();
       } else {
         return Job.find({'external_reference.facebook.page_id': {$in: pageIds}}).then((jobs) => {
+          // TODO: Handle unmapped page_id to jobs
           const pageIdJobMap = new Map(jobs.map((job) => [job.external_reference.facebook.page_id, job]));
           const psidUserMap = new Map();
           const findUsers = (events) => {
