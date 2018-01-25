@@ -41,7 +41,7 @@ const UserSchema = new Schema({
   firstname: String,
   lastname: String,
   email_address: String,
-  type: {$type: String, required: true}, // worker/onboarding-worker/company-regular/company-admin
+  type: {$type: String, required: true}, // worker/onboarding-worker/facebook-lead-worker/company-regular/company-admin
   phone_number: {$type: PhoneNumberSchema, required: true},
   company: {$type: CompanySchema},
   worker: {$type: WorkerSchema},

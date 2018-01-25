@@ -3,12 +3,16 @@ const router = express.Router();
 const Promise = require('bluebird');
 const request = require('request');
 const appConfig = require('./../../../app_config');
-const pushNotification = require('./../../../push_notification');
+const httpUtil = require('./../../../utils/http');
 const logger = require('./../../../utils/logger');
+const fbService = require('./../service/fb.service');
 const db = require('./../../db');
 
 const FbWebhook = db.models.fbwebhook;
-const FbMesssage = db.models.fbmessage;
+const Job = db.models.job;
+const User = db.models.user;
+const Myworker = db.models.myworker;
+const Message = db.models.message;
 
 const PAGE_ACCESS_TOKEN = appConfig.FB_PAGE_ACCESS_TOKEN;
 
@@ -21,7 +25,7 @@ router.get('/webhook', (req, res) => {
     // Check the mode and token sent are correct
     if (mode === 'subscribe' && token === appConfig.FB_VERIFY_TOKEN) {
       // Respond with 200 OK and challenge token from the request
-      console.log('WEBHOOK_VERIFIED');
+      logger.info('[FB Webhook] WEBHOOK_VERIFIED');
       res.status(200).send(challenge);
     } else {
       // Responds with '403 Forbidden' if verify tokens do not match
@@ -34,108 +38,25 @@ router.get('/webhook', (req, res) => {
 
 // Accepts POST requests at /webhook endpoint
 router.post('/webhook', (req, res) => {
+  // See https://developers.facebook.com/docs/messenger-platform/getting-started/webhook-setup
   // Parse the request body from the POST
   let body = req.body;
   // Check the webhook event is from a Page subscription
-  if (body.object === 'page') {
-    const fbwebhook = new FbWebhook(body);
-    fbwebhook.save().then(function(fbwebhook) {
-      const processedEvents = [];
-      const messageEvents = [];
-      const postbackEvents = [];
-      const referralEvents = [];
-      // Iterate over each entry - there may be multiple if batched
-      body.entry.forEach(function(entry) {
-        // Get the webhook event. entry.messaging is an array, but
-        // will only ever contain one event, so we get index 0
-        const webhookEvent = entry.messaging[0];
-        logger.info('[FB Webhook API] Processing webhook event: ' + JSON.stringify(webhookEvent));
-        // Get the sender PSID
-        const senderPsid = webhookEvent.sender.id;
-        const pageId = webhookEvent.recipient.id;
-        // Check if the event is a message or postback and
-        // pass the event to the appropriate handler function
-        if (webhookEvent.message) {
-          messageEvents.push({psid: senderPsid, pageId: pageId, message: webhookEvent.message});
-          processedEvents.push('MESSAGE');
-        } else if (webhookEvent.postback) {
-          postbackEvents.push({psid: senderPsid, pageId: pageId, postback: webhookEvent.postback});
-          processedEvents.push('POSTBACKS');
-        } else if (webhookEvent.referral) {
-          referralEvents.push({psid: senderPsid, pageId: pageId, referral: webhookEvent.referral});
-          processedEvents.push('REFERRALS');
-        }
-      });
-      if (processedEvents.length < 1) {
-        logger.info('[FB Webhook] No events processed.');
-        res.status(200).send('Processed Events: NONE');
-      } else {
-
+  if (body && body.object === 'page') {
+    fbService.processWebhook(body).then((fbwebook) => {
+      let msg = fbwebook.response;
+      if (!msg) {
+        msg = JSON.stringify(fbwebook.exception);
       }
-    });
+      logger.info(`[FB Webhook] ${msg}`);
+      res.status(200).send(msg);
+    }).catch(httpUtil.handleError(res));
   } else {
     // Return a '404 Not Found' if event is not from a page subscription
+    logger.error(`[FB Webhook] Expected body.object is 'page', got ${body ? body.object : ''}`);
     res.sendStatus(404);
   }
 });
-
-/**
- * Handles messaging_postbacks events.
- *
- * @param senderPsid
- * @param pageId
- * @param receivedMessage
- * @see https://developers.facebook.com/docs/messenger-platform/reference/webhook-events/messages
- */
-function handleMessage(senderPsid, pageId, receivedMessage) {
-  let response;
-  // Checks if the message contains text
-  if (receivedMessage.text) {
-    // Creates the payload for a basic text message, which
-    // will be added to the body of our request to the Send API
-    response = {
-      "text": `You sent the message: "${receivedMessage.text}". Now send me an attachment!`
-    }
-  } else if (receivedMessage.attachments) {
-    // Gets the URL of the message attachment
-    let attachment_url = receivedMessage.attachments[0].payload.url;
-
-  }
-}
-
-/**
- * Handles messaging_postbacks events.
- *
- * @param senderPsid
- * @param pageId
- * @param receivedPostback
- * @see https://developers.facebook.com/docs/messenger-platform/reference/webhook-events/messaging_postbacks
- */
-function handlePostback(senderPsid, pageId, receivedPostback) {
-  let response;
-  // Get the payload for the postback
-  let payload = receivedPostback.payload;
-  // Set the response based on the postback payload
-  // if (payload === 'yes') {
-  //   response = { "text": "Thanks!" }
-  // } else if (payload === 'no') {
-  //   response = { "text": "Oops, try sending another image." }
-  // }
-  // // Send the message to acknowledge the postback
-  // callSendAPI(senderPsid, response);
-}
-
-/**
- * Handles messaging_referrals events.
- *
- * @param senderPsid
- * @param pageId
- * @param referralBody
- * @see https://developers.facebook.com/docs/messenger-platform/reference/webhook-events/messaging_referrals
- */
-function handleReferral(senderPsid, pageId, referralBody) {
-
-}
 
 // Sends response messages via the Send API
 function callSendAPI(senderPsid, response) {
@@ -146,7 +67,7 @@ function callSendAPI(senderPsid, response) {
     },
     "message": response
   };
-
+  
   // Send the HTTP request to the Messenger Platform
   request({
     "uri": "https://graph.facebook.com/v2.6/me/messages",
