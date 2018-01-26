@@ -9,7 +9,7 @@ const WebhookSchema = new Schema({
     entry: [{
       id: {type: String, required: true}, // <PAGE_ID>
       time: {type: Number, required: true}, // Timestamp
-      messaging: [{type: DynamicSchema, required: true}]
+      messaging: [DynamicSchema]
     }]
   },
   response: {
