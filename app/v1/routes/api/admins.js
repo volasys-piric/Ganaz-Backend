@@ -142,34 +142,4 @@ router.get('/companies/:id/invitation_message', function(req, res) {
   }).catch(httpUtil.handleError(res));
 });
 
-router.get('/jobs/idtitle', (req, res) => {
-  return Job.find().then((jobs) => {
-    res.json({
-      success: true,
-      jobs: jobs.map((job) => {
-        return {id: job._id.toString(), name: job.title.en ? job.title.en : job.title.es}
-      })
-    }).catch(httpUtil.handleError(res));
-  })
-});
-
-router.patch('/job/:id/facebook', (req, res) => {
-  const jobId = req.params.id;
-  const facebook = req.body; // job.external_reference.facebook
-  if (!facebook.page_id || facebook.ad_id) {
-    res.json({success: false, msg: 'Request body page_id and ad_id are required.'});
-  } else {
-    Job.findById(jobId).then(job => {
-      if (job === null) {
-        return Promise.reject(`Job with id ${jobId} not found.`);
-      } else {
-        Object.assign(job, body);
-        return job.save();
-      }
-    }).then((job) => {
-      res.json({success: true, job: job});
-    }).catch(httpUtil.handleError(res));
-  }
-});
-
 module.exports = router;
