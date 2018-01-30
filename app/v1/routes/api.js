@@ -77,4 +77,5 @@ app.use('/survey', require('./api/survey'));
 app.use('/survey/answer', require('./api/answer'));
 app.use('/twilio-phones', require('./api/twiliophones'));
 app.use('/sms', require('./api/sms'));
+app.use('/fb', require('./api/fb'));
 module.exports = app;
