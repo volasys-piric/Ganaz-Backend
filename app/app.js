@@ -7,7 +7,10 @@ logger.debug("Overriding 'Express' logger");
 const isProduction = process.env.NODE_ENV === 'production';
 
 const app = express();
-app.use(require('morgan')(isProduction ? 'common' : 'dev', {'stream': logger.stream}));
+app.use(require('morgan')(isProduction ? 'common' : 'dev', {
+  'stream': logger.stream,
+  skip: (req, res) => req.path === '/status'
+}));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(cors());

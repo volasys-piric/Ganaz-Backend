@@ -51,6 +51,7 @@ app.use('/', express_jwt({
       /\/job\/search$/,
       /\/plans$/,
       /\/sms/,
+      /\/fb/,
     ]
   }
 ));
