@@ -51,6 +51,7 @@ app.use('/', express_jwt({
       /\/job\/search$/,
       /\/plans$/,
       /\/sms/,
+      /\/uploads/,
     ]
   }
 ));
@@ -62,6 +63,7 @@ router.get('/status', function (req, res) {
 
 app.use('/', router);
 app.use('/admins', require('./api/admins'));
+app.use('/uploads', require('./api/upload'));
 app.use('/user', require('./api/user'));
 app.use('/company', require('./api/company'));
 app.use('/job', require('./api/job'));
