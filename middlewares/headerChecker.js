@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const appConfig = require('./../app/app_config');
 
-const excludedPaths = ['/sms/inbound'];
+const excludedPaths = ['/status', '/fb/webhook', '/sms/inbound'];
 // a middleware function with no mount path. This code is executed for every request to the router
 router.use(function (req, res, next) {
   /**
