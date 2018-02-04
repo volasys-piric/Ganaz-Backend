@@ -10,12 +10,12 @@ const PAGE_ACCESS_TOKEN = appConfig.FB_PAGE_ACCESS_TOKEN;
 
 router.get('/webhook', (req, res) => {
   const mode = req.query['hub.mode'];
-  const token = req.query['hub.verify_token'];
+  let token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
-  logger.info(`[FB Webhook] FB Query params - mode: ${mode}   token: ${token}    challenge: ${challenge}`);
-  
+  logger.info(`[FB Webhook] FB Query params - mode: [${mode}]   token: [${token}]    challenge: [${challenge}]`);
   // Check if a token and mode were sent
   if (mode && token) {
+    token = token.trim();
     // Check the mode and token sent are correct
     if (mode === 'subscribe' && token === appConfig.FB_VERIFY_TOKEN) {
       // Respond with 200 OK and challenge token from the request
