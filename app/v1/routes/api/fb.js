@@ -1,25 +1,19 @@
 const express = require('express');
 const router = express.Router();
-const Promise = require('bluebird');
 const request = require('request');
 const appConfig = require('./../../../app_config');
 const httpUtil = require('./../../../utils/http');
 const logger = require('./../../../utils/logger');
 const fbService = require('./../service/fb.service');
-const db = require('./../../db');
-
-const FbWebhook = db.models.fbwebhook;
-const Job = db.models.job;
-const User = db.models.user;
-const Myworker = db.models.myworker;
-const Message = db.models.message;
 
 const PAGE_ACCESS_TOKEN = appConfig.FB_PAGE_ACCESS_TOKEN;
 
 router.get('/webhook', (req, res) => {
-  let mode = req.query['hub.mode'];
-  let token = req.query['hub.verify_token'];
-  let challenge = req.query['hub.challenge'];
+  const mode = req.query['hub.mode'];
+  const token = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
+  logger.info(`[FB Webhook] FB Query params - mode: ${mode}   token: ${token}    challenge: ${challenge}`);
+  
   // Check if a token and mode were sent
   if (mode && token) {
     // Check the mode and token sent are correct
