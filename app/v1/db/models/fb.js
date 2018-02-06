@@ -46,6 +46,6 @@ MessageSchema.pre('save', function(next) {
 });
 
 module.exports = {
-  webhook: mongoose.model('FbWebhook', MessageSchema),
+  webhook: mongoose.model('FbWebhook', WebhookSchema),
   message: mongoose.model('FbMessage', MessageSchema)
 };
