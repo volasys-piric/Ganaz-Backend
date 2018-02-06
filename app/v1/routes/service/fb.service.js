@@ -143,24 +143,32 @@ module.exports = {
               }));
             }
             return Promise.all(findUserPromises).then((users) => {
+              const foundUsers = [];
               for (let i = 0; i < users.length; i++) {
                 const user = users[i];
-                const psid = user.worker.facebook_lead.psid;
-                if (!psidUserMap.has(psid)) {
-                  psidUserMap.set(psid, user);
+                if (user) {
+                  foundUsers.push(user);
+                  const psid = user.worker.facebook_lead.psid;
+                  if (!psidUserMap.has(psid)) {
+                    psidUserMap.set(psid, user);
+                  }
                 }
               }
-              return users;
+              return foundUsers;
             });
           };
           const saveUsers = (events) => {
-            return findUsers(events).then((users) => {
+            if (events.length < 1) {
+              return Promise.resolve([]);
+            }
+            return findUsers(events).then((foundUsers) => {
               const saveUserPromises = [];
-              for (let i = 0; i < users.length; i++) {
-                if (users[i] === null) {
-                  const event = events[i];
+              for (let i = 0; i < events.length; i++) {
+                const event = events[i];
+                let user = psidUserMap.get(event.pageId);
+                if (!user) {
                   const job = pageIdJobMap.get(event.pageId);
-                  const user = new User({
+                  user = new User({
                     type: 'facebook-lead-worker',
                     username: event.psid,
                     worker: {
@@ -172,17 +180,16 @@ module.exports = {
                       }
                     }
                   });
-                  if (event.referral && event.referral.ad_id) {
-                    // If referral
-                    user.worker.facebook_lead.ad_id = event.referral.ad_id;
-                  } else if (event.postback && event.postback.referral && event.postback.referral.ad_id) {
-                    // If postback
-                    user.worker.facebook_lead.ad_id = event.postback.referral.ad_id;
-                  }
-                  saveUserPromises.push(user.save());
-                } else {
-                  saveUserPromises.push(Promise.resolve(users[i]));
                 }
+                
+                if (event.referral && event.referral.ad_id) {
+                  // If referral
+                  user.worker.facebook_lead.ad_id = event.referral.ad_id;
+                } else if (event.postback && event.postback.referral && event.postback.referral.ad_id) {
+                  // If postback
+                  user.worker.facebook_lead.ad_id = event.postback.referral.ad_id;
+                }
+                saveUserPromises.push(user.save());
               }
               return Promise.all(saveUserPromises);
             }).then((savedUsers) => {
@@ -198,7 +205,7 @@ module.exports = {
               return Promise.all(findMyworkerPromises).then((myworkers) => {
                 const saveMyworkerPromises = [];
                 for (let i = 0; i < myworkers.length; i++) {
-                  if (myworkers[i] === null) {
+                  if (!myworkers[i]) {
                     const user = savedUsers[i];
                     const companyId = user.worker.facebook_lead.company_id.toString();
                     const myworker = new Myworker({
@@ -214,6 +221,7 @@ module.exports = {
               })
             });
           };
+          
           // Save referrals first
           return saveUsers(referralEvents).then(() => {
             // Then postback events
@@ -257,7 +265,7 @@ module.exports = {
             fbwebhook.response = {success_message: `Events processed: ${processedEvents.toString()}`};
             return fbwebhook.save();
           }).catch(function(err) {
-            fbwebhook.exception = {exception: err};
+            fbwebhook.response = {exception: err};
             return fbwebhook.save();
           })
         });

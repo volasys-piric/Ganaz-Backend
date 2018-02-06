@@ -42,7 +42,7 @@ const UserSchema = new Schema({
   lastname: String,
   email_address: String,
   type: {$type: String, required: true}, // worker/onboarding-worker/facebook-lead-worker/company-regular/company-admin
-  phone_number: {$type: PhoneNumberSchema, required: true},
+  phone_number: {$type: PhoneNumberSchema},
   company: {$type: CompanySchema},
   worker: {$type: WorkerSchema},
   auth_type: String,
