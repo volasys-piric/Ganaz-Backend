@@ -1,5 +1,6 @@
 const Promise = require('bluebird');
 const rp = require('request-promise');
+const logger = require('./../../../utils/logger');
 const appConfig = require('./../../../app_config');
 const db = require('./../../db');
 
