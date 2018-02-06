@@ -43,7 +43,7 @@ module.exports = {
         for (let i = 0; i < users.length; i++) {
           // Make sure all users have PSIDs
           const user = users[i];
-          if (!user.worker || !user.worker.facebook_lead || !user.worker.facebook_lead) {
+          if (!user.worker || !user.worker.facebook_lead || !user.worker.facebook_lead.psid) {
             noPsids.push(user._id.toString());
           }
         }
