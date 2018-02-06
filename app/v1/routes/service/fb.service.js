@@ -253,7 +253,7 @@ module.exports = {
             fbwebhook.response = {success_message: `Events processed: ${processedEvents.toString()}`};
             return fbwebhook.save();
           }).catch(function(err) {
-            fbwebhook.exception = err;
+            fbwebhook.exception = {exception: err};
             return fbwebhook.save();
           })
         });
