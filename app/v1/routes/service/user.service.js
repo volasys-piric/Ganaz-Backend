@@ -305,6 +305,12 @@ const updateType = function (currentUserId, userIdToUpdate, type) {
  */
 const search = function (sParams) {
   const dbQ = {};
+  const phoneNumberQuery = sParams.any ? sParams.any : sParams.phone_number;
+  let rightPhoneNumber = null;
+  if (phoneNumberQuery) {
+    rightPhoneNumber = phoneNumberQuery.length >= 7 ? phoneNumberQuery.substr(-7) : phoneNumberQuery;
+  }
+  
   if (sParams.any) {
     const regex = new RegExp(sParams.any, 'i');
     dbQ.$or = [
@@ -312,10 +318,12 @@ const search = function (sParams) {
       {firstname: regex},
       {lastname: regex},
       {type: regex},
-      {'phone_number.local_number': sParams.any}
     ];
+    if (rightPhoneNumber) {
+      dbQ.$or.push({'phone_number.local_number': new RegExp(`${rightPhoneNumber}$`)});  // Phone number that ends with
+    }
   } else {
-    const addCondition = function (fieldName, conditionValue, isRegex) {
+    const addCondition = function(fieldName, conditionValue, isRegex) {
       if (conditionValue) {
         if (isRegex) {
           dbQ[fieldName] = new RegExp(conditionValue, 'i');
@@ -327,11 +335,33 @@ const search = function (sParams) {
     addCondition('email_address', sParams.email_address, true);
     addCondition('firstname', sParams.firstname, true);
     addCondition('lastname', sParams.lastname, true);
-    addCondition('phone_number.local_number', sParams.phone_number, false);
     addCondition('type', sParams.type, false);
     addCondition('company.company_id', sParams.company_id, false);
+    if (sParams.facebook_lead) {
+      if (sParams.facebook_lead.job_id) {
+        addCondition('worker.facebook_lead.job_id', sParams.facebook_lead.job_id, false);
+      }
+      if (sParams.facebook_lead.company_id) {
+        addCondition('worker.facebook_lead.company_id', sParams.facebook_lead.company_id, false);
+      }
+    }
+    if (rightPhoneNumber) {
+      dbQ['phone_number.local_number'] = new RegExp(`${rightPhoneNumber}$`);  // Phone number that ends with
+    }
   }
-  return _findUsers(dbQ);
+  
+  return User.find(dbQ).then(function(users) {
+    const populateCompanyPromises = [];
+    const filtedByPhoneUsers = users.filter((user) => {
+      const fullPhoneNumber = `${user.phone_number.country_code}${user.phone_number.local_number}`;
+      return user.phone_number.local_number === phoneNumberQuery || fullPhoneNumber === phoneNumberQuery;
+    });
+    for (let i = 0; i < filtedByPhoneUsers.length; i++) {
+      const user = filtedByPhoneUsers[i];
+      populateCompanyPromises.push(populateCompany(toObject(user)));
+    }
+    return Promise.all(populateCompanyPromises);
+  });
 };
 
 // https://bitbucket.org/volasys-ss/ganaz-backend/wiki/1.7%20User%20-%20Bulk%20Search%20By%20Phone%20Numbers
