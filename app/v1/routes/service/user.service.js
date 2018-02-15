@@ -220,13 +220,21 @@ const update = function (id, body) {
 const login = function (body) {
   let findUserPromise = null;
   if (body.auth_type === 'phone') {
-    findUserPromise = User.findOne({'phone_number.local_number': body.phone_number}).then(function (user) {
-      if (!user) {
-        return Promise.reject('Authentication failed. User with phone_number.local_number ' + body.phone_number + ' does not exists..')
-      } else {
-        return user;
-      }
-    });
+    const phoneNumberQuery = body.phone_number;
+    const rightPhoneNumber = phoneNumberQuery.length >= 7 ? phoneNumberQuery.substr(-7) : phoneNumberQuery;
+    findUserPromise = User.find({'phone_number.local_number': new RegExp(`${rightPhoneNumber}$`)}) // Phone number that ends with
+      .then((users) => {
+        let result = null;
+        const fullPhoneNumber = (user) => `${user.phone_number.country_code}${user.phone_number.local_number}`;
+        for (let i = 0; i < users.length; i++) {
+          const user = users[i];
+          if (user.phone_number.local_number === phoneNumberQuery || fullPhoneNumber(user) === phoneNumberQuery) {
+            result = user;
+            break;
+          }
+        }
+        return result;
+      });
   } else {
     findUserPromise = User.findOne({username: body.username}).then(function (user) {
       if (!user) {
