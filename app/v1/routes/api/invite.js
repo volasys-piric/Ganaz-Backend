@@ -5,7 +5,7 @@ const XLSX = require('xlsx');
 const os = require('os');
 const fs = require('fs');
 const twiliophoneService = require('./../service/twiliophone.service');
-const crewService = require('./../service/crew.service');
+const inviteService = require('./../service/invite.service');
 const formatter = require('./../../../../app/utils/formatter');
 const httpUtil = require('./../../../utils/http');
 const log = require('./../../../utils/logger');
@@ -16,7 +16,6 @@ const Company = db.models.company;
 const User = db.models.user;
 const Myworker = db.models.myworker;
 const Smslog = db.models.smslog;
-const Crew = db.models.crew;
 
 const PhoneNumberSchema = db.schema.phonenumber;
 
@@ -63,144 +62,15 @@ router.post('/', function (req, res) {
       phoneNumber.country = 'US';
       phoneNumber.country_code = '1';
     }
-    /*
-     https://bitbucket.org/volasys-ss/ganaz-backend/wiki/11.1%20Invite%20-%20New#markdown-header-change-log-v15
-     CHANGE LOG: v1.5
-     Backend will check if the phone number is already invited by the company. If not, it will do the followings.
-     A. invite_only is not specified, or if it's false
-     - Create Invite object if needed.
-     - Create Onboarding worker object if needed. (Please refer to 1. User - Overview, Data Model)
-     - Add onboarding-worker to my-workers list of the company if needed.
-     - Regardless if invite was created or existing in DB, always Send SMS.
-     B. invite_only = true
-     - Create Invite object if needed
-     - Regardless if invite was created or existing in DB, always Send SMS.
-     */
-    const inviteOnly = body.invite_only && typeof body.invite_only === 'boolean' ? body.invite_only : false;
-    const companyId = body.company_id;
-    const companyUserId = body.user_id ? body.user_id : req.user.id;
-    return Promise.join(
-      Invite.findOne({
-        company_id: companyId,
-        'phone_number.country_code': phoneNumber.country_code,
-        'phone_number.local_number': phoneNumber.local_number
-      }),
-      Company.findById(body.company_id)
-    ).then(function (promiseResult) {
-      let invite = promiseResult[0];
-      const company = promiseResult[1];
-      if (invite === null) {
-        if (company === null) {
-          return Promise.reject('Company with id ' + body.company_id + ' does not exists.');
-        }
-        // 1) Create Invite object if needed.
-        invite = new Invite(req.body);
-        return invite.save().then(function (invite) {
-          log.info('[Invite] Created invite record with info: ' + JSON.stringify(invite) + '.');
-          return {invite: invite, company: company, isNew: true};
-        });
+    return Company.findById(body.company_id).then((company) => {
+      if (!company) {
+        return Promise.reject(`Company ${body.company_id} does not exists.`);
       } else {
-        return {invite: invite, company: company, isNew: false};
+        return inviteService.bulkInvite([body], company, body.user_id, body.invite_only)
       }
-    }).then(function (result) {
-      if (!inviteOnly) {
-        // 2) Create Onboarding worker object if needed. (Please refer to 1. User - Overview, Data Model)
-        return User.findOne({
-          'phone_number.country_code': phoneNumber.country_code,
-          'phone_number.local_number': phoneNumber.local_number
-        }).then(function (user) {
-          if (user === null) {
-            const basicUserInfo = {
-              type: 'onboarding-worker',
-              username: phoneNumber.local_number, // Since username is required and must be unique, so let's set this to localNumber
-              phone_number: phoneNumber,
-              worker: {
-                location: {address: '', loc: [0, 0]},
-                is_newjob_lock: true
-              }
-            };
-            const user = new User(basicUserInfo);
-            return user.save().then(function (savedUser) {
-              log.info('[Invite] Created onboarding user with info: ' + JSON.stringify(basicUserInfo) + '.');
-              result.onboardingWorker = savedUser;
-              return result;
-            });
-          } else if (user.type === 'onboarding-worker') {
-            result.onboardingWorker = user;
-            return result;
-          } else {
-            return result;
-          }
-        });
-      } else {
-        return result;
-      }
-    }).then(function (result) {
-      if (!inviteOnly && result.onboardingWorker) {
-        // 3) Add onboarding-worker to my-workers list of the company if needed.
-        const userId = result.onboardingWorker._id.toString();
-        return Myworker.findOne({
-          company_id: companyId,
-          worker_user_id: userId,
-        }).then(function (myworker) {
-          if (myworker === null) {
-            myworker = new Myworker({company_id: companyId, worker_user_id: userId});
-            return myworker.save().then(function (myworker) {
-              result.myworker = myworker;
-              return result;
-            });
-          } else {
-            result.myworker = myworker;
-            return result;
-          }
-        });
-      } else {
-        return result;
-      }
-    }).then(function (result) {
-      // https://bitbucket.org/volasys-ss/ganaz-backend/issues/26/admin-portal-phone-number-bulk-upload-with
-      // One thing to consider is, if new crew name is mentioned in CSV file, we need to create new crew with that name..
-      const myworker = result.myworker;
-      if(myworker && (body.nickname || body.crew_name)) {
-        if(body.nickname) {
-          myworker.nickname = body.nickname;
-        }
-        if (body.crew_name) {
-          return crewService.create(companyId, body.crew_name, true).then(function(crew) {
-            myworker.crew_id = crew._id.toString();
-            return myworker.save();
-          }).then(function() {
-            return result;
-          });
-        } else {
-          return myworker.save().then(function () {
-            return result;
-          });
-        }
-      } else {
-        return result;
-      }
-    }).then(function (result) {
-      const invite = result.invite;
-      const company = result.company;
-      const phoneNumber = invite.phone_number;
-      const messageBody = company.getInvitationMessage(phoneNumber.local_number);
-      const smsLog = new Smslog({
-        sender: {user_id: companyUserId, company_id: companyId},
-        receiver: {phone_number: phoneNumber},
-        billable: false,
-        message: messageBody
-      });
-      return smsLog.save().then(function (savedSmsLog) {
-        twiliophoneService.sendSmsLogByWorker(savedSmsLog, result.myworker );
-        return result;
-      });
-    }).then(function (result) {
-      const json = {success: true};
-      if (result.isNew) {
-        json.invite = result.invite;
-      }
-      res.json(json);
+    }).then((result) => {
+      const invite = result[0].invite;
+      return res.json({success: true, invite: invite});
     }).catch(httpUtil.handleError(res));
   }
 });
@@ -264,7 +134,7 @@ function _populateUsers(rows) {
     for (let i = 0; i < users.length; i++) {
       const user = users[i];
       if (user) {
-        rows[i].userId = user._id.toString();
+        rows[i].user_id = user._id.toString();
         if (user.type !== 'worker' && user.type !== 'onboarding-worker') {
           rows[i].skipped = true;
           rows[i].msg = 'User with phone number ' + user.phone_number.local_number + ' exists but user type is ' + user.type + '.';
@@ -322,10 +192,10 @@ function _saveNoUserRows(now, companyId, companyUserId, company, noUserRows, sen
       row.inviteId = promisesResult[i]._id.toString();
       const userId = promisesResult[i + 1]._id.toString();
       row.msg += ' Onboarding user created.';
-      row.userId = userId;
+      row.user_id = user_id;
       const myworker = new Myworker({
         company_id: companyId,
-        worker_user_id: userId,
+        worker_user_id: user_id,
         nickname: row.row[7],
         created_at: now
       });
@@ -377,7 +247,7 @@ function _saveWithUserRows(now, companyId, withUserRows) {
   for (let i = 0; i < withUserRows.length; i++) {
     getMyWorkerPromises.push(Myworker.findOne({
       company_id: companyId,
-      worker_user_id: withUserRows[i].userId
+      worker_user_id: withUserRows[i].user_id
     }));
   }
   return Promise.all(getMyWorkerPromises).then(function (getMyworkerResults) {
@@ -392,7 +262,7 @@ function _saveWithUserRows(now, companyId, withUserRows) {
         // 5.b If worker is not added to my-worker list of this company yet, we need to add it as my-worker with correct nickname.
         myworker = new Myworker({
           company_id: companyId,
-          worker_user_id: withUserRows[i].userId,
+          worker_user_id: withUserRows[i].user_id,
           nickname: nickname,
           created_at: now
         });
@@ -432,7 +302,7 @@ router.post('/bulk', upload.single('file'), function (req, res) {
         const withUserRows = [];
         for (let i = 0; i < rows.length; i++) {
           if (!rows[i].skipped) {
-            if (rows[i].userId) {
+            if (rows[i].user_id) {
               withUserRows.push(rows[i]);
             } else {
               noUserRows.push(rows[i]);

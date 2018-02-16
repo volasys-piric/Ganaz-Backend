@@ -3,11 +3,16 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken'); // used to create, sign, and verify tokens
 const bcrypt = require('bcrypt-nodejs');
+const fs = require('fs');
+const csv = require('csv-parser');
+const multer = require('multer');
 const db = require('./../../db');
 const appConfig = require('./../../../app_config');
 const logger = require('./../../../utils/logger');
 const httpUtil = require('./../../../utils/http');
+const validation = require('./../../../utils/validation');
 const twiliophoneService = require('./../service/twiliophone.service');
+const inviteService = require('./../service/invite.service');
 
 const Admin = db.models.admin;
 const Myworker = db.models.myworker;
@@ -138,6 +143,92 @@ router.get('/companies/:id/invitation_message', function(req, res) {
     res.json({
       success: true,
       invitation_message: company.settings ? company.settings.invitation_message : null
+    });
+  }).catch(httpUtil.handleError(res));
+});
+
+const storage = multer.diskStorage({
+  filename: function(req, file, cb) {
+    cb(null, file.fieldname + '-' + Date.now())
+  }
+});
+const upload = multer({storage: storage});
+const parsePhoneNumberCsv = (file, companyId) => {
+  return new Promise(function(resolve, reject) {
+    const invitesJson = [];
+    const existingPhoneNumbers = [];
+    fs.createReadStream(file.path)
+      .pipe(csv())
+      .on('data', function(data) {
+        for (let key in data) {
+          if (data.hasOwnProperty(key)) {
+            const lkey = key.trim().toLowerCase();
+            data[lkey] = data[key];
+            let value = data[lkey].trim();
+            if (value.startsWith('"') && value.endsWith('"')) {
+              value = value.substring(1, value.length - 1);
+            }
+            data[lkey] = value;
+          }
+        }
+        if (data.local_number) {
+          const country = data.country ? data.country : 'US';
+          const countryCode = data.country_code ? data.country_code : '1';
+          let localNumber = data.local_number;
+          if (validation.isUSPhoneNumber(localNumber)) {
+            localNumber = localNumber.replace(new RegExp('[()\\s-]', 'g'), '');
+            const fullPhoneNumber = `${countryCode}${localNumber}`;
+            if (existingPhoneNumbers.indexOf(fullPhoneNumber) === -1) {
+              existingPhoneNumbers.push(fullPhoneNumber);
+              const o = {
+                company_id: companyId,
+                phone_number: {
+                  country: country,
+                  country_code: countryCode,
+                  local_number: localNumber
+                }
+              };
+              if (data.nickname) {
+                o.nickname = data.nickname;
+              }
+              if (data.crew_name) {
+                o.crew_name = data.crew_name;
+              }
+              invitesJson.push(o);
+            } else {
+              logger.warn(`Not sending invite to ${fullPhoneNumber}. Duplicate entry found.`);
+            }
+          } else {
+            logger.warn('Not sending invite to ' + localNumber + '. Invalid US phone number.');
+          }
+        }
+      })
+      .on('end', function() {
+        resolve(invitesJson);
+      });
+  });
+};
+
+router.post('/invite/bulk', upload.single('file'), function(req, res, next) {
+  const file = req.file;
+  const companyId = req.body.company_id;
+  if (!companyId || !companyId.trim()) {
+    return res.json({
+      success: false,
+      msg: 'Requesy body company_id is required.'
+    });
+  }
+  return Company.findById(companyId).then((company) => {
+    if (!company) {
+      return Promise.reject(`Company ${companyId} does not exists.`);
+    }
+    return parsePhoneNumberCsv(file, companyId).then(function(invitesJson) {
+      return inviteService.bulkInvite(invitesJson, company);
+    }).then(() => {
+      return res.json({
+        success: true,
+        msg: 'Invites successfully sent.'
+      });
     });
   }).catch(httpUtil.handleError(res));
 });
