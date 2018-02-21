@@ -109,34 +109,43 @@ function _createWorkerRecords(twiliophone, body, fromPhone, worker) {
 }
 
 function _pushMessage(senderUser, companyId, messageBody, datetime) {
-  return User.find({type: /^company-/, 'company.company_id': companyId})
-  .then(function(companyUsers) {
-    logger.info('[SMS API Inbound] Creating message record for phone ' + senderUser.phone_number.local_number);
-    const message = new Message({
-      job_id: "",
-      type: "message",
-      sender: {user_id: senderUser._id.toString(), company_id: ""},
-      receivers: [],
-      message: {en: messageBody, es: messageBody},
-      metadata: {is_from_sms: true},
-      auto_translate: false,
-      datetime: datetime
+  const senderUserId = senderUser._id.toString();
+  return Message.findOne({'receivers.company_id': companyId, 'sender.user_id': senderUserId}).sort({datetime: -1})
+    .then((latestMessage) => {
+      return User.find({type: /^company-/, 'company.company_id': companyId})
+        .then(function(companyUsers) {
+          logger.info('[SMS API Inbound] Creating message record for phone ' + senderUser.phone_number.local_number);
+          const message = new Message({
+            job_id: "",
+            type: "message",
+            sender: {user_id: senderUserId, company_id: ''},
+            receivers: [],
+            metadata: {is_from_sms: true},
+            auto_translate: false,
+            datetime: datetime
+          });
+          if (latestMessage !== null && latestMessage.auto_translate) {
+            message.message = {en: messageBody};
+            message.auto_translate = true;
+          } else {
+            message.message = {en: messageBody, es: messageBody}
+          }
+          for (let i = 0; i < companyUsers.length; i++) {
+            message.receivers.push({
+              user_id: companyUsers[i]._id.toString(),
+              company_id: companyId,
+              status: 'new'
+            });
+          }
+          return message.save().then(function(savedMessage) {
+            logger.info('[SMS API Inbound] Sending push notifications to company ' + companyId + ' users.');
+            for (let i = 0; i < companyUsers.length; i++) {
+              pushNotification.sendMessage(companyUsers[i].player_ids, savedMessage);
+            }
+            return savedMessage;
+          });
+        });
     });
-    for (let i = 0; i < companyUsers.length; i++) {
-      message.receivers.push({
-        user_id: companyUsers[i]._id.toString(),
-        company_id: companyId,
-        status: 'new'
-      });
-    }
-    return message.save().then(function(savedMessage) {
-      logger.info('[SMS API Inbound] Sending push notifications to company ' + companyId + ' users.');
-      for (let i = 0; i < companyUsers.length; i++) {
-        pushNotification.sendMessage(companyUsers[i].player_ids, savedMessage);
-      }
-      return savedMessage;
-    });
-  });
 }
 
 function _rejectInboundSms(savedInboundSms, msg) {
