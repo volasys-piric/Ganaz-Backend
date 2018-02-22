@@ -2,6 +2,7 @@ const Promise = require('bluebird');
 const rp = require('request-promise');
 const logger = require('./../../../utils/logger');
 const appConfig = require('./../../../app_config');
+const pushNotification = require('./../../../push_notification');
 const db = require('./../../db');
 
 const User = db.models.user;
@@ -14,7 +15,7 @@ const Myworker = db.models.myworker;
 const createMessageModel = (messageBody, user, job) => {
   const userId = user._id.toString();
   const companyId = job.company_id;
-  const message = new Message({
+  return new Message({
     type: 'facebook-message',
     sender: {user_id: userId, company_id: companyId},
     receivers: [{user_id: job.company_user_id, company_id: companyId}],
@@ -23,7 +24,6 @@ const createMessageModel = (messageBody, user, job) => {
       es: messageBody,
     },
   });
-  return message;
 };
 
 module.exports = {
@@ -131,8 +131,10 @@ module.exports = {
             fbwebhook.response = {success_message: `Events processed: ${processedEvents.toString()}. ${msg}`};
             return fbwebhook.save();
           }
-          const pageIdJobMap = new Map(jobs.map((job) => [job.external_reference.facebook.page_id, job]));
+          const adIdJobMap = new Map(jobs.map((job) => [job.external_reference.facebook.ad_id, job]));
           const psidUserMap = new Map();
+          const userIdUserMap = new Map();
+          
           const findUsers = (events) => {
             const findUserPromises = [];
             for (let i = 0; i < events.length; i++) {
@@ -148,6 +150,7 @@ module.exports = {
                 const user = users[i];
                 if (user) {
                   foundUsers.push(user);
+                  userIdUserMap.set(user._id.toString(), user);
                   const psid = user.worker.facebook_lead.psid;
                   if (!psidUserMap.has(psid)) {
                     psidUserMap.set(psid, user);
@@ -158,36 +161,43 @@ module.exports = {
             });
           };
           const saveUsers = (events) => {
+            events = events.filter((event) => {
+              // Only consider events with ad_id
+              return (event.referral && event.referral.ad_id) ||
+                (event.postback && event.postback.referral && event.postback.referral.ad_id);
+            });
             if (events.length < 1) {
               return Promise.resolve([]);
             }
+            
             return findUsers(events).then((foundUsers) => {
               const saveUserPromises = [];
               for (let i = 0; i < events.length; i++) {
                 const event = events[i];
-                let user = psidUserMap.get(event.pageId);
+                let user = psidUserMap.get(event.psid);
                 if (!user) {
-                  const job = pageIdJobMap.get(event.pageId);
+                  let adId = null; // should never be null. see event.filter above.
+                  if (event.referral && event.referral.ad_id) {
+                    // If referral
+                    adId = event.referral.ad_id;
+                  } else if (event.postback && event.postback.referral && event.postback.referral.ad_id) {
+                    // If postback
+                    adId = event.postback.referral.ad_id;
+                  }
+                  const job = adIdJobMap.get(adId);
                   user = new User({
                     type: 'facebook-lead-worker',
                     username: event.psid,
                     worker: {
                       facebook_lead: {
                         psid: event.psid,
+                        ad_id: adId,
                         page_id: event.pageId,
                         company_id: job.company_id,
                         job_id: job._id,
                       }
                     }
                   });
-                }
-                
-                if (event.referral && event.referral.ad_id) {
-                  // If referral
-                  user.worker.facebook_lead.ad_id = event.referral.ad_id;
-                } else if (event.postback && event.postback.referral && event.postback.referral.ad_id) {
-                  // If postback
-                  user.worker.facebook_lead.ad_id = event.postback.referral.ad_id;
                 }
                 saveUserPromises.push(user.save());
               }
@@ -196,6 +206,7 @@ module.exports = {
               const findMyworkerPromises = [];
               for (let i = 0; i < savedUsers.length; i++) {
                 const user = savedUsers[i];
+                userIdUserMap.set(user._id.toString(), user);
                 const companyId = user.worker.facebook_lead.company_id.toString();
                 findMyworkerPromises.push(Myworker.findOne({
                   company_id: companyId,
@@ -234,7 +245,7 @@ module.exports = {
               const messageBody = event.postback.payload;
               if (messageBody) {
                 const user = postbackUsers[i];
-                const job = pageIdJobMap.get(event.pageId);
+                const job = adIdJobMap.get(event.pageId);
                 unsavedMessages.push(createMessageModel(messageBody, user, job));
               }
             }
@@ -251,7 +262,7 @@ module.exports = {
                 }
                 if (messageBody) {
                   const user = messageUsers[i];
-                  const job = pageIdJobMap.get(event.pageId);
+                  const job = adIdJobMap.get(event.pageId);
                   unsavedMessages.push(createMessageModel(messageBody, user, job));
                 }
               }
@@ -261,7 +272,16 @@ module.exports = {
             // Save all messages;
             return Promise.all(unsavedMessages.map((unsavedMessage) => unsavedMessage.save()));
           }).then(function(savedMessages) {
-            // TODO: What to do with savedMessages?
+            for (let i = 0; i < savedMessages.length; i++) {
+              const savedMessage = savedMessages[i];
+              const user = userIdUserMap.get(savedMessage.sender.user_id);
+              if (user.player_ids && user.player_ids.length > 0) {
+                // Send push notification asynchronously
+                pushNotification.sendMessage(user.player_ids, savedMessage);
+              } else {
+                logger.warn('[Application] Not sending push notification. User with id ' + user._id.toString() + ' has no player_ids.');
+              }
+            }
             fbwebhook.response = {success_message: `Events processed: ${processedEvents.toString()}`};
             return fbwebhook.save();
           }).catch(function(err) {
