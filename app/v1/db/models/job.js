@@ -50,7 +50,6 @@ const JobSchema = new Schema({
   status: String,
   external_reference: {
     facebook: {
-      page_id: String,
       ad_id: String
     }
   }
