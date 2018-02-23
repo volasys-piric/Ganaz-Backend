@@ -19,7 +19,7 @@ const sendNotification = function (device, notification) {
       'include_player_ids': includePlayerIds
     });
 
-    logger.info('[Push Notification] Sending body ----> ' + request_body);
+    logger.info(`[Push Notification] Do send request body ----> ${request_body}`);
     request.post({
         url: 'https://onesignal.com/api/v1/notifications',
         headers: {
@@ -37,12 +37,13 @@ const sendNotification = function (device, notification) {
       }
     )
   } else {
-    logger.info('[Push Notification] Not sending. Cause: Empty player ids. Body ----> ' + JSON.stringify(notification));
+    logger.info(`[Push Notification] Not sending. Cause: Empty player ids. Body ----> ${JSON.stringify(notification)}`);
   }
 };
 
 const sendMessage = function (player_ids, savedMessage) {
   const o = savedMessage.toObject();
+  logger.info(`[Push Notification] Sendin message ${JSON.stringify(savedMessage)}`);
   let messageString = null;
   let messageObject = null;
   if (o.sender.company_id && o.auto_translate === true) {
