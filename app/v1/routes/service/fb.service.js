@@ -137,7 +137,7 @@ module.exports = {
         // Get the webhook event. entry.messaging is an array, but
         // will only ever contain one event, so we get index 0
         const webhookEvent = entry.messaging[0];
-        logger.info(`[FB Webhook API] Processing webhook event: ${JSON.stringify(webhookEvent)}`);
+        logger.info(`[FB Webhook Service] Processing webhook event: ${JSON.stringify(webhookEvent)}`);
         // Get the sender PSID
         const senderPsid = webhookEvent.sender.id;
         const pageId = webhookEvent.recipient.id;
@@ -291,6 +291,8 @@ module.exports = {
                     findUserPromises.push(findUserByPsidAndAdId(event.psid, adId).then((user) => {
                       return {user, messageBody, adId, event}
                     }));
+                  } else {
+                    logger.info(`[FB Webhook Service] Cannot determine ad id. Ignoring event ${JSON.stringify(event)}.`);
                   }
                 }
               }
@@ -323,7 +325,7 @@ module.exports = {
                   if (!job) {
                     message += `No job found for Ad Id [${adId}]. `
                   }
-                  logger.info(`[FB Webhook API] ${message} Ignoring event ${JSON.stringify(o.event)}.`);
+                  logger.info(`[FB Webhook Service] ${message} Ignoring event ${JSON.stringify(o.event)}.`);
                 }
               }
               return unsavedMessages;
@@ -362,6 +364,8 @@ module.exports = {
                     findUserPromises.push(findUserByPsidAndAdId(event.psid, adId).then((user) => {
                       return {user, messageBody, adId, event}
                     }));
+                  } else {
+                    logger.info(`[FB Webhook Service] Cannot determine ad id. Ignoring event ${JSON.stringify(event)}.`);
                   }
                 }
               }
@@ -393,7 +397,7 @@ module.exports = {
                   if (!job) {
                     message += `No job found for Ad Id [${adId}]. `
                   }
-                  logger.info(`[FB Webhook API] ${message} Ignoring event ${JSON.stringify(o.event)}.`);
+                  logger.info(`[FB Webhook Service] ${message} Ignoring event ${JSON.stringify(o.event)}.`);
                 }
               }
               return unsavedMessages;
