@@ -26,6 +26,44 @@ const createMessageModel = (messageBody, user, job) => {
   });
 };
 
+const findReferralAdId = (senderPsid) => {
+  return FbWebhook.findOne({
+    'request.entry.messaging.sender.id': senderPsid,
+    'request.entry.messaging.referral.ad_id': {$exists: true}
+  }).sort({datetime: -1})
+};
+
+const findPostbackAdId = (senderPsid) => {
+  return FbWebhook.findOne({
+    'request.entry.messaging.sender.id': senderPsid,
+    'request.entry.messaging.postback.referral.ad_id': {$exists: true}
+  }).sort({datetime: -1})
+};
+
+const findUserByPsidAndAdId = (psid, adId) => {
+  return User.findOne({
+    'type': 'facebook-lead-worker',
+    'worker.facebook_lead.psid': psid,
+    'worker.facebook_lead.ad_id': adId,
+  });
+};
+
+const createFacebookLeadWorker = (psid, adId, pageId, companyId, jobId) => {
+  return new User({
+    type: 'facebook-lead-worker',
+    username: psid + adId,
+    worker: {
+      facebook_lead: {
+        psid: psid,
+        ad_id: adId,
+        page_id: pageId,
+        company_id: companyId,
+        job_id: jobId,
+      }
+    }
+  });
+}
+
 module.exports = {
   sendMesssage: (body) => {
     // https://bitbucket.org/volasys-ss/ganaz-backend/issues/34/backend-v110-change-log#markdown-header-facebook-messenger-send-api
@@ -93,13 +131,13 @@ module.exports = {
       const messageEvents = [];
       const postbackEvents = [];
       const referralEvents = [];
-      const pageIds = [];
+      const adIds = [];
       // Iterate over each entry - there may be multiple if batched
       body.entry.forEach((entry) => {
         // Get the webhook event. entry.messaging is an array, but
         // will only ever contain one event, so we get index 0
         const webhookEvent = entry.messaging[0];
-        logger.info('[FB Webhook API] Processing webhook event: ' + JSON.stringify(webhookEvent));
+        logger.info(`[FB Webhook API] Processing webhook event: ${JSON.stringify(webhookEvent)}`);
         // Get the sender PSID
         const senderPsid = webhookEvent.sender.id;
         const pageId = webhookEvent.recipient.id;
@@ -108,16 +146,18 @@ module.exports = {
         if (webhookEvent.message) {
           messageEvents.push({psid: senderPsid, pageId: pageId, message: webhookEvent.message});
           processedEvents.push('MESSAGE');
-          pageIds.push(pageId);
         } else if (webhookEvent.postback) {
           postbackEvents.push({psid: senderPsid, pageId: pageId, postback: webhookEvent.postback});
           processedEvents.push('POSTBACKS');
-          pageIds.push(pageId);
+          if (event.postback && event.postback.referral && event.postback.referral.ad_id) {
+            // If postback
+            adIds.push(event.postback.referral.ad_id);
+          }
         } else if (webhookEvent.referral) {
           if (webhookEvent.referral.ad_id) {
             referralEvents.push({psid: senderPsid, pageId: pageId, referral: webhookEvent.referral});
             processedEvents.push('REFERRALS');
-            pageIds.push(pageId);
+            adIds.push(webhookEvent.referral.ad_id);
           }
         }
       });
@@ -125,16 +165,15 @@ module.exports = {
         fbwebhook.response = {success_message: 'No events processed.'};
         return fbwebhook.save();
       } else {
-        return Job.find({'external_reference.facebook.page_id': {$in: pageIds}}).then((jobs) => {
+        return Job.find({'external_reference.facebook.ad_id': {$in: adIds}}).then((jobs) => {
           if (jobs.length < 1) {
-            const msg = `No jobs associated to page ids: [${pageIds.toString()}]`;
+            const msg = `No jobs associated to page ids: [${adIds.toString()}]`;
             fbwebhook.response = {success_message: `Events processed: ${processedEvents.toString()}. ${msg}`};
             return fbwebhook.save();
           }
           const adIdJobMap = new Map(jobs.map((job) => [job.external_reference.facebook.ad_id, job]));
           const psidUserMap = new Map();
           const userIdUserMap = new Map();
-          
           const findUsers = (events) => {
             const findUserPromises = [];
             for (let i = 0; i < events.length; i++) {
@@ -170,7 +209,7 @@ module.exports = {
               return Promise.resolve([]);
             }
             
-            return findUsers(events).then((foundUsers) => {
+            return findUsers(events).then(() => {
               const saveUserPromises = [];
               for (let i = 0; i < events.length; i++) {
                 const event = events[i];
@@ -185,19 +224,7 @@ module.exports = {
                     adId = event.postback.referral.ad_id;
                   }
                   const job = adIdJobMap.get(adId);
-                  user = new User({
-                    type: 'facebook-lead-worker',
-                    username: event.psid,
-                    worker: {
-                      facebook_lead: {
-                        psid: event.psid,
-                        ad_id: adId,
-                        page_id: event.pageId,
-                        company_id: job.company_id,
-                        job_id: job._id,
-                      }
-                    }
-                  });
+                  user = createFacebookLeadWorker(event.psid, adId, event.pageId, job.company, job._id);
                 }
                 saveUserPromises.push(user.save());
               }
@@ -237,21 +264,82 @@ module.exports = {
           return saveUsers(referralEvents).then(() => {
             // Then postback events
             return saveUsers(postbackEvents);
-          }).then((postbackUsers) => {
-            // Process postback events if there's any.
-            const unsavedMessages = [];
+          }).then(() => {
+            // Process postback messages if there's any.
+            const adIdPromises = [];
             for (let i = 0; i < postbackEvents.length; i++) {
               const event = postbackEvents[i];
               const messageBody = event.postback.payload;
               if (messageBody) {
-                const user = postbackUsers[i];
-                const job = adIdJobMap.get(event.pageId);
-                unsavedMessages.push(createMessageModel(messageBody, user, job));
+                if (event.postback && event.postback.referral && event.postback.referral.ad_id) {
+                  const adId = event.postback.referral.ad_id;
+                  adIdPromises.push(Promise.resolve(adId)); // represents event.postback.referral.ad_id
+                  adIdPromises.push(Promise.resolve(adId)); // represents event.referral.ad_id
+                } else {
+                  adIdPromises.push(findPostbackAdId(event.psid));
+                  adIdPromises.push(findReferralAdId(event.psid));
+                }
               }
             }
-            return unsavedMessages;
+            return Promise.all(adIdPromises).then((adIds) => {
+              const findUserPromises = [];
+              let counter = 0;
+              for (let i = 0; i < postbackEvents.length; i++) {
+                const event = postbackEvents[i];
+                const messageBody = event.postback.payload;
+                if (messageBody) {
+                  const postbackAdId = adIds[counter++];
+                  const refAdId = adIds[counter++];
+                  if (postbackAdId || refAdId) {
+                    const adId = postbackAdId ? postbackAdId : refAdId;
+                    findUserPromises.push(findUserByPsidAndAdId(event.psid, adId).then((user) => {
+                      return {user, messageBody, adId, event}
+                    }));
+                  }
+                }
+              }
+              return Promise.all(findUserPromises);
+            }).then((findUserResults) => {
+              const unsavedMessages = [];
+              for (let i = 0; i < findUserResults.length; i++) {
+                const result = findUserResults[i];
+                const adId = result.adId;
+                const user = result.user;
+                const job = adIdJobMap.get(adId);
+                if (user && job) {
+                  unsavedMessages.push(createMessageModel(result.messageBody, user, job));
+                } else {
+                  const event = result.event;
+                  let message = '';
+                  if (!user) {
+                    message += `No user found for PSID-AdId [${event.psid}-${adId}]. `
+                  }
+                  if (!job) {
+                    message += `No job found for Ad Id [${adId}]. `
+                  }
+                  logger.info(`[FB Webhook API] ${message} Ignoring event ${JSON.stringify(result.event)}.`);
+                }
+              }
+              return unsavedMessages;
+            });
           }).then((unsavedMessages) => {
-            return saveUsers(messageEvents).then(function(messageUsers) {
+            const adIdPromises = [];
+            for (let i = 0; i < messageEvents.length; i++) {
+              const event = messageEvents[i];
+              let messageBody = event.message.text;
+              if (!messageBody) {
+                if (event.message.attachments && event.message.attachments.length > 0) {
+                  messageBody = event.message.attachments[0].payload;
+                }
+              }
+              if (messageBody) {
+                adIdPromises.push(findPostbackAdId(event.psid));
+                adIdPromises.push(findReferralAdId(event.psid));
+              }
+            }
+            return Promise.all(adIdPromises).then((adIds) => {
+              const findUserPromises = [];
+              let counter = 0;
               for (let i = 0; i < messageEvents.length; i++) {
                 const event = messageEvents[i];
                 let messageBody = event.message.text;
@@ -261,9 +349,35 @@ module.exports = {
                   }
                 }
                 if (messageBody) {
-                  const user = messageUsers[i];
-                  const job = adIdJobMap.get(event.pageId);
-                  unsavedMessages.push(createMessageModel(messageBody, user, job));
+                  const postbackAdId = adIds[counter++];
+                  const refAdId = adIds[counter++];
+                  if (postbackAdId || refAdId) {
+                    const adId = postbackAdId ? postbackAdId : refAdId;
+                    findUserPromises.push(findUserByPsidAndAdId(event.psid, adId).then((user) => {
+                      return {user, messageBody, adId, event}
+                    }));
+                  }
+                }
+              }
+              return Promise.all(findUserPromises);
+            }).then((findUserResults) => {
+              for (let i = 0; i < findUserResults.length; i++) {
+                const tuple = findUserResults[i];
+                const adId = tuple.adId;
+                const user = tuple.user;
+                const job = adIdJobMap.get(adId);
+                if (user && job) {
+                  unsavedMessages.push(createMessageModel(tuple.messageBody, user, job));
+                } else {
+                  const event = tuple.event;
+                  let message = '';
+                  if (!user) {
+                    message += `No user found for PSID-AdId [${event.psid}-${adId}]. `
+                  }
+                  if (!job) {
+                    message += `No job found for Ad Id [${adId}]. `
+                  }
+                  logger.info(`[FB Webhook API] ${message} Ignoring event ${JSON.stringify(tuple.event)}.`);
                 }
               }
               return unsavedMessages;
@@ -282,7 +396,11 @@ module.exports = {
                 logger.warn('[Application] Not sending push notification. User with id ' + user._id.toString() + ' has no player_ids.');
               }
             }
-            fbwebhook.response = {success_message: `Events processed: ${processedEvents.toString()}`};
+            fbwebhook.response = {
+              success_message: `
+                  Events
+                  processed: ${processedEvents.toString()}`
+            };
             return fbwebhook.save();
           }).catch(function(err) {
             fbwebhook.response = {exception: err};
