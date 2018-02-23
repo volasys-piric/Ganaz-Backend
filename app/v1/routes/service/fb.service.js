@@ -165,12 +165,8 @@ module.exports = {
         fbwebhook.response = {success_message: 'No events processed.'};
         return fbwebhook.save();
       } else {
-        return Job.find({'external_reference.facebook.ad_id': {$in: adIds}}).then((jobs) => {
-          if (jobs.length < 1) {
-            const msg = `No jobs associated to page ids: [${adIds.toString()}]`;
-            fbwebhook.response = {success_message: `Events processed: ${processedEvents.toString()}. ${msg}`};
-            return fbwebhook.save();
-          }
+        const findJobsByAdIds = adIds.length > 0 ? Job.find({'external_reference.facebook.ad_id': {$in: adIds}}) : Promise.resolve([]);
+        return findJobsByAdIds.then((jobs) => {
           const adIdJobMap = new Map(jobs.map((job) => [job.external_reference.facebook.ad_id, job]));
           const psidUserMap = new Map();
           const userIdUserMap = new Map();
@@ -299,17 +295,27 @@ module.exports = {
                 }
               }
               return Promise.all(findUserPromises);
-            }).then((findUserResults) => {
+            }).then((results) => {
+              const findJobPromises = [];
+              for (let i = 0; i < results.length; i++) {
+                const o = results[i];
+                const adId = o.adId;
+                findJobPromises.push(Job.findOne({'external_reference.facebook.ad_id': adId}).then((job) => {
+                  return {...o, job}
+                }))
+              }
+              return Promise.all(findJobPromises);
+            }).then((results) => {
               const unsavedMessages = [];
-              for (let i = 0; i < findUserResults.length; i++) {
-                const result = findUserResults[i];
-                const adId = result.adId;
-                const user = result.user;
-                const job = adIdJobMap.get(adId);
+              for (let i = 0; i < results.length; i++) {
+                const o = results[i];
+                const adId = o.adId;
+                const user = o.user;
+                const job = o.job;
                 if (user && job) {
-                  unsavedMessages.push(createMessageModel(result.messageBody, user, job));
+                  unsavedMessages.push(createMessageModel(o.messageBody, user, job));
                 } else {
-                  const event = result.event;
+                  const event = o.event;
                   let message = '';
                   if (!user) {
                     message += `No user found for PSID-AdId [${event.psid}-${adId}]. `
@@ -317,7 +323,7 @@ module.exports = {
                   if (!job) {
                     message += `No job found for Ad Id [${adId}]. `
                   }
-                  logger.info(`[FB Webhook API] ${message} Ignoring event ${JSON.stringify(result.event)}.`);
+                  logger.info(`[FB Webhook API] ${message} Ignoring event ${JSON.stringify(o.event)}.`);
                 }
               }
               return unsavedMessages;
@@ -360,16 +366,26 @@ module.exports = {
                 }
               }
               return Promise.all(findUserPromises);
-            }).then((findUserResults) => {
-              for (let i = 0; i < findUserResults.length; i++) {
-                const tuple = findUserResults[i];
-                const adId = tuple.adId;
-                const user = tuple.user;
-                const job = adIdJobMap.get(adId);
+            }).then((results) => {
+              const findJobPromises = [];
+              for (let i = 0; i < results.length; i++) {
+                const o = results[i];
+                const adId = o.adId;
+                findJobPromises.push(Job.findOne({'external_reference.facebook.ad_id': adId}).then((job) => {
+                  return {...o, job}
+                }))
+              }
+              return Promise.all(findJobPromises);
+            }).then((results) => {
+              for (let i = 0; i < results.length; i++) {
+                const o = results[i];
+                const adId = o.adId;
+                const user = o.user;
+                const job = o.job;
                 if (user && job) {
-                  unsavedMessages.push(createMessageModel(tuple.messageBody, user, job));
+                  unsavedMessages.push(createMessageModel(o.messageBody, user, job));
                 } else {
-                  const event = tuple.event;
+                  const event = o.event;
                   let message = '';
                   if (!user) {
                     message += `No user found for PSID-AdId [${event.psid}-${adId}]. `
@@ -377,7 +393,7 @@ module.exports = {
                   if (!job) {
                     message += `No job found for Ad Id [${adId}]. `
                   }
-                  logger.info(`[FB Webhook API] ${message} Ignoring event ${JSON.stringify(tuple.event)}.`);
+                  logger.info(`[FB Webhook API] ${message} Ignoring event ${JSON.stringify(o.event)}.`);
                 }
               }
               return unsavedMessages;
