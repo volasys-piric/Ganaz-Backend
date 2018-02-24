@@ -30,14 +30,32 @@ const findReferralAdId = (senderPsid) => {
   return FbWebhook.findOne({
     'request.entry.messaging.sender.id': senderPsid,
     'request.entry.messaging.referral.ad_id': {$exists: true}
-  }).sort({datetime: -1})
+  }).sort({datetime: -1}).then((o) => {
+    if (o) {
+      const jsonO = o.toObject();
+      const messaging = jsonO.request.entry[0].messaging[0];
+      const referral = messaging.referral;
+      return referral.ad_id
+    } else {
+      return null;
+    }
+  });
 };
 
 const findPostbackAdId = (senderPsid) => {
   return FbWebhook.findOne({
     'request.entry.messaging.sender.id': senderPsid,
     'request.entry.messaging.postback.referral.ad_id': {$exists: true}
-  }).sort({datetime: -1})
+  }).sort({datetime: -1}).then((o) => {
+    if (o) {
+      const jsonO = o.toObject();
+      const messaging = jsonO.request.entry[0].messaging[0];
+      const referral = messaging.postback.referral;
+      return referral.ad_id
+    } else {
+      return null;
+    }
+  })
 };
 
 const findUserByPsidAndAdId = (psid, adId) => {
@@ -48,7 +66,7 @@ const findUserByPsidAndAdId = (psid, adId) => {
   });
 };
 
-const createFacebookLeadWorker = (psid, adId, pageId, companyId, jobId) => {
+const createFacebookLeadWorker = (psid, adId, pageId, job) => {
   return new User({
     type: 'facebook-lead-worker',
     username: psid + adId,
@@ -57,8 +75,8 @@ const createFacebookLeadWorker = (psid, adId, pageId, companyId, jobId) => {
         psid: psid,
         ad_id: adId,
         page_id: pageId,
-        company_id: companyId,
-        job_id: jobId,
+        company_id: job.company_id,
+        job_id: job._id,
       }
     }
   });
@@ -204,7 +222,7 @@ module.exports = {
             if (events.length < 1) {
               return Promise.resolve([]);
             }
-            
+
             return findUsers(events).then(() => {
               const saveUserPromises = [];
               for (let i = 0; i < events.length; i++) {
@@ -220,9 +238,15 @@ module.exports = {
                     adId = event.postback.referral.ad_id;
                   }
                   const job = adIdJobMap.get(adId);
-                  user = createFacebookLeadWorker(event.psid, adId, event.pageId, job.company, job._id);
+                  if (job) {
+                    user = createFacebookLeadWorker(event.psid, adId, event.pageId, job);
+                    saveUserPromises.push(user.save());
+                  } else {
+                    logger.info(`[FB Webhook Service] Not creating records. No job associated to ad id ${adId}.`);
+                  }
+                } else {
+                  saveUserPromises.push(Promise.resolve(user));
                 }
-                saveUserPromises.push(user.save());
               }
               return Promise.all(saveUserPromises);
             }).then((savedUsers) => {
@@ -255,7 +279,7 @@ module.exports = {
               })
             });
           };
-          
+
           // Save referrals first
           return saveUsers(referralEvents).then(() => {
             // Then postback events
@@ -315,6 +339,7 @@ module.exports = {
                 const user = o.user;
                 const job = o.job;
                 if (user && job) {
+                  userIdUserMap.set(user._id.toString(), user);
                   unsavedMessages.push(createMessageModel(o.messageBody, user, job));
                 } else {
                   const event = o.event;
@@ -387,6 +412,7 @@ module.exports = {
                 const user = o.user;
                 const job = o.job;
                 if (user && job) {
+                  userIdUserMap.set(user._id.toString(), user);
                   unsavedMessages.push(createMessageModel(o.messageBody, user, job));
                 } else {
                   const event = o.event;
@@ -423,7 +449,12 @@ module.exports = {
             };
             return fbwebhook.save();
           }).catch(function(err) {
-            fbwebhook.response = {exception: err};
+            logger.error(err);
+            fbwebhook.response = {
+              exception: {
+                message: typeof err === 'string' ? err : err.message
+              }
+            };
             return fbwebhook.save();
           })
         });
