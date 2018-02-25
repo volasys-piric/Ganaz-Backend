@@ -128,11 +128,11 @@ function _processSurveyAnswer(lastMessage, responderUser, myworker, smsContents,
   const workerUserId = responderUser._id.toString(); // or myworker.worker_user_id
   if (lastMessage === null) {
     // 4.2.1. If no message yet
-    logger.info(`[SMS API Inbound] User ${workerUserId} has no message record.`);
+    logger.info(`[SMS API Inbound] Sms is not a survey. User ${workerUserId} has no message record.`);
     return _createNewMessageForReceivingCompany(responderUser, myworker, smsContents, datetime)
       .then(() => `Company ${companyId} users notified.`);
   }
-  logger.info(`[SMS API Inbound] User ${workerUserId} last mesasge type is ${lastMessage.type}.`);
+  logger.info(`[SMS API Inbound] User ${workerUserId} last message type is ${lastMessage.type}.`);
   smsContents = smsContents.trim();
   if (lastMessage.type === 'survey-choice-single') {
     const surveyId = lastMessage.metadata.survey.survey_id;
@@ -277,6 +277,7 @@ function _processSurveyAnswer(lastMessage, responderUser, myworker, smsContents,
       });
     }
   } else {
+    logger.info(`[SMS API Inbound] Sms is not a survey answer.`);
     // 4.2.1. if last message is neither `survey-choice-single`, `survey-open-text`, `survey-confirmation-sms-question`, We assume this is ordinary SMS message. Go to Step 5.
     return _createNewMessageForReceivingCompany(responderUser, myworker, smsContents, datetime, lastMessage)
       .then(() => `Company ${companyId} users notified.`);
@@ -313,7 +314,7 @@ function _createNewMessageForReceivingCompany(workerUser, myworker, smsContents,
     the worker's message from ES to EN. (ISSUE 39: Twilio Webhook should translate the worker's incoming
     message to English if needed)
      */
-    if (latestMessage !== null && latestMessage.auto_translate) {
+    if (latestMessage && latestMessage.auto_translate) {
       message.message = {en: smsContents};
       message.auto_translate = true;
     } else {
@@ -338,7 +339,7 @@ function _analyzeSmsBodyContents(workerUser, myworker, smsContents, datetime, is
       })
   } else {
     const workerUserId = workerUser._id.toString();
-    return Message.findOne({'sender.company_id': companyId, 'receiver.user_id': workerUserId})
+    return Message.findOne({'sender.company_id': companyId, 'receivers.user_id': workerUserId})
       .sort({datetime: -1})
       .then((lastMessage) => {
         return _processSurveyAnswer(lastMessage, workerUser, myworker, smsContents, datetime);
@@ -347,7 +348,7 @@ function _analyzeSmsBodyContents(workerUser, myworker, smsContents, datetime, is
 }
 
 function _rejectInboundSms(savedInboundSms, msg) {
-  logger.info(`[SMS API Inbound] ${msg}`);
+  logger.info(`[SMS API Inbound] Dismissing sms - ${msg}`);
   savedInboundSms.request.rejected = true;
   savedInboundSms.request.reject_reason = msg;
   return savedInboundSms.save().then(() => null);
@@ -361,7 +362,7 @@ router.post('/inbound', (req, res) => {
     // Should never happen unless https://www.twilio.com/docs/api/twiml/sms/twilio_request params have changed
     res.send('<Response><Message>Request From and To are required.</Message></Response>');
   } else {
-    if (!body.Body || !body.trim()) {
+    if (!body.Body || !body.Body.trim()) {
       body.Body = ' '; // One signal doesnt allow sending null or empty body
     } else {
       body.Body = body.Body.trim();
