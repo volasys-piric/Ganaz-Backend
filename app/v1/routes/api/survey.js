@@ -7,7 +7,7 @@ const messageService = require('./../service/message.service');
 
 const Survey = db.models.survey;
 
-router.post('/', function (req, res) {
+router.post('/', function(req, res) {
   /** Expected request body
    {
        "type": "choice-single/open-text",
@@ -56,14 +56,16 @@ router.post('/', function (req, res) {
     if (!body.owner.company_id) {
       body.owner.company_id = '';
     }
-    const receivers = body.receivers;
-    for (let i = 0; i < receivers.length; i++) {
-      if (!receivers[i].company_id) {
-        receivers[i].company_id = '';
+    if (body.receivers) {
+      const receivers = body.receivers;
+      for (let i = 0; i < receivers.length; i++) {
+        if (!receivers[i].company_id) {
+          receivers[i].company_id = '';
+        }
       }
     }
     const survey = new Survey(body);
-    survey.save().then(function (survey) {
+    survey.save().then(function(survey) {
       const messageParam = {
         job_id: '',
         type: 'survey-' + body.type,
@@ -79,14 +81,14 @@ router.post('/', function (req, res) {
         },
         auto_translate: survey.auto_translate
       };
-      return messageService.create(messageParam, false).then(function () {
+      return messageService.create(messageParam, false).then(function() {
         res.json({success: true, survey: survey});
       });
     }).catch(httpUtil.handleError(res));
   }
 });
 
-router.post('/search', function (req, res) {
+router.post('/search', function(req, res) {
   /** Expected request body
    {
        "survey_id": "{survey id}",                           [optional]
@@ -103,7 +105,7 @@ router.post('/search', function (req, res) {
   if (body.owner && body.owner.company_id) {
     dbQ['owner.company_id'] = body.owner.company_id;
   }
-  Survey.find(dbQ).then(function (surveys) {
+  Survey.find(dbQ).then(function(surveys) {
     res.json({
       success: true,
       surveys: surveys
@@ -122,7 +124,7 @@ function _validate(body) {
   if (!body.owner || !body.owner.user_id) {
     errorMessage += ' Request param owner.user_id is required.';
   }
-  const arrayNotSet = function (arr) {
+  const arrayNotSet = function(arr) {
     return !Array.isArray(arr) || arr.length < 1;
   };
   if (arrayNotSet(body.receivers) && arrayNotSet(body.receivers_phone_numbers)) {
