@@ -99,12 +99,12 @@ module.exports = {
         for (let i = 0; i < users.length; i++) {
           // Make sure all users have PSIDs
           const user = users[i];
-          if (!user.worker || !user.worker.facebook_lead || !user.worker.facebook_lead.psid) {
+          if (user.type !== 'facebook-lead-worker' || !user.worker || !user.worker.facebook_lead || !user.worker.facebook_lead.psid) {
             noPsids.push(user._id.toString());
           }
         }
         if (noPsids.length > 0) {
-          return Promise.reject(`User ids ${noPsids.toString()} have no psid.`);
+          return Promise.reject(`User ids [${noPsids.toString()}] is/are  not facebook lead worker(s).`);
         } else {
           const messageModel = new Message(body);
           return messageModel.save().then(function(messageModel) {
