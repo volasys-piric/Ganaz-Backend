@@ -43,7 +43,7 @@ const sendNotification = function (device, notification) {
 
 const sendMessage = function (player_ids, savedMessage) {
   const o = savedMessage.toObject();
-  logger.info(`[Push Notification] Sendin message ${JSON.stringify(savedMessage)}`);
+  logger.info(`[Push Notification] Sending message ${JSON.stringify(savedMessage)}`);
   let messageString = null;
   let messageObject = null;
   if (o.sender.company_id && o.auto_translate === true) {

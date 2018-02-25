@@ -6,6 +6,7 @@ const db = require('./../../db');
 const logger = require('./../../../utils/logger');
 const httpUtil = require('./../../../utils/http');
 const pushNotification = require('./../../../push_notification');
+const answerService = require('./../service/answer.service');
 
 const Survey = db.models.survey;
 const Answer = db.models.answer;
@@ -13,7 +14,7 @@ const User = db.models.user;
 const Company = db.models.company;
 const Message = db.models.message;
 
-router.post('/', function (req, res) {
+router.post('/', function(req, res) {
   /** Expected request body
    {
        "survey_id": "{survey id}",
@@ -35,45 +36,8 @@ router.post('/', function (req, res) {
    }
    */
   const body = req.body;
-  _validate(body).then(function (models) {
-    const survey = models.survey;
-    const user = models.user;
-    body.survey = {owner: {company_id: survey.owner.company_id}};
-    if (!body.responder.company_id) {
-      body.responder.company_id = '';
-    }
-    const answer = new Answer(body);
-    return answer.save().then(function (answer) {
-      const message = new Message({
-        job_id: 'NONE',
-        type: 'survey-answer',
-        sender: answer.responder,
-        receivers: [{
-          user_id: survey.owner.user_id.toString(),
-          company_id: survey.owner.company_id,
-          status: 'new'
-        }],
-        message: {
-          en: 'Your survey is answered',
-          es: 'Your survey is answered'
-        },
-        metadata: {
-          survey: {
-            survey_id: survey._id.toString(),
-            answer_id: answer._id.toString()
-          }
-        },
-        auto_translate: answer.auto_translate
-      });
-      return message.save().then(function () {
-        if (user.player_ids) {
-          pushNotification.sendMessage(user.player_ids, message);
-        } else {
-          logger.warn('[Answer API] Not sending push notification. User with id ' + user._id.toString() + ' has no player_ids.');
-        }
-        res.json({success: true, answer: answer});
-      });
-    });
+  return answerService.validateAndCreateAnswer(body).then((answer) => {
+    res.json({success: true, answer: answer});
   }).catch(httpUtil.handleError(res));
 });
 

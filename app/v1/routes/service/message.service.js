@@ -73,19 +73,19 @@ function _validate(body) {
     let errorMessage = "";
     if (body.job_id && mongoose.Types.ObjectId.isValid(body.job_id)) {
       if (!job) {
-        errorMessage += ' No job record for job_id ' + body.job_id + '.';
+        errorMessage += ` No job record for job_id ${body.job_id}.`;
       }
     } else if (body.type === 'recruit') {
       errorMessage += ' Valid job_id is required for message type recruit.';
     }
     if (!senderUser) {
-      errorMessage += " Sender with id " + body.sender.user_id + " does not exists.";
+      errorMessage += ` Sender with id ${body.sender.user_id} does not exists.`;
     }
     if (body.sender.company_id) {
       if (!senderCmpy) {
-        errorMessage += " Sender company " + body.sender.company_id + " does not exists.";
+        errorMessage += ` Sender company ${body.sender.company_id} does not exists.`;
       } else if (senderUser !== null && senderUser.company && (senderUser.company.company_id !== body.sender.company_id)) {
-        errorMessage += " Sender " + body.sender.company_id + " does not belong to the sender.company_id specified.";
+        errorMessage += ` Sender ${body.sender.company_id} does not belong to the sender.company_id specified.`;
       }
     } else if (senderUser !== null && senderUser.company && senderUser.company.company_id) {
       body.sender.company_id = senderUser.company.company_id;
@@ -104,7 +104,7 @@ function _validate(body) {
         for (let i = 0; i < receivers.length; i++) {
           const user = userIdMap.get(receivers[i].user_id);
           if (!user) {
-            errorMessage += " Receiver id " + receivers[i].user_id + " does not exists.";
+            errorMessage += ` Receiver id ${receivers[i].user_id} does not exists.`;
           } else if (user.type === 'onboarding-worker') {
             hasOnboardingWorker = true;
           }
