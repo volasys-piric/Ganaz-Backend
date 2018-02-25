@@ -18,7 +18,6 @@ const Message = db.models.message;
 const Myworker = db.models.myworker;
 const Twiliophone = db.models.twiliophone;
 const Survey = db.models.survey;
-const Answer = db.models.answer;
 
 const _parseE164Number = (num) => {
   const o = {country_code: null, local_number: num};
@@ -135,7 +134,7 @@ function _processSurveyAnswer(lastMessage, responderUser, myworker, smsContents,
   logger.info(`[SMS API Inbound] User ${workerUserId} last message type is ${lastMessage.type}.`);
   smsContents = smsContents.trim();
   if (lastMessage.type === 'survey-choice-single') {
-    const surveyId = lastMessage.metadata.survey.survey_id;
+    const surveyId = lastMessage.getSurveyId();
     // 4.2.2. If `last_message.type` == `survey-choice-single`, we check the current SMS contents.
     return Survey.findById(surveyId).then((survey) => {
       let isAnswer = false;
@@ -160,6 +159,7 @@ function _processSurveyAnswer(lastMessage, responderUser, myworker, smsContents,
           auto_translate: survey.auto_tranlate
         }, survey, responderUser, datetime).then(() => survey);
       } else {
+        logger.info(`[SMS API Inbound] User ${workerUserId} sms is not an answer to survey ${surveyId}.`);
         // 4.2.2.2. If SMS contents is not single-digit or out of range of answer choice, we assume that this is
         // NOT answer, just normal SMS. Go to Step 5.
         return Promise.resolve(survey);
@@ -172,7 +172,7 @@ function _processSurveyAnswer(lastMessage, responderUser, myworker, smsContents,
     // 4.2.3. If `last_message.type` == `survey-open-text`, we need to send confirmation SMS to worker again, just
     // to make sure the current SMS reply from worker is the answer.
     // This will be done after Step 5.
-    const surveyId = lastMessage.metadata.survey.survey_id;
+    const surveyId = lastMessage.getSurveyId();
     return _createNewMessageForReceivingCompany(responderUser, myworker, smsContents, datetime, lastMessage, null, surveyId)
       .then((savedCompanyMessage) => {
         logger.info(`[SMS API Inbound] Sending sms confirmation to user ${workerUserId}.`);
@@ -215,11 +215,11 @@ function _processSurveyAnswer(lastMessage, responderUser, myworker, smsContents,
         sent to worker ${workerUserId}.`;
       })
   } else if (lastMessage.type === 'survey-confirmation-sms-question') {
-    const surveyId = lastMessage.metadata.survey.survey_id;
+    const surveyId = lastMessage.getSurveyId();
     const get2ndToTheLastMessage = () => {
       return Message.find({
           'sender.company_id': companyId,
-          'receiver.user_id': workerUserId,
+          'receivers.user_id': workerUserId,
           'metadata.survey.survey_id': surveyId
         })
         .sort({datetime: -1}).limit(2)
@@ -244,7 +244,7 @@ function _processSurveyAnswer(lastMessage, responderUser, myworker, smsContents,
         answerMessage.type = 'survey-answer';
         return answerMessage.save();
       }).then((answerMessage) => {
-        return Survey.findById(lastMessage.metadata.survey.survey_id).then((survey) => {
+        return Survey.findById(surveyId).then((survey) => {
           // 4.4.2 We also need to create `survey-answer` object data model.
           // Please check [WIKI 17.2.2: Survey > Answer - New](https://bitbucket.org/volasys-ss/ganaz-backend/wiki/17.2.2%20Survey%20%3E%20Answer%20-%20New)
           logger.info(`[SMS API Inbound] User ${workerUserId} sms saved im message ${answerMessage._id.toString()} is an answer to survey ${survey._id.toString()}.`);
@@ -256,8 +256,8 @@ function _processSurveyAnswer(lastMessage, responderUser, myworker, smsContents,
         });
       }).then(() => {
         // 4.4.3 We still need to follow Step 5 to create message object for the current message.
-        // But the message type will be `survey-confirmation-answer` instead of `message`.
-        return _createNewMessageForReceivingCompany(responderUser, myworker, smsContents, datetime, lastMessage, 'survey-confirmation-answer')
+        // But the message type will be `survey-confirmation-sms-question` instead of `message`.
+        return _createNewMessageForReceivingCompany(responderUser, myworker, smsContents, datetime, lastMessage, 'survey-confirmation-sms-question')
           .then(() => `Company ${companyId} users notified.`);
       });
     } else {

@@ -42,4 +42,9 @@ MessageSchema.pre('save', function (next) {
   next();
 });
 
+MessageSchema.methods.getSurveyId = function() {
+  const o = this.toObject();
+  return o.metadata && o.metadata.survey && o.metadata.survey.survey_id ? o.metadata.survey.survey_id : null;
+};
+
 module.exports = mongoose.model('Message', MessageSchema);

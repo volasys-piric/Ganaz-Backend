@@ -1,20 +1,11 @@
-const express = require('express');
-const router = express.Router();
 const Promise = require('bluebird');
-
-const appConfig = require('./../../../app_config');
 const pushNotification = require('./../../../push_notification');
 const logger = require('./../../../utils/logger');
 const db = require('./../../db');
 
-const InboundSms = db.models.inboundSms;
 const User = db.models.user;
-const Invite = db.models.invite;
-const Smslog = db.models.smslog;
 const Company = db.models.company;
 const Message = db.models.message;
-const Myworker = db.models.myworker;
-const Twiliophone = db.models.twiliophone;
 const Survey = db.models.survey;
 const Answer = db.models.answer;
 
@@ -98,7 +89,7 @@ const _createAnswer = (body, survey, responderUser, datetime) => {
       datetime: datetime
     });
     return message.save().then(function() {
-      if (user.player_ids) {
+      if (responderUser.player_ids) {
         pushNotification.sendMessage(responderUser.player_ids, message);
       } else {
         logger.warn(`[Answer Service] Not sending push notification. User with id ${responderUser._id.toString()} has no player_ids.`);
