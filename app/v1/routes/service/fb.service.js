@@ -17,7 +17,7 @@ const createMessageModel = (messageBody, user, job) => {
   const companyId = job.company_id;
   return new Message({
     type: 'facebook-message',
-    sender: {user_id: userId, company_id: companyId},
+    sender: {user_id: userId, company_id: ''},
     receivers: [{user_id: job.company_user_id, company_id: companyId}],
     message: {
       en: messageBody,
