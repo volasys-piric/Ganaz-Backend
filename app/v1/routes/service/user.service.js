@@ -361,8 +361,12 @@ const search = function (sParams) {
   return User.find(dbQ).then(function(users) {
     const populateCompanyPromises = [];
     const filtedByPhoneUsers = users.filter((user) => {
-      const fullPhoneNumber = `${user.phone_number.country_code}${user.phone_number.local_number}`;
-      return user.phone_number.local_number === phoneNumberQuery || fullPhoneNumber === phoneNumberQuery;
+      if (!user.phone_number) {
+        return !phoneNumberQuery || !phoneNumberQuery.trim();
+      } else {
+        const fullPhoneNumber = `${user.phone_number.country_code}${user.phone_number.local_number}`;
+        return user.phone_number.local_number === phoneNumberQuery || fullPhoneNumber === phoneNumberQuery;
+      }
     });
     for (let i = 0; i < filtedByPhoneUsers.length; i++) {
       const user = filtedByPhoneUsers[i];
