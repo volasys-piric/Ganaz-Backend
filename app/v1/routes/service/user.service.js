@@ -1,6 +1,7 @@
 const Promise = require('bluebird');
 const bcrypt = require('bcrypt-nodejs');
 const jwt = require('jsonwebtoken'); // used to create, sign, and verify tokens
+const mongoose = require('mongoose');
 const twiliophoneService = require('./../service/twiliophone.service');
 const validation = require('./../../../utils/validation');
 const db = require('./../../db');
@@ -346,10 +347,10 @@ const search = function (sParams) {
     addCondition('type', sParams.type, false);
     addCondition('company.company_id', sParams.company_id, false);
     if (sParams.facebook_lead) {
-      if (sParams.facebook_lead.job_id) {
+      if (sParams.facebook_lead.job_id && mongoose.Types.ObjectId.isValid(sParams.facebook_lead.job_id)) {
         addCondition('worker.facebook_lead.job_id', sParams.facebook_lead.job_id, false);
       }
-      if (sParams.facebook_lead.company_id) {
+      if (sParams.facebook_lead.company_id && mongoose.Types.ObjectId.isValid(sParams.facebook_lead.company_id)) {
         addCondition('worker.facebook_lead.company_id', sParams.facebook_lead.company_id, false);
       }
     }
