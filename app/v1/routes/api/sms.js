@@ -249,7 +249,7 @@ function _processSurveyAnswer(lastMessage, responderUser, myworker, smsContents,
           // Please check [WIKI 17.2.2: Survey > Answer - New](https://bitbucket.org/volasys-ss/ganaz-backend/wiki/17.2.2%20Survey%20%3E%20Answer%20-%20New)
           logger.info(`[SMS API Inbound] User ${workerUserId} sms saved im message ${answerMessage._id.toString()} is an answer to survey ${survey._id.toString()}.`);
           return answerService.createAnswer({
-            answer: {text: answerMessage.message},
+            answer: {text: {en: smsContents, es: smsContents}},
             responder: {user_id: responderUser._id, company_id: ''},
             auto_translate: lastMessage.auto_tranlate
           }, survey, responderUser, datetime);
