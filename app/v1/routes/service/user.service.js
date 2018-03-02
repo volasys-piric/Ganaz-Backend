@@ -19,6 +19,17 @@ const validPhonePassword = function (password) {
 const validate = function (id, body) {
   let errorMessage = '';
   if (body) {
+    const deleteFbLeadPropertyIfEmpty = (property) => {
+      if (body.hasOwnProperty('facebook_lead')
+        && body.facebook_lead.hasOwnProperty(property)) {
+        if (!body.facebook_lead[property] || !body.facebook_lead[property].trim()) {
+          delete body.facebook_lead[property];
+        }
+      }
+    };
+    deleteFbLeadPropertyIfEmpty('job_id');
+    deleteFbLeadPropertyIfEmpty('company_id');
+    
     if (!id) {
       if (!body.firstname || !body.lastname || !body.type || !body.auth_type) {
         errorMessage = 'Request body firstname, lastname, type and auth_type are required for new users.';
