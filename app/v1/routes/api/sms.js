@@ -138,14 +138,9 @@ function _processSurveyAnswer(lastMessage, responderUser, myworker, smsContents,
     // 4.2.2. If `last_message.type` == `survey-choice-single`, we check the current SMS contents.
     return Survey.findById(surveyId).then((survey) => {
       let isAnswer = false;
-      const choices = survey.choices;
-      let i = 0;
-      for (; i < choices.length; i++) {
-        const choice = choices[i];
-        if (choice.en === smsContents || choice.es === smsContents) {
-          isAnswer = true;
-          break;
-        }
+      const choiceNumber = parseInt(smsContents);
+      if(!isNaN(choiceNumber) && choiceNumber > 0 && choiceNumber <= survey.choices.length) {
+        isAnswer = true
       }
       // 4.2.2.1. If SMS contents is just single-digit and it's in the range of answer choice, we assume that this
       // SMS is answer to the multiple choice. We go to Step 4.3
@@ -154,7 +149,7 @@ function _processSurveyAnswer(lastMessage, responderUser, myworker, smsContents,
         // 4.3 Since the current SMS is answer to survey-choice-single, we need to create survey-answer
         // object and create relevant message. Please check WIKI 17.2.2: Survey > Answer - New
         return answerService.createAnswer({
-          answer: {index: `${i}`, text: {en: smsContents, es: smsContents}},
+          answer: {index: `${choiceNumber}`, text: {en: smsContents, es: smsContents}},
           responder: {user_id: responderUser._id, company_id: ''},
           auto_translate: survey.auto_tranlate
         }, survey, responderUser, datetime).then(() => survey);
