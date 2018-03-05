@@ -6,6 +6,7 @@ const appConfig = require('./../../../app_config');
 const pushNotification = require('./../../../push_notification');
 const answerService = require('./../service/answer.service');
 const twiliophoneService = require('./../service/twiliophone.service');
+const googleService = require('./../service/google.service');
 const logger = require('./../../../utils/logger');
 const db = require('./../../db');
 
@@ -139,7 +140,7 @@ function _processSurveyAnswer(lastMessage, responderUser, myworker, smsContents,
     return Survey.findById(surveyId).then((survey) => {
       let isAnswer = false;
       const choiceNumber = parseInt(smsContents);
-      if(!isNaN(choiceNumber) && choiceNumber > 0 && choiceNumber <= survey.choices.length) {
+      if (!isNaN(choiceNumber) && choiceNumber > 0 && choiceNumber <= survey.choices.length) {
         isAnswer = true
       }
       // 4.2.2.1. If SMS contents is just single-digit and it's in the range of answer choice, we assume that this
@@ -310,16 +311,24 @@ function _createNewMessageForReceivingCompany(workerUser, myworker, smsContents,
     message to English if needed)
      */
     if (latestMessage && latestMessage.auto_translate) {
-      message.message = {en: smsContents};
-      message.auto_translate = true;
+      logger.info(`[SMS API Inbound] Translating ${smsContents} to english.`);
+      return googleService.translate(smsContents).then((translations) => {
+        message.message = {en: translations[0]}; // Get the first translation
+        message.auto_translate = true;
+        return message.save().then((savedMessage) => {
+          logger.info(`[SMS API Inbound] Sending push notifications to company ${companyId} users.`);
+          pushNotification.sendMessage(workerUser.player_ids, savedMessage);
+          return savedMessage;
+        });
+      });
     } else {
       message.message = {en: smsContents, es: smsContents}
+      return message.save().then((savedMessage) => {
+        logger.info(`[SMS API Inbound] Sending push notifications to company ${companyId} users.`);
+        pushNotification.sendMessage(workerUser.player_ids, savedMessage);
+        return savedMessage;
+      });
     }
-    return message.save().then((savedMessage) => {
-      logger.info(`[SMS API Inbound] Sending push notifications to company ${companyId} users.`);
-      pushNotification.sendMessage(workerUser.player_ids, savedMessage);
-      return savedMessage;
-    });
   });
 }
 

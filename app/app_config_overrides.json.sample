@@ -4,5 +4,6 @@
   "root": "/",
   "port": 8000,
   "FB_VERIFY_TOKEN": "",
-  "FB_PAGE_ACCESS_TOKEN": ""
+  "FB_PAGE_ACCESS_TOKEN": "",
+  "GOOGLE_TRANSLATE_KEY": "",
 }

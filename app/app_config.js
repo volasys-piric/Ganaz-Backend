@@ -22,6 +22,7 @@ const config = {
   ONE_SIGNAL_API_ID: 'ade7e4b5-b439-4d82-9bb2-c040372c1f14',
   FB_VERIFY_TOKEN: 'G@n4zF@c3b00kTok3n!@#',
   FB_PAGE_ACCESS_TOKEN: 'EAAEuoIpV9lQBAFwG9yFigq9hpbNwUMgFryrRZBHSMdZBZBLRub45EMUy2v5bFXxyn52WNpHzF3zNyDwQLO3ZB0UHDfAiLtCSrlw8aBmDrg2O7SZBQvkqB04aaNboZC0GI0EJKH1j6VdZBPPLG9wuXuNeD6NEpbtyuCwDYvSC2sZAOLTrwKpODAS6',
+  GOOGLE_TRANSLATE_KEY: 'AIzaSyCVm0nvaYBqtNOOepzALr7iCKNW1_96J6o',
 };
 
 config.load = function () {
@@ -45,7 +46,7 @@ config.load = function () {
         updateConfig(['secret', 'dbUrl', 'root', 'port', 'appstore_url',
           'TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_PHONE_NUMBER', 'support_mail',
           'STRIPE_SECRET_KEY', 'STRIPE_PUBLISHABLE_KEY', 'ONE_SIGNAL_API_KEY', 'ONE_SIGNAL_API_ID',
-          'FB_VERIFY_TOKEN', 'FB_PAGE_ACCESS_TOKEN']);
+          'FB_VERIFY_TOKEN', 'FB_PAGE_ACCESS_TOKEN', 'GOOGLE_TRANSLATE_KEY']);
         config.emitter.emit('ready');
       }, function (error) {
         logger.warn('Error reading ' + overrideFile + '. Error: ' + error.message);
