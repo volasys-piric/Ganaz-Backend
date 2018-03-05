@@ -81,6 +81,17 @@ router.post('/', function(req, res) {
         },
         auto_translate: survey.auto_translate
       };
+      if(body.type === 'choice-single' && survey.choices.length > 0) {
+        messageParam.message.en += ' ';
+        messageParam.message.es += ' ';
+        let i = 0;
+        for(; i < survey.choices.length - 1; i++) {
+          messageParam.message.en += `${i + 1}) ${survey.choices[i].en}, `;
+          messageParam.message.es += `${i + 1}) ${survey.choices[i].es}, `;
+        }
+        messageParam.message.en += `${i + 1}) ${survey.choices[i].en}`;
+        messageParam.message.es += `${i + 1}) ${survey.choices[i].es}`;
+      }
       return messageService.create(messageParam, false).then(function() {
         res.json({success: true, survey: survey});
       });
