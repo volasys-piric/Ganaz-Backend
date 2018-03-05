@@ -345,35 +345,33 @@ const create = function (body, smsMessageComplete) {
                 logger.warn('[Message Service] Not sending push notification. User with id ' + userId + ' has no player_ids.');
               }
             }
-
-            let messageBody = null;
-            if (body.type === 'recruit') {
-              if (smsMessageComplete) {
-                messageBody = body.message.es; // When called from recruit.service.js
-              } else {
-                const companyName = senderCmpy.name.en; // sender company is required for recruit message
-                const jobTitle = job.title.es ? job.title.es : job.title.en;
-                const payRate = job.pay.rate;
-                const payUnit = job.pay.unit;
-                messageBody = companyName + ' pensé que te interesaría este trabajo: ' + jobTitle
-                  + ' ' + payRate + ' per ' + payUnit + '. par más información baje la aplicación Ganaz. www.GanazApp.com/download';
-              }
-            } else {
-              const companyName = senderCmpy ? senderCmpy.name.en + ':' : '';
-              // Onboarding users - SMS will be sent to the onboarding-user.
-              messageBody = companyName + ' "' + body.message.es;
-              if (body.metadata && body.metadata.map && body.metadata.map.loc) {
-                const loc = body.metadata.map.loc;
-                const lng = loc[0];
-                const lat = loc[1];
-                messageBody += ' http://maps.google.com/maps?q=' + lat + ',' + lng;
-              }
-              messageBody += '" Para responder a este mensaje, por favor instale la aplicación Ganaz haciendo click aquí—> www.ganaz.com/download';
-            }
             const senderUserId = body.sender.user_id;
             const senderCompanyId = body.sender.company_id;
             const saveSmsLogPromises = [];
             const saveSmsLog = function(phoneNumber) {
+              let messageBody = null;
+              if (body.type === 'recruit') {
+                if (smsMessageComplete) {
+                  messageBody = body.message.es; // When called from recruit.service.js
+                } else {
+                  const companyName = senderCmpy.name.en; // sender company is required for recruit message
+                  const jobTitle = job.title.es ? job.title.es : job.title.en;
+                  const payRate = job.pay.rate;
+                  const payUnit = job.pay.unit;
+                  messageBody = `${companyName} pensé que te interesaría este trabajo: ${jobTitle} ${payRate} per ${payUnit}. par más información baje la aplicación Ganaz. https://ganaz.app.link/?action=wsp&p=+${phoneNumber.country_code}${phoneNumber.local_number}`;
+                }
+              } else {
+                const companyName = senderCmpy ? senderCmpy.name.en + ':' : '';
+                // Onboarding users - SMS will be sent to the onboarding-user.
+                messageBody = `${companyName} "${body.message.es}`;
+                if (body.metadata && body.metadata.map && body.metadata.map.loc) {
+                  const loc = body.metadata.map.loc;
+                  const lng = loc[0];
+                  const lat = loc[1];
+                  messageBody += ` http://maps.google.com/maps?q=${lat},${lng}`;
+                }
+                messageBody += `" Por favor instale la aplicación Ganaz hacienda click aquí --> https://ganaz.app.link/?action=wsp&p=+${phoneNumber.country_code}${phoneNumber.local_number}`;
+              }
               const smsLog = new Smslog({
                 sender: {user_id: senderUserId, company_id: senderCompanyId},
                 receiver: {phone_number: phoneNumber},

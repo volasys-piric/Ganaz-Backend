@@ -248,13 +248,13 @@ function _sendMessage(currentUser, jobIdJobMap, newRecruits) {
         }
       }
       const jobId = newRecruit.request.job_id;
-      const job = jobIdJobMap.get(jobId);
-      const jobTitle = job.title.es ? job.title.es : job.title.en;
-      const payRate = job.pay.rate;
-      const payUnit = job.pay.unit;
-      const companyName = company.name.en;
-      const smsMessage = companyName + ' pensé que te interesaría este trabajo: ' + jobTitle
-          + ' ' + payRate + ' per ' + payUnit + '. par más información baje la aplicación Ganaz. www.GanazApp.com/download';
+      // const job = jobIdJobMap.get(jobId);
+      // const jobTitle = job.title.es ? job.title.es : job.title.en;
+      // const payRate = job.pay.rate;
+      // const payUnit = job.pay.unit;
+      // const companyName = company.name.en;
+      // const phoneNumber = newRecruit.request.phone_numbers
+      // const smsMessage = `${companyName} pensé que te interesaría este trabajo: ${jobTitle} ${payRate} per ${payUnit}. par más información baje la aplicación Ganaz. https://ganaz.app.link/?action=wsp&p=+${phoneNumber.country_code}${phoneNumber.local_number}`;
       const message = {
         job_id: jobId,
         type: 'recruit',
@@ -264,17 +264,17 @@ function _sendMessage(currentUser, jobIdJobMap, newRecruits) {
         },
         receivers: receivers,
         receivers_phone_numbers: newRecruit.nonregistered_phone_numbers,
-        message: {
-          en: smsMessage,
-          es: smsMessage
-        },
+        // message: {
+        //   en: smsMessage,
+        //   es: smsMessage
+        // },
         auto_translate: true,
         datetime: now,
         metadata: {
           recruit_id: newRecruit._id.toString()
         }
       };
-      createMessagePromises.push(messageService.create(message, true));
+      createMessagePromises.push(messageService.create(message));
       // logger.warn("[Recruit Service] Recruit " + newRecruit._id.toString() + " doesn't have receivers");
     }
     return Promise.all(createMessagePromises).then(function () {
