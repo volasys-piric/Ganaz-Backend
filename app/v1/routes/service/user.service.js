@@ -20,10 +20,12 @@ const validate = function (id, body) {
   let errorMessage = '';
   if (body) {
     const deleteFbLeadPropertyIfEmpty = (property) => {
-      if (body.hasOwnProperty('facebook_lead')
-        && body.facebook_lead.hasOwnProperty(property)) {
-        if (!body.facebook_lead[property] || !body.facebook_lead[property].trim()) {
-          delete body.facebook_lead[property];
+      if (body.worker.hasOwnProperty('facebook_lead')
+        && body.worker.facebook_lead.hasOwnProperty(property)) {
+        if (!body.worker.facebook_lead[property]
+          || !body.worker.facebook_lead[property].trim()
+          || !mongoose.Types.ObjectId.isValid(body.worker.facebook_lead[property])) {
+          delete body.worker.facebook_lead[property];
         }
       }
     };
@@ -207,7 +209,7 @@ const update = function (id, body) {
       user.created_at = now;
       user.last_login = now;
       if (newPassword) {
-        if (!user.password || (user.password !== newPassword && !bcrypt.compareSync(user.password, newPassword))) {
+        if (!user.password || (user.password !== newPassword && !bcrypt.compareSync(newPassword, user.password))) {
           user.password = bcrypt.hashSync(newPassword);
         }
       }
