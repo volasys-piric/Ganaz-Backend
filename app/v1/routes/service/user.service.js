@@ -21,6 +21,8 @@ const validate = function (id, body) {
     if (!id) {
       if (!body.firstname || !body.lastname || !body.type || !body.auth_type) {
         errorMessage = 'Request body firstname, lastname, type and auth_type are required for new users.';
+      } else if (body.type === 'onboarding-worker') {
+        errorMessage += 'Request type ' + body.type + ' is allowed to updated but not to create user record.';
       } else {
         if (body.auth_type !== 'email' &&
           body.auth_type !== 'facebook' &&
@@ -49,8 +51,6 @@ const validate = function (id, body) {
           }
         }
       }
-    } else if (body.type === 'onboarding-worker') {
-      errorMessage += 'Request type ' + body.type + ' is allowed to updated but not to create user record.';
     }
   } else {
     errorMessage = 'Request body is required.';
