@@ -108,7 +108,7 @@ module.exports = {
         } else {
           const messageModel = new Message(body);
           return messageModel.save().then(function(messageModel) {
-            const messageBody = body.message.en ? body.message.en : body.message.es;
+            const messageBody = body.message.es ? body.message.es : body.message.en;
             for (let i = 0; i < users.length; i++) {
               (function(user) {
                 const psid = user.worker.facebook_lead.psid;
