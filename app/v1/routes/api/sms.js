@@ -175,7 +175,8 @@ function _processSurveyAnswer(lastMessage, responderUser, myworker, smsContents,
         // So, after Step 5, we should do Step 6.
         // 6. This is the step to send survey-confirmation-sms for Open-Text survey (redirected from 4.2.3.)
         // we need to auto-generate message object to track this.
-        const surveyConfSmsContents = 'Is your previous message the reply for survey? Please simply answer Yes / No';
+        // 'Is your previous message the reply for survey? Please simply answer Yes / No';
+        const surveyConfSmsContents = 'El mensaje anterior es tu respuesta a la pregunta de la encuesta? Responda solo con "Sí" o "No"';
         const surveyConfSmsSenderUser = savedCompanyMessage.receivers[0];
         const surveyConfSmsQuestionMessage = new Message({
           job_id: 'NONE',
@@ -385,7 +386,7 @@ router.post('/inbound', (req, res) => {
       }
       const userQ = createPhoneQ(fromPhone);
       const tQ = createPhoneQ(toPhone);
-      
+
       return Promise.all([User.findOne(userQ), Twiliophone.findOne(tQ)]).then((promisesResult) => {
         const workerUser = promisesResult[0];
         const twiliophone = promisesResult[1];
