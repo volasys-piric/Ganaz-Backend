@@ -1,4 +1,6 @@
 const Promise = require('bluebird');
+const AsyncLock = require('async-lock');
+const lock = new AsyncLock({Promise: Promise});
 const db = require('./../../db');
 
 const Crew = db.models.crew;
@@ -15,26 +17,28 @@ module.exports = {
     return Crew.find({company_id: companyId});
   },
   create: function(companyId, title, skipCompanyValidation) {
-    const verifyCompany = skipCompanyValidation ? Promise.resolve(companyId)
-      : Company.findById(companyId).then(function(company) {
-        if (company === null) {
-          return Promise.reject('Company with id ' + companyId + ' does not exists.');
+    return lock.acquire('crewcreatekey' + '', function() {
+      const verifyCompany = skipCompanyValidation ? Promise.resolve(companyId)
+        : Company.findById(companyId).then(function(company) {
+          if (company === null) {
+            return Promise.reject('Company with id ' + companyId + ' does not exists.');
+          } else {
+            return companyId;
+          }
+        });
+      return verifyCompany.then(function() {
+        return _findByCompanyIdAndTitle(companyId, title);
+      }).then(function(existingCrew) {
+        if (!existingCrew) {
+          const crew = new Crew({
+            company_id: companyId,
+            title: title
+          });
+          return crew.save();
         } else {
-          return companyId;
+          return existingCrew;
         }
       });
-    return verifyCompany.then(function() {
-      return _findByCompanyIdAndTitle(companyId, title);
-    }).then(function(existingCrew) {
-      if (!existingCrew) {
-        const crew = new Crew({
-          company_id: companyId,
-          title: title
-        });
-        return crew.save();
-      } else {
-        return existingCrew;
-      }
     });
   },
   update: function (crewId, title) {

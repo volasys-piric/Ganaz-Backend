@@ -36,7 +36,11 @@ const validate = function (id, body) {
       if (!body.firstname || !body.lastname || !body.type || !body.auth_type) {
         errorMessage = 'Request body firstname, lastname, type and auth_type are required for new users.';
       } else if (body.type === 'onboarding-worker') {
+<<<<<<< HEAD
           errorMessage += 'Request type ' + body.type + ' is allowed to update but not to create user record.';
+=======
+        errorMessage += 'Request type ' + body.type + ' is allowed to updated but not to create user record.';
+>>>>>>> ganaz_company_usersegment_upload
       } else {
         if (body.auth_type !== 'email' &&
           body.auth_type !== 'facebook' &&

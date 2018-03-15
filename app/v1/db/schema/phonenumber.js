@@ -25,7 +25,7 @@ PhoneNumberSchema.methods.samePhone = function(phoneNumber) {
 
   cc1 = this.country_code;
   ln1 = this.local_number;
-  
+
   if (phoneNumber) {
     cc2 = phoneNumber.country_code;
     ln2 = phoneNumber.local_number;
