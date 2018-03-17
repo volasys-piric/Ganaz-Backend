@@ -31,16 +31,12 @@ const validate = function (id, body) {
     };
     deleteFbLeadPropertyIfEmpty('job_id');
     deleteFbLeadPropertyIfEmpty('company_id');
-    
+
     if (!id) {
       if (!body.firstname || !body.lastname || !body.type || !body.auth_type) {
         errorMessage = 'Request body firstname, lastname, type and auth_type are required for new users.';
       } else if (body.type === 'onboarding-worker') {
-<<<<<<< HEAD
-          errorMessage += 'Request type ' + body.type + ' is allowed to update but not to create user record.';
-=======
         errorMessage += 'Request type ' + body.type + ' is allowed to updated but not to create user record.';
->>>>>>> ganaz_company_usersegment_upload
       } else {
         if (body.auth_type !== 'email' &&
           body.auth_type !== 'facebook' &&
@@ -105,7 +101,7 @@ const validate = function (id, body) {
       if (!phoneNumber.country_code) {
         phoneNumber.country_code = '1';
       }
-    
+
       if (!existingUser || !existingUser.phone_number.samePhone(body.phone_number)) {
         return User.findOne({
           'phone_number.country_code': phoneNumber.country_code,
@@ -336,7 +332,7 @@ const search = function (sParams) {
   if (phoneNumberQuery) {
     rightPhoneNumber = phoneNumberQuery.length >= 7 ? phoneNumberQuery.substr(-7) : phoneNumberQuery;
   }
-  
+
   if (sParams.any) {
     const regex = new RegExp(sParams.any, 'i');
     dbQ.$or = [
@@ -375,7 +371,7 @@ const search = function (sParams) {
       dbQ['phone_number.local_number'] = new RegExp(`${rightPhoneNumber}$`);  // Phone number that ends with
     }
   }
-  
+
   return User.find(dbQ).then(function(users) {
     const populateCompanyPromises = [];
     const filtedByPhoneUsers = users.filter((user) => {
