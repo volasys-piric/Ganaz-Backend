@@ -230,7 +230,9 @@ function _processSurveyAnswer(lastMessage, responderUser, myworker, smsContents,
     };
     // 4.2.4. If `last_message.type` == `survey-confirmation-sms-question`, we check the current
     // SMS message contents (expecting either Yes or No)
-    if ('yes' === smsContents.toLowerCase().trim()) {
+
+    let refinedContents = smsContents.toLowerCase().trim();
+    if (refinedContents === 'yes' || refinedContents === 'sí' || refinedContents === 'si') {
       logger.info(`[SMS API Inbound] User ${workerUserId} confirmed his last sms is an answer to survey ${surveyId}.`);
       // 4.2.4.1. If answer is YES (case-insensitive), the 2nd last message is the answer to the
       // survey (survey question is 3rd last message). Go to 4.4
