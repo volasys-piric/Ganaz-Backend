@@ -215,12 +215,12 @@ router.post('/invite/bulk', upload.single('file'), function(req, res, next) {
   if (!companyId || !companyId.trim()) {
     return res.json({
       success: false,
-      msg: 'Requesy body company_id is required.'
+      msg: 'Request body company_id is required.'
     });
   }
   return Company.findById(companyId).then((company) => {
     if (!company) {
-      return Promise.reject(`Company ${companyId} does not exists.`);
+      return Promise.reject(`Company ${companyId} does not exist.`);
     }
     return parsePhoneNumberCsv(file, companyId).then(function(invitesJson) {
       return inviteService.bulkInvite(invitesJson, company);

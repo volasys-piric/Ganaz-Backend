@@ -71,6 +71,7 @@ module.exports = {
           user = new User(basicUserInfo);
           saveUserPromises.push(user.save());
         } else if (user.type !== 'onboarding-worker') {
+          const phoneNumber = o.phone_number;
           logger.warn(`[Invite Service] User with phone ${JSON.stringify(phoneNumber)} type is ${user.type}`);
           saveUserPromises.push(Promise.resolve(null));
         } else {
@@ -204,7 +205,7 @@ module.exports = {
             }
             myworker.nickname = o.nickname;
             saveMyworkerPromises.push(myworker.save());
-            
+
             o.myworker = myworker.toObject();
           }
         }
