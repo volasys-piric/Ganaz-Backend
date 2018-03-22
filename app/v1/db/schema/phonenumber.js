@@ -16,12 +16,6 @@ PhoneNumberSchema.methods.samePhone = function(phoneNumber) {
   let ln1 = '';
   let cc2 = '';
   let ln2 = '';
-  /*
-  if (this.phone_number) {
-    cc1 = this.phone_number.country_code;
-    ln1 = this.phone_number.local_number;
-  }
-  */
 
   cc1 = this.country_code;
   ln1 = this.local_number;

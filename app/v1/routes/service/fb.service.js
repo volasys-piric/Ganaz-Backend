@@ -59,10 +59,13 @@ const findPostbackAdId = (senderPsid) => {
 };
 
 const findUserByPsidAndAdId = (psid, adId) => {
+  let job = adIdJobMap.get(adId);
+
   return User.findOne({
     'type': 'facebook-lead-worker',
     'worker.facebook_lead.psid': psid,
     'worker.facebook_lead.ad_id': adId,
+    'worker.facebook_lead.job_id': (job ? job._id : "NONE")
   });
 };
 
@@ -194,10 +197,10 @@ module.exports = {
             for (let i = 0; i < events.length; i++) {
               const event = events[i];
 
-              let ad_id = (event.referral && event.referral.ad_id) ? (event.referral.ad_id) : ((event.postback && event.postback.referral && event.postback.referral.ad_id) ? event.postback.referral.ad_id : "");
-              if (ad_id === "") continue;
+              let adId = (event.referral && event.referral.ad_id) ? (event.referral.ad_id) : ((event.postback && event.postback.referral && event.postback.referral.ad_id) ? event.postback.referral.ad_id : "");
+              if (adId === "") continue;
 
-              let job = adIdJobMap.get(ad_id);
+              let job = adIdJobMap.get(adId);
               if (!job || !job._id) continue;
 
               findUserPromises.push(User.findOne({

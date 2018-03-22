@@ -2,8 +2,8 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const PhoneNumberSchema = new Schema({
-  country: String,
-  country_code: String,
+  country: String,              // US / MX / ...
+  country_code: String,         // 1 / 52 / ...
   local_number: String
 });
 
