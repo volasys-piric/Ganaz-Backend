@@ -384,95 +384,107 @@ module.exports = {
               }
             }
             return Promise.all(adIdPromises).then((adIds) => {
-              const findUserPromises = [];
-              let counter = 0;
-              for (let i = 0; i < messageEvents.length; i++) {
-                const event = messageEvents[i];
-                let messageBody = event.message.text;
-                if (!messageBody) {
-                  if (event.message.attachments && event.message.attachments.length > 0) {
-                    messageBody = event.message.attachments[0].payload;
-                  }
+                const messagesPromises = [];
+                let counter = 0;
+                for (let i = 0; i < messageEvents.length; i++) {
+                    const event = messageEvents[i];
+                    let messageBody = event.message.text;
+                    if (!messageBody) {
+                        if (event.message.attachments && event.message.attachments.length > 0) {
+                            messageBody = event.message.attachments[0].payload;
+                        }
+                    }
+                    if (messageBody) {
+                        const postbackAdId = adIds[counter++];
+                        const refAdId = adIds[counter++];
+                        if (postbackAdId || refAdId) {
+                            const adId = postbackAdId ? postbackAdId : refAdId;
+                            messagesPromises.push({messageBody, adId, event});
+                        }
+                        else {
+                            logger.info(`[FB Webhook Service] Cannot determine ad id. Ignoring event ${JSON.stringify(event)}.`);
+                        }
+                    }
                 }
-                if (messageBody) {
-                  const postbackAdId = adIds[counter++];
-                  const refAdId = adIds[counter++];
-                  if (postbackAdId || refAdId) {
-                    const adId = postbackAdId ? postbackAdId : refAdId;
-                    let job = adIdJobMap.get(adId);
+                return Promise.all(messagesPromises);
+            }).then((results) => {
+                const findJobPromises = [];
+                for (let i = 0; i < results.length; i++) {
+                    const o = results[i];
+                    const adId = o.adId;
+                    findJobPromises.push(Job.findOne({'external_reference.facebook.ad_id': adId}).then((job) => {
+                        return {...o, job}
+                    }))
+                }
+                return Promise.all(findJobPromises);
+            }).then((results) => {
+                const findUserPromises = [];
+                for (let i = 0; i < results.length; i++) {
+                    const o = results[i];
+                    const adId = o.adId;
+                    const job = o.job;
+                    const event = o.event;
                     if (!job) continue;
 
                     findUserPromises.push(findUserByPsidAndAdIdAndJobId(event.psid, adId, job._id).then((user) => {
-                      return {user, messageBody, adId, event}
+                        return {user, ...o}
                     }));
-                  } else {
-                    logger.info(`[FB Webhook Service] Cannot determine ad id. Ignoring event ${JSON.stringify(event)}.`);
-                  }
                 }
-              }
-              return Promise.all(findUserPromises);
+                return Promise.all(findUserPromises);
             }).then((results) => {
-              const findJobPromises = [];
-              for (let i = 0; i < results.length; i++) {
-                const o = results[i];
-                const adId = o.adId;
-                findJobPromises.push(Job.findOne({'external_reference.facebook.ad_id': adId}).then((job) => {
-                  return {...o, job}
-                }))
-              }
-              return Promise.all(findJobPromises);
-            }).then((results) => {
-              for (let i = 0; i < results.length; i++) {
-                const o = results[i];
-                const adId = o.adId;
-                const user = o.user;
-                const job = o.job;
-                if (user && job) {
-                  userIdUserMap.set(user._id.toString(), user);
-                  unsavedMessages.push(createMessageModel(o.messageBody, user, job));
-                } else {
-                  const event = o.event;
-                  let message = '';
-                  if (!user) {
-                    message += `No user found for PSID-AdId [${event.psid}-${adId}]. `
-                  }
-                  if (!job) {
-                    message += `No job found for Ad Id [${adId}]. `
-                  }
-                  logger.info(`[FB Webhook Service] ${message} Ignoring event ${JSON.stringify(o.event)}.`);
+                for (let i = 0; i < results.length; i++) {
+                    const o = results[i];
+                    const adId = o.adId;
+                    const user = o.user;
+                    const job = o.job;
+                    if (user && job) {
+                        userIdUserMap.set(user._id.toString(), user);
+                        unsavedMessages.push(createMessageModel(o.messageBody, user, job));
+                    }
+                    else {
+                        const event = o.event;
+                        let message = '';
+                        if (!user) {
+                            message += `No user found for PSID-AdId [${event.psid}-${adId}]. `
+                        }
+                        if (!job) {
+                            message += `No job found for Ad Id [${adId}]. `
+                        }
+                        logger.info(`[FB Webhook Service] ${message} Ignoring event ${JSON.stringify(o.event)}.`);
+                    }
                 }
-              }
-              return unsavedMessages;
+                return unsavedMessages;
             });
-          }).then((unsavedMessages) => {
-            // Save all messages;
-            return Promise.all(unsavedMessages.map((unsavedMessage) => unsavedMessage.save()));
-          }).then(function(savedMessages) {
-            for (let i = 0; i < savedMessages.length; i++) {
-              const savedMessage = savedMessages[i];
-              const user = userIdUserMap.get(savedMessage.sender.user_id);
-              if (user.player_ids && user.player_ids.length > 0) {
-                // Send push notification asynchronously
-                pushNotification.sendMessage(user.player_ids, savedMessage);
-              } else {
-                logger.warn('[Application] Not sending push notification. User with id ' + user._id.toString() + ' has no player_ids.');
-              }
-            }
-            fbwebhook.response = {
-              success_message: `
-                  Events
-                  processed: ${processedEvents.toString()}`
-            };
-            return fbwebhook.save();
-          }).catch(function(err) {
-            logger.error(err);
-            fbwebhook.response = {
-              exception: {
-                message: typeof err === 'string' ? err : err.message
-              }
-            };
-            return fbwebhook.save();
-          })
+            }).then((unsavedMessages) => {
+                // Save all messages;
+                return Promise.all(unsavedMessages.map((unsavedMessage) => unsavedMessage.save()));
+            }).then(function(savedMessages) {
+                for (let i = 0; i < savedMessages.length; i++) {
+                    const savedMessage = savedMessages[i];
+                    const user = userIdUserMap.get(savedMessage.sender.user_id);
+                    if (user.player_ids && user.player_ids.length > 0) {
+                        // Send push notification asynchronously
+                        pushNotification.sendMessage(user.player_ids, savedMessage);
+                    }
+                    else {
+                        logger.warn('[Application] Not sending push notification. User with id ' + user._id.toString() + ' has no player_ids.');
+                    }
+                }
+                fbwebhook.response = {
+                    success_message: `
+                        Events
+                        processed: ${processedEvents.toString()}`
+                };
+                return fbwebhook.save();
+            }).catch(function(err) {
+                logger.error(err);
+                fbwebhook.response = {
+                    exception: {
+                        message: typeof err === 'string' ? err : err.message
+                    }
+                };
+                return fbwebhook.save();
+            });
         });
       }
     });
