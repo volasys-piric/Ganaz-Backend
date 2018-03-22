@@ -58,14 +58,12 @@ const findPostbackAdId = (senderPsid) => {
   })
 };
 
-const findUserByPsidAndAdId = (psid, adId) => {
-  let job = adIdJobMap.get(adId);
-
+const findUserByPsidAndAdIdAndJobId = (psid, adId, jobId) => {
   return User.findOne({
     'type': 'facebook-lead-worker',
     'worker.facebook_lead.psid': psid,
     'worker.facebook_lead.ad_id': adId,
-    'worker.facebook_lead.job_id': (job ? job._id : "NONE")
+    'worker.facebook_lead.job_id': jobId
   });
 };
 
@@ -324,7 +322,10 @@ module.exports = {
                   const refAdId = adIds[counter++];
                   if (postbackAdId || refAdId) {
                     const adId = postbackAdId ? postbackAdId : refAdId;
-                    findUserPromises.push(findUserByPsidAndAdId(event.psid, adId).then((user) => {
+                    let job = adIdJobMap.get(adId);
+                    let jobId = (job) ? job._id : "NONE";
+
+                    findUserPromises.push(findUserByPsidAndAdIdAndJobId(event.psid, adId, jobId).then((user) => {
                       return {user, messageBody, adId, event}
                     }));
                   } else {
@@ -398,7 +399,10 @@ module.exports = {
                   const refAdId = adIds[counter++];
                   if (postbackAdId || refAdId) {
                     const adId = postbackAdId ? postbackAdId : refAdId;
-                    findUserPromises.push(findUserByPsidAndAdId(event.psid, adId).then((user) => {
+                    let job = adIdJobMap.get(adId);
+                    let jobId = (job) ? job._id : "NONE";
+
+                    findUserPromises.push(findUserByPsidAndAdIdAndJobId(event.psid, adId, jobId).then((user) => {
                       return {user, messageBody, adId, event}
                     }));
                   } else {
