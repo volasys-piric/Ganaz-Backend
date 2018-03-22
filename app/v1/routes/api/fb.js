@@ -36,6 +36,7 @@ router.post('/webhook', (req, res) => {
   // Parse the request body from the POST
   let body = req.body;
   // Check the webhook event is from a Page subscription
+  logger.info(`[FB Webhook] Preparing... got ${body}`);
   if (body && body.object === 'page') {
     fbService.processWebhook(body).then((fbwebook) => {
       let msg = fbwebook.response;
@@ -61,7 +62,7 @@ function callSendAPI(senderPsid, response) {
     },
     "message": response
   };
-  
+
   // Send the HTTP request to the Messenger Platform
   request({
     "uri": "https://graph.facebook.com/v2.6/me/messages",

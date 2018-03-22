@@ -167,9 +167,10 @@ module.exports = {
         } else if (webhookEvent.postback) {
           postbackEvents.push({psid: senderPsid, pageId: pageId, postback: webhookEvent.postback});
           processedEvents.push('POSTBACKS');
-          if (event.postback && event.postback.referral && event.postback.referral.ad_id) {
+
+          if (webhookEvent.postback && webhookEvent.postback.referral && webhookEvent.postback.referral.ad_id) {
             // If postback
-            adIds.push(event.postback.referral.ad_id);
+            adIds.push(webhookEvent.postback.referral.ad_id);
           }
         } else if (webhookEvent.referral) {
           if (webhookEvent.referral.ad_id) {
@@ -192,9 +193,17 @@ module.exports = {
             const findUserPromises = [];
             for (let i = 0; i < events.length; i++) {
               const event = events[i];
+
+              let ad_id = (event.referral && event.referral.ad_id) ? (event.referral.ad_id) : ((event.postback && event.postback.referral && event.postback.referral.ad_id) ? event.postback.referral.ad_id : "");
+              if (ad_id === "") continue;
+
+              let job = adIdJobMap.get(adId);
+              if (!job || !job._id) continue;
+
               findUserPromises.push(User.findOne({
                 'type': 'facebook-lead-worker',
-                'worker.facebook_lead.psid': event.psid
+                'worker.facebook_lead.psid': event.psid,
+                'worker.facebook_lead.job_id': job._id
               }));
             }
             return Promise.all(findUserPromises).then((users) => {
