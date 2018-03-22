@@ -197,7 +197,7 @@ module.exports = {
               let ad_id = (event.referral && event.referral.ad_id) ? (event.referral.ad_id) : ((event.postback && event.postback.referral && event.postback.referral.ad_id) ? event.postback.referral.ad_id : "");
               if (ad_id === "") continue;
 
-              let job = adIdJobMap.get(adId);
+              let job = adIdJobMap.get(ad_id);
               if (!job || !job._id) continue;
 
               findUserPromises.push(User.findOne({

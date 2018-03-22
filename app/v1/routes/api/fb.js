@@ -36,7 +36,6 @@ router.post('/webhook', (req, res) => {
   // Parse the request body from the POST
   let body = req.body;
   // Check the webhook event is from a Page subscription
-  logger.info(`[FB Webhook] Preparing... got ${body}`);
   if (body && body.object === 'page') {
     fbService.processWebhook(body).then((fbwebook) => {
       let msg = fbwebook.response;
