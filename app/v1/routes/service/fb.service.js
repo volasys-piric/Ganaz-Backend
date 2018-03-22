@@ -323,9 +323,9 @@ module.exports = {
                   if (postbackAdId || refAdId) {
                     const adId = postbackAdId ? postbackAdId : refAdId;
                     let job = adIdJobMap.get(adId);
-                    let jobId = (job) ? job._id : "NONE";
+                    if (!job) continue;
 
-                    findUserPromises.push(findUserByPsidAndAdIdAndJobId(event.psid, adId, jobId).then((user) => {
+                    findUserPromises.push(findUserByPsidAndAdIdAndJobId(event.psid, adId, job._id).then((user) => {
                       return {user, messageBody, adId, event}
                     }));
                   } else {
@@ -400,9 +400,9 @@ module.exports = {
                   if (postbackAdId || refAdId) {
                     const adId = postbackAdId ? postbackAdId : refAdId;
                     let job = adIdJobMap.get(adId);
-                    let jobId = (job) ? job._id : "NONE";
+                    if (!job) continue;
 
-                    findUserPromises.push(findUserByPsidAndAdIdAndJobId(event.psid, adId, jobId).then((user) => {
+                    findUserPromises.push(findUserByPsidAndAdIdAndJobId(event.psid, adId, job._id).then((user) => {
                       return {user, messageBody, adId, event}
                     }));
                   } else {
