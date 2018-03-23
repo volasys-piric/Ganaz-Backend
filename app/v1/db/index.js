@@ -3,7 +3,7 @@ const appConfig = require('./../../app_config');
 
 const mongoose = require('mongoose');
 mongoose.Promise = Promise;
-mongoose.connect(appConfig.dbUrl, {useMongoClient: true});
+mongoose.connect(appConfig.dbUrl);
 
 const fb = require('./models/fb');
 module.exports = {
@@ -29,7 +29,8 @@ module.exports = {
     twiliophone: require('./models/twiliophone'),
     inboundSms: require('./models/inboundSms'),
     fbwebhook: fb.webhook,
-    fbmessage: fb.message
+    fbmessage: fb.message,
+    fbpageinfo: fb.pageinfo,
   },
   schema: {
     phonenumber: require('./schema/phonenumber')

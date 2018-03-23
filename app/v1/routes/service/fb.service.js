@@ -9,6 +9,7 @@ const User = db.models.user;
 const Message = db.models.message;
 const FbMessage = db.models.fbmessage;
 const FbWebhook = db.models.fbwebhook;
+const FbPageInfo = db.models.fbpageinfo;
 const Job = db.models.job;
 const Myworker = db.models.myworker;
 
@@ -487,6 +488,32 @@ module.exports = {
             });
         });
       }
+    });
+  },
+  saveOrUpdatePageInfo: (body, id) => {
+    const findPageInfo = id ? FbPageInfo.findById(id) : Promise.resolve();
+    return findPageInfo.then(model => {
+      if (!model) {
+        model = new FbPageInfo(body);
+      }
+      return model.save();
+    });
+  },
+  findAllPageInfo: (dbQ, start, length) => {
+    const promises = [
+      FbPageInfo.count(),
+      FbPageInfo.count(dbQ),
+      FbPageInfo.find(dbQ).skip(start).limit(length)
+    ];
+    return Promise.all(promises).then(function (promiseResultArr) {
+      const recordsTotal = promiseResultArr[0];
+      const recordsFiltered = promiseResultArr[1];
+      const data = promiseResultArr[2].map(m => {
+        const o = m.toObject();
+        delete o.__v;
+        return o
+      });
+      return {recordsTotal, recordsFiltered, data};
     });
   }
 };

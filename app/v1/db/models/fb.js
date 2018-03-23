@@ -46,7 +46,35 @@ MessageSchema.pre('save', function(next) {
   next();
 });
 
+WebhookSchema.pre('save', function(next) {
+  if (!this.datetime) {
+    this.datetime = Date.now();
+  }
+  next();
+});
+
+
+const FbPageInfoSchema = new Schema({
+  title: String,
+  page_id: {type: String, required: true},
+  page_access_token: {type: String, required: true},
+  created_dt: Date,
+  updated_dt: Date,
+});
+
+FbPageInfoSchema.pre('save', function(next) {
+  if (!this.created_dt) {
+    this.created_dt = Date.now();
+  } else {
+    this.updated_dt = Date.now();
+  }
+  next();
+});
+
+FbPageInfoSchema.index({ page_id: 1, page_access_token: -1 });
+
 module.exports = {
   webhook: mongoose.model('FbWebhook', WebhookSchema),
-  message: mongoose.model('FbMessage', MessageSchema)
+  message: mongoose.model('FbMessage', MessageSchema),
+  pageinfo: mongoose.model('FbPageInfo', FbPageInfoSchema)
 };

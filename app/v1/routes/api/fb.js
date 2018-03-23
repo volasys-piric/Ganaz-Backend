@@ -5,6 +5,8 @@ const appConfig = require('./../../../app_config');
 const httpUtil = require('./../../../utils/http');
 const logger = require('./../../../utils/logger');
 const fbService = require('./../service/fb.service');
+const db = require('./../../db');
+const FbPageInfo = db.models.fbpageinfo;
 
 const PAGE_ACCESS_TOKEN = appConfig.FB_PAGE_ACCESS_TOKEN;
 
@@ -51,7 +53,47 @@ router.post('/webhook', (req, res) => {
     res.sendStatus(404);
   }
 });
-
+router.get('/pageinfo/dt', (req, res) => {
+  // See See https://datatables.net/manual/server-side#Sent-parameters for request parameters
+  const q = req.query;
+  const draw = parseInt(q.draw);
+  const start = parseInt(q.start);
+  const length = parseInt(q.length);
+  const searchString = q.search.value;
+  const dbQ = {};
+  if (searchString) {
+    const regex = new RegExp(searchString, 'i');
+    dbQ.$or = [{'title': regex}, {'page_id': regex}, {'page_access_token': regex}];
+  }
+  return fbService.findAllPageInfo(dbQ, start, length).then(result => {
+    res.json({draw, ...result});
+  }).catch(httpUtil.handleError(res));
+});
+router.get('/pageinfo/:id', (req, res) => {
+  return fbService.saveOrUpdatePageInfo(req.body, req.params.id).then(result => {
+    res.json({success: true, info: result});
+  }).catch(httpUtil.handleError(res));
+});
+router.post('/pageinfo', (req, res) => {
+  return fbService.saveOrUpdatePageInfo(req.body).then(result => {
+    res.json({success: true, infos: result});
+  }).catch(httpUtil.handleError(res));
+});
+router.patch('/pageinfo/:id', (req, res) => {
+  return FbPageInfo.findById(req.params.id).then(fbPageInfo => {
+    Object.assign(fbPageInfo, req.body);
+    return fbPageInfo.save().then(() => {
+      const o = fbPageInfo.toObject();
+      delete o.__v;
+      res.json({success: true, info: o});
+    });
+  }).catch(httpUtil.handleError(res));
+});
+router.delete('/pageinfo/:id', (req, res) => {
+  return FbPageInfo.findByIdAndRemove(req.params.id).then(() => {
+    res.json({success: true});
+  }).catch(httpUtil.handleError(res));
+});
 // Sends response messages via the Send API
 function callSendAPI(senderPsid, response) {
   // Construct the message body

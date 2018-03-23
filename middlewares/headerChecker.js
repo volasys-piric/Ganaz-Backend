@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const appConfig = require('./../app/app_config');
 
-const excludedPaths = ['/status', '/fb/webhook', '/sms/inbound'];
+const excludedPaths = ['/status', '/fb', '/fb/webhook', '/sms/inbound'];
 // a middleware function with no mount path. This code is executed for every request to the router
 router.use(function (req, res, next) {
   /**
@@ -15,7 +15,14 @@ router.use(function (req, res, next) {
    */
   const version = parseFloat(req.header('version'));
   const path = req.path;
-  if (excludedPaths.indexOf(path) === -1) {
+  let isFiltered = true;
+  for(let i = 0; i < excludedPaths.length; i++) {
+    if(path.startsWith(excludedPaths[i])) {
+      isFiltered = false;
+      break;
+    }
+  }
+  if (isFiltered) {
     if (!version) {
       res.status(403).json({
         success: false,
