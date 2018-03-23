@@ -340,7 +340,7 @@ const create = function (body, smsMessageComplete) {
               const userId = message.receiver.user_id;
               const user = userIdMap.get(userId);
               if (user.player_ids) {
-                pushNotification.sendMessage(user.player_ids, message);
+                pushNotification.sendMessage(user.player_ids, message, true);
               } else {
                 logger.warn('[Message Service] Not sending push notification. User with id ' + userId + ' has no player_ids.');
               }

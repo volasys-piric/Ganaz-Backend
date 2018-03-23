@@ -41,21 +41,39 @@ const sendNotification = function (device, notification) {
   }
 };
 
-const sendMessage = function (player_ids, savedMessage) {
+const sendMessage = function (player_ids, savedMessage, preferES) {
   const o = savedMessage.toObject();
   logger.info(`[Push Notification] Sending message ${JSON.stringify(savedMessage)}`);
   let messageString = null;
   let messageObject = null;
   if (o.sender.company_id && o.auto_translate === true) {
-    messageString = o.message.es;
-    messageObject = {en: messageString, es: messageString};
+      if (!preferEN || preferEN == false) {
+          messageString = o.message.en;
+          messageObject = {en: messageString, es: messageString};
+      }
+      else {
+          messageString = o.message.es;
+          messageObject = {en: messageString, es: messageString};
+      }
   } else if (typeof o.message === 'object') {
-    messageString = o.message.es ? o.message.es : o.message.en;
-    messageObject = {en: messageString};
+      if (!preferEN || preferEN == false) {
+          messageString = o.message.en ? o.message.en : o.message.es;
+          messageObject = {en: messageString};
+      }
+      else {
+          messageString = o.message.es ? o.message.es : o.message.en;
+          messageObject = {en: messageString};
+      }
   } else {
-    // Assumed to be string
-    messageString = o.message;
-    messageObject = {en: messageString};
+      // Assumed to be string
+      if (!preferEN || preferEN == false) {
+          messageString = o.message;
+          messageObject = {en: messageString};
+      }
+      else {
+          messageString = o.message;
+          messageObject = {en: messageString};
+      }
   }
   const messageId = o._id.toString();
   const data = {type: o.type};

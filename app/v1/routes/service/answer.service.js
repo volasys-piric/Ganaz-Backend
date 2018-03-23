@@ -91,12 +91,23 @@ const _createAnswer = (body, survey, responderUser, datetime) => {
     });
 
     return message.save().then(function() {
-        if (responderUser.player_ids) {
-            pushNotification.sendMessage(responderUser.player_ids, message);
-        } else {
-            logger.warn(`[Answer Service] Not sending push notification. User with id ${responderUser._id.toString()} has no player_ids.`);
-        }
-        return answer;
+        return User.find({'company.company_id': survey.owner.company_id}).then((users) => {
+            logger.info(`Sending push notification to ${JSON.stringify(users)}`);
+            var playerIds = [];
+            users.forEach(function(user) {
+                if (user.player_ids && Array.isArray(user.player_ids)) {
+                    playerIds.push(...user.player_ids);
+                }
+            });
+
+            logger.info(`Sending push notification to ${playerIds}`);
+            if (playerIds.length > 0) {
+                pushNotification.sendMessage(playerIds, message);
+            } else {
+                logger.warn(`[Answer Service] Not sending push notification. User with company_id ${survey.owner.company_id} has no player_ids.`);
+            }
+            return answer;
+        });        
     });
   });
 };
@@ -116,9 +127,10 @@ const _createAnswerOnly = (body, survey, responderUser, message, datetime) => {
     const answer = new Answer(body);
     return answer.save().then(function(answer) {
         return User.find({'company.company_id': survey.owner.company_id}).then((users) => {
+            logger.info(`Sending push notification to ${JSON.stringify(users)}`);
             var playerIds = [];
             users.forEach(function(user) {
-                if (user.player_ids & Array.isArray(user.player_ids)) {
+                if (user.player_ids && Array.isArray(user.player_ids)) {
                     playerIds.push(...user.player_ids);
                 }
             });
@@ -131,7 +143,6 @@ const _createAnswerOnly = (body, survey, responderUser, message, datetime) => {
             }
             return answer;
         });
-
     });
 };
 
