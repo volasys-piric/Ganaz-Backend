@@ -250,11 +250,11 @@ function _processSurveyAnswer(lastMessage, responderUser, myworker, smsContents,
           // 4.4.2 We also need to create `survey-answer` object data model.
           // Please check [WIKI 17.2.2: Survey > Answer - New](https://bitbucket.org/volasys-ss/ganaz-backend/wiki/17.2.2%20Survey%20%3E%20Answer%20-%20New)
           logger.info(`[SMS API Inbound] User ${workerUserId} sms saved im message ${answerMessage._id.toString()} is an answer to survey ${survey._id.toString()}.`);
-          return answerService.createAnswer({
-            answer: {text: {en: answerMessage.message.en, es: answerMessage.message.es /*smsContents*/}},
-            responder: {user_id: responderUser._id, company_id: ''},
-            auto_translate: lastMessage.auto_tranlate
-          }, survey, responderUser, datetime);
+          return answerService.createAnswerOnly({
+              answer: {text: {en: answerMessage.message.en, es: answerMessage.message.es}},
+              responder: {user_id: responderUser._id, company_id: ''},
+              auto_translate: lastMessage.auto_tranlate
+          }, survey, responderUser, answerMessage, datetime);
         });
       }).then(() => {
         // 4.4.3 We still need to follow Step 5 to create message object for the current message.
