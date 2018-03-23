@@ -150,7 +150,7 @@ function _processSurveyAnswer(lastMessage, responderUser, myworker, smsContents,
         // 4.3 Since the current SMS is answer to survey-choice-single, we need to create survey-answer
         // object and create relevant message. Please check WIKI 17.2.2: Survey > Answer - New
         return answerService.createAnswer({
-          answer: {index: `${choiceNumber - 1}`, text: {en: smsContents, es: smsContents}},
+          answer: {index: `${(choiceNumber - 1)}`, text: {en: smsContents, es: smsContents}},
           responder: {user_id: responderUser._id, company_id: ''},
           auto_translate: survey.auto_tranlate
         }, survey, responderUser, datetime).then(() => survey);
