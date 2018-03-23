@@ -20,7 +20,7 @@ const validate = function (id, body) {
   let errorMessage = '';
   if (body) {
     const deleteFbLeadPropertyIfEmpty = (property) => {
-      if (body.worker.hasOwnProperty('facebook_lead')
+      if (body.worker && body.worker.hasOwnProperty('facebook_lead')
         && body.worker.facebook_lead.hasOwnProperty(property)) {
         if (!body.worker.facebook_lead[property]
           || !body.worker.facebook_lead[property].trim()

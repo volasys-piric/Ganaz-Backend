@@ -176,7 +176,10 @@ function _processSurveyAnswer(lastMessage, responderUser, myworker, smsContents,
         // 6. This is the step to send survey-confirmation-sms for Open-Text survey (redirected from 4.2.3.)
         // we need to auto-generate message object to track this.
         // 'Is your previous message the reply for survey? Please simply answer Yes / No';
-        const surveyConfSmsContents = 'El mensaje anterior es tu respuesta a la pregunta de la encuesta? Responda solo con "Sí" o "No"';
+        const surveyConfSmsContents = {
+            "en": 'Is your previous message the reply for survey? Please simply answer Yes / No',
+            "es": 'El mensaje anterior es tu respuesta a la pregunta de la encuesta? Responda solo con "Sí" o "No"'
+        };
         const surveyConfSmsSenderUser = savedCompanyMessage.receivers[0];
         const surveyConfSmsQuestionMessage = new Message({
           job_id: 'NONE',
@@ -184,8 +187,8 @@ function _processSurveyAnswer(lastMessage, responderUser, myworker, smsContents,
           sender: surveyConfSmsSenderUser,
           receivers: [{user_id: workerUserId}],
           message: {
-            en: surveyConfSmsContents,
-            es: surveyConfSmsContents
+            en: surveyConfSmsContents['en'],
+            es: surveyConfSmsContents['es']
           },
           metadata: {survey: {survey_id: surveyId}},
           auto_translate: lastMessage.auto_tranlate,
@@ -194,7 +197,7 @@ function _processSurveyAnswer(lastMessage, responderUser, myworker, smsContents,
         const smsLog = new Smslog({
           sender: surveyConfSmsSenderUser,
           receiver: {phone_number: responderUser.phone_number},
-          message: surveyConfSmsContents,
+          message: surveyConfSmsContents['en'],
           datetime: datetime
         });
         return Promise.join(surveyConfSmsQuestionMessage.save(), smsLog.save()).then((saveResults) => {
@@ -215,14 +218,14 @@ function _processSurveyAnswer(lastMessage, responderUser, myworker, smsContents,
     const surveyId = lastMessage.getSurveyId();
     const get2ndToTheLastMessage = () => {
       return Message.find({
-          'sender.company_id': companyId,
-          'receivers.user_id': workerUserId,
+          'sender.company_id': workerUserId,
+          'receivers.user_id': companyId,
           'metadata.survey.survey_id': surveyId
         })
         .sort({datetime: -1}).limit(2)
         .then((messages) => {
-          if (messages.length > 1) {
-            return messages[1];
+          if (messages.length > 0) {
+            return messages[0];
           } else {
             return Promise.reject(`Cannot determine 2nd to the last message of user ${workerUserId} for company ${companyId} to survey ${surveyId}`);
           }
@@ -239,7 +242,7 @@ function _processSurveyAnswer(lastMessage, responderUser, myworker, smsContents,
       // 4.4 Since the current SMS is answer to survey-confirmation-question, the 2nd last message is the answer to survey.
       // 4.4.1. We first update the 2nd last message (set type = `survey-answer`, configure meta-data).
       get2ndToTheLastMessage().then((answerMessage) => {
-        logger.info(`[SMS API Inbound] Setting 2nd to the last message type to 'answer-survey'.`);
+        logger.info(`[SMS API Inbound] Setting 2nd to the last message type to 'survey-answer'.`);
         answerMessage.type = 'survey-answer';
         return answerMessage.save();
       }).then((answerMessage) => {
@@ -248,20 +251,22 @@ function _processSurveyAnswer(lastMessage, responderUser, myworker, smsContents,
           // Please check [WIKI 17.2.2: Survey > Answer - New](https://bitbucket.org/volasys-ss/ganaz-backend/wiki/17.2.2%20Survey%20%3E%20Answer%20-%20New)
           logger.info(`[SMS API Inbound] User ${workerUserId} sms saved im message ${answerMessage._id.toString()} is an answer to survey ${survey._id.toString()}.`);
           return answerService.createAnswer({
-            answer: {text: {en: smsContents, es: smsContents}},
+            answer: {text: {en: answerMessage.message.en, es: answerMessage.message.es /*smsContents*/}},
             responder: {user_id: responderUser._id, company_id: ''},
             auto_translate: lastMessage.auto_tranlate
           }, survey, responderUser, datetime);
         });
       }).then(() => {
         // 4.4.3 We still need to follow Step 5 to create message object for the current message.
-        // But the message type will be `survey-confirmation-sms-question` instead of `message`.
-        return _createNewMessageForReceivingCompany(responderUser, myworker, smsContents, datetime, lastMessage, 'survey-confirmation-sms-question')
+        // But the message type will be `survey-confirmation-sms-answer` instead of `message`.
+        return _createNewMessageForReceivingCompany(responderUser, myworker, smsContents, datetime, lastMessage, 'survey-confirmation-sms-answer')
           .then(() => `Company ${companyId} users notified.`);
       });
     } else {
       // 4.2.4.2. If answer is NO (case-insensitive) or other than YES, the 2nd last message is just ordinary message,
       // and we need to generate message object for 2nd last message (following Step 5)
+
+      /*
       get2ndToTheLastMessage().then((answerMessage) => {
         const msg = `User ${workerUserId} rejected the answer confirmation message for survey ${surveyId}.`;
         logger.info(`[SMS API Inbound] ${msg}`);
@@ -274,6 +279,7 @@ function _processSurveyAnswer(lastMessage, responderUser, myworker, smsContents,
           return msg;
         })
       });
+      */
     }
   } else {
     logger.info(`[SMS API Inbound] Sms is not a survey answer.`);
@@ -316,7 +322,7 @@ function _createNewMessageForReceivingCompany(workerUser, myworker, smsContents,
     if (latestMessage && latestMessage.auto_translate) {
       logger.info(`[SMS API Inbound] Translating ${smsContents} to english.`);
       return googleService.translate(smsContents).then((translations) => {
-        message.message = {en: translations[0]}; // Get the first translation
+        message.message = {en: translations[0], es: smsContents}; // Get the first translation
         message.auto_translate = true;
         return message.save().then((savedMessage) => {
           logger.info(`[SMS API Inbound] Sending push notifications to company ${companyId} users.`);
