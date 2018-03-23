@@ -150,7 +150,7 @@ function _processSurveyAnswer(lastMessage, responderUser, myworker, smsContents,
         // 4.3 Since the current SMS is answer to survey-choice-single, we need to create survey-answer
         // object and create relevant message. Please check WIKI 17.2.2: Survey > Answer - New
         return answerService.createAnswer({
-          answer: {index: `${choiceNumber}`, text: {en: smsContents, es: smsContents}},
+          answer: {index: `${choiceNumber - 1}`, text: {en: smsContents, es: smsContents}},
           responder: {user_id: responderUser._id, company_id: ''},
           auto_translate: survey.auto_tranlate
         }, survey, responderUser, datetime).then(() => survey);
@@ -161,8 +161,11 @@ function _processSurveyAnswer(lastMessage, responderUser, myworker, smsContents,
         return Promise.resolve(survey);
       }
     }).then((survey) => {
+        /*
       return _createNewMessageForReceivingCompany(responderUser, myworker, smsContents, datetime, lastMessage, null, surveyId)
         .then(() => `Company ${companyId} users notified.`);
+        */
+        return `Company ${companyId} users notified.`;
     });
   } else if (lastMessage.type === 'survey-open-text') {
     // 4.2.3. If `last_message.type` == `survey-open-text`, we need to send confirmation SMS to worker again, just

@@ -47,7 +47,7 @@ const sendMessage = function (player_ids, savedMessage, preferES) {
   let messageString = null;
   let messageObject = null;
   if (o.sender.company_id && o.auto_translate === true) {
-      if (!preferEN || preferEN == false) {
+      if (!preferES || preferES == false) {
           messageString = o.message.en;
           messageObject = {en: messageString, es: messageString};
       }
@@ -56,7 +56,7 @@ const sendMessage = function (player_ids, savedMessage, preferES) {
           messageObject = {en: messageString, es: messageString};
       }
   } else if (typeof o.message === 'object') {
-      if (!preferEN || preferEN == false) {
+      if (!preferES || preferES == false) {
           messageString = o.message.en ? o.message.en : o.message.es;
           messageObject = {en: messageString};
       }
@@ -66,7 +66,7 @@ const sendMessage = function (player_ids, savedMessage, preferES) {
       }
   } else {
       // Assumed to be string
-      if (!preferEN || preferEN == false) {
+      if (!preferES || preferES == false) {
           messageString = o.message;
           messageObject = {en: messageString};
       }
