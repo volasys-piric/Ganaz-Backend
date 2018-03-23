@@ -197,7 +197,7 @@ function _processSurveyAnswer(lastMessage, responderUser, myworker, smsContents,
         const smsLog = new Smslog({
           sender: surveyConfSmsSenderUser,
           receiver: {phone_number: responderUser.phone_number},
-          message: surveyConfSmsContents['en'],
+          message: surveyConfSmsContents['es'],
           datetime: datetime
         });
         return Promise.join(surveyConfSmsQuestionMessage.save(), smsLog.save()).then((saveResults) => {
@@ -218,8 +218,8 @@ function _processSurveyAnswer(lastMessage, responderUser, myworker, smsContents,
     const surveyId = lastMessage.getSurveyId();
     const get2ndToTheLastMessage = () => {
       return Message.find({
-          'sender.company_id': workerUserId,
-          'receivers.user_id': companyId,
+          'sender.user_id': workerUserId,
+          'receivers.company_id': companyId,
           'metadata.survey.survey_id': surveyId
         })
         .sort({datetime: -1}).limit(2)
