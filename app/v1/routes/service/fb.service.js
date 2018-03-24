@@ -17,7 +17,7 @@ const Myworker = db.models.myworker;
 const createMessageModel = (messageBody, user, job) => {
     const userId = user._id.toString();
     const companyId = job.company_id;
-    logger.info(`[FbWebhook ] Translating ${messageBody} to english.`);
+    logger.info(`[FB Webhook] Translating ${messageBody} to english.`);
 
     return googleService.translate(messageBody).then((translations) => {
         return new Message({
@@ -381,9 +381,7 @@ module.exports = {
                                 const job = o.job;
                                 if (user && job) {
                                     userIdUserMap.set(user._id.toString(), user);
-                                    createMessageModel(o.messageBody, user, job).then((newMessage) => {
-                                        unsavedMessages.push(newMessage);
-                                    });
+                                    unsavedMessages.push(createMessageModel(o.messageBody, user, job));
                                 }
                                 else {
                                     const event = o.event;
@@ -397,7 +395,7 @@ module.exports = {
                                     logger.info(`[FB Webhook Service] ${message} Ignoring event ${JSON.stringify(o.event)}.`);
                                 }
                             }
-                            return unsavedMessages;
+                            return Promise.all(unsavedMessages);
                         });
                     }).then((unsavedMessages) => {
                         const adIdPromises = [];
@@ -470,9 +468,7 @@ module.exports = {
                                 const job = o.job;
                                 if (user && job) {
                                     userIdUserMap.set(user._id.toString(), user);
-                                    createMessageModel(o.messageBody, user, job).then((newMessage) => {
-                                        unsavedMessages.push(newMessage);
-                                    });
+                                    unsavedMessages.push(createMessageModel(o.messageBody, user, job));
                                 }
                                 else {
                                     const event = o.event;
@@ -486,7 +482,7 @@ module.exports = {
                                     logger.info(`[FB Webhook Service] ${message} Ignoring event ${JSON.stringify(o.event)}.`);
                                 }
                             }
-                            return unsavedMessages;
+                            return Promise.all(unsavedMessages);
                         });
                     }).then((unsavedMessages) => {
                         // Save all messages;
