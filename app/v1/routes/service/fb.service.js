@@ -122,19 +122,26 @@ module.exports = {
                     message: {text: messageBody}
                   }
                 });
+                const pageId = user.worker.facebook_lead.page_id;
                 // Send asynchronously
-                fbMessage.save().then(function(fbMessage) {
-                  rp.post(`https://graph.facebook.com/v2.6/me/messages?access_token=${appConfig.FB_PAGE_ACCESS_TOKEN}`, {
-                    json: true,
-                    body: fbMessage.request,
-                    headers: {version: 1.9}
-                  }).then(function(response) {
-                    fbMessage.response = response;
-                    fbMessage.save();
-                  }).catch(function(err) {
-                    fbMessage.exception = err;
-                    fbMessage.save();
-                  })
+                FbPageInfo.findOne({page_id: pageId}).then(fbpageInfo => {
+                  if(fbpageInfo || fbpageInfo.page_access_token) {
+                    logger.info(`[FB Service] User ${user._id.toString()} fb page ${pageId} has no access token.`);
+                  } else {
+                    fbMessage.save().then(function(fbMessage) {
+                      rp.post(`https://graph.facebook.com/v2.6/me/messages?access_token=${fbpageInfo.page_access_token}`, {
+                        json: true,
+                        body: fbMessage.request,
+                        headers: {version: 1.9}
+                      }).then(function(response) {
+                        fbMessage.response = response;
+                        fbMessage.save();
+                      }).catch(function(err) {
+                        fbMessage.exception = err;
+                        fbMessage.save();
+                      })
+                    });
+                  }
                 });
               })(users[i]);
             }
