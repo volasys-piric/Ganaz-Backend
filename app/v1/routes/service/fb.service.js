@@ -20,6 +20,7 @@ const createMessageModel = (messageBody, user, job) => {
     logger.info(`[FB Webhook] Translating ${messageBody} to english.`);
 
     return googleService.translate(messageBody).then((translations) => {
+        logger.info(`checkpoint - 3`);
         return new Message({
             type: 'facebook-message',
             sender: {user_id: userId, company_id: ''},
@@ -474,11 +475,11 @@ module.exports = {
                                 if (user && job) {
                                     userIdUserMap.set(user._id.toString(), user);
                                     logger.info(`checkpoint - 2.0`);
-                                    createMessageModel(o.messageBody, user, job).then((newMessage) => {
-                                        logger.info('checkpoint - 2.1');
-                                        unsavedMessages.push(newMessage);
-                                    });
-                                    // unsavedMessages.push(createMessageModel(o.messageBody, user, job));
+                                    // createMessageModel(o.messageBody, user, job).then((newMessage) => {
+                                    //     logger.info('checkpoint - 2.1');
+                                    //     unsavedMessages.push(newMessage);
+                                    // });
+                                    unsavedMessages.push(createMessageModel(o.messageBody, user, job));
                                 }
                                 else {
                                     const event = o.event;
