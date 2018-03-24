@@ -15,17 +15,21 @@ const Job = db.models.job;
 const Myworker = db.models.myworker;
 
 const createMessageModel = (messageBody, user, job) => {
-  const userId = user._id.toString();
-  const companyId = job.company_id;
-  return new Message({
-    type: 'facebook-message',
-    sender: {user_id: userId, company_id: ''},
-    receivers: [{user_id: job.company_user_id, company_id: companyId}],
-    message: {
-      en: messageBody,
-      es: messageBody,
-    },
-  });
+    const userId = user._id.toString();
+    const companyId = job.company_id;
+    logger.info(`[FbWebhook ] Translating ${messageBody} to english.`);
+
+    return googleService.translate(messageBody).then((translations) => {
+        return new Message({
+            type: 'facebook-message',
+            sender: {user_id: userId, company_id: ''},
+            receivers: [{user_id: job.company_user_id, company_id: companyId}],
+            message: {
+                en: translations[0],
+                es: messageBody,
+            },
+        });
+    });
 };
 
 const findReferralAdId = (senderPsid) => {
@@ -86,72 +90,77 @@ const createFacebookLeadWorker = (psid, adId, pageId, job) => {
 }
 
 module.exports = {
-  sendMesssage: (body) => {
-    // https://bitbucket.org/volasys-ss/ganaz-backend/issues/34/backend-v110-change-log#markdown-header-facebook-messenger-send-api
-    if (!body.message || !(body.message.en || body.message.es) || !body.receivers || body.receivers.length < 1) {
-      return Promise.reject('Request body message.en or message.es and body.receivers are required.');
-    } else if (body.type !== 'facebook-message' || !body.sender || !body.sender.user_id || !body.sender.company_id) {
-      return Promise.reject('Request body type should be \'facebook-message\' and sender.user_id and sender.company_id are required.');
-    } else {
-      const promises = [];
-      for (let i = 0; i < body.receivers.length; i++) {
-        promises.push(User.findById(body.receivers[i].user_id));
-      }
-      return Promise.all(promises).then(function(users) {
-        const noPsids = [];
-        for (let i = 0; i < users.length; i++) {
-          // Make sure all users have PSIDs
-          const user = users[i];
-          if (user.type !== 'facebook-lead-worker' || !user.worker || !user.worker.facebook_lead || !user.worker.facebook_lead.psid) {
-            noPsids.push(user._id.toString());
-          }
+    sendMesssage: (body) => {
+        // https://bitbucket.org/volasys-ss/ganaz-backend/issues/34/backend-v110-change-log#markdown-header-facebook-messenger-send-api
+        if (!body.message || !(body.message.en || body.message.es) || !body.receivers || body.receivers.length < 1) {
+            return Promise.reject('Request body message.en or message.es and body.receivers are required.');
         }
-        if (noPsids.length > 0) {
-          return Promise.reject(`User ids [${noPsids.toString()}] is/are  not facebook lead worker(s).`);
-        } else {
-          const messageModel = new Message(body);
-          return messageModel.save().then(function(messageModel) {
-            const messageBody = body.message.es ? body.message.es : body.message.en;
-            for (let i = 0; i < users.length; i++) {
-              (function(user) {
-                const psid = user.worker.facebook_lead.psid;
-                const fbMessage = new FbMessage({
-                  message_id: messageModel._id,
-                  request: {
-                    messaging_type: 'RESPONSE',
-                    recipient: {id: psid},
-                    message: {text: messageBody}
-                  }
-                });
-                const pageId = user.worker.facebook_lead.page_id;
-                // Send asynchronously
-                FbPageInfo.findOne({page_id: pageId}).then(fbpageInfo => {
-                  if(fbpageInfo || fbpageInfo.page_access_token) {
-                    logger.info(`[FB Service] User ${user._id.toString()} fb page ${pageId} has no access token.`);
-                  } else {
-                    fbMessage.save().then(function(fbMessage) {
-                      rp.post(`https://graph.facebook.com/v2.6/me/messages?access_token=${fbpageInfo.page_access_token}`, {
-                        json: true,
-                        body: fbMessage.request,
-                        headers: {version: 1.9}
-                      }).then(function(response) {
-                        fbMessage.response = response;
-                        fbMessage.save();
-                      }).catch(function(err) {
-                        fbMessage.exception = err;
-                        fbMessage.save();
-                      })
-                    });
-                  }
-                });
-              })(users[i]);
+        else if (body.type !== 'facebook-message' || !body.sender || !body.sender.user_id || !body.sender.company_id) {
+            return Promise.reject('Request body type should be \'facebook-message\' and sender.user_id and sender.company_id are required.');
+        }
+        else {
+            const promises = [];
+            for (let i = 0; i < body.receivers.length; i++) {
+                promises.push(User.findById(body.receivers[i].user_id));
             }
-            return [messageModel];
-          });
+            return Promise.all(promises).then(function(users) {
+                const noPsids = [];
+                for (let i = 0; i < users.length; i++) {
+                    // Make sure all users have PSIDs
+                    const user = users[i];
+                    if (user.type !== 'facebook-lead-worker' || !user.worker || !user.worker.facebook_lead || !user.worker.facebook_lead.psid) {
+                        noPsids.push(user._id.toString());
+                    }
+                }
+                if (noPsids.length > 0) {
+                    return Promise.reject(`User ids [${noPsids.toString()}] is/are  not facebook lead worker(s).`);
+                }
+                else {
+                    const messageModel = new Message(body);
+                    return messageModel.save().then(function(messageModel) {
+                        const messageBody = body.message.es ? body.message.es : body.message.en;
+                        for (let i = 0; i < users.length; i++) {
+                            (function(user) {
+                                const psid = user.worker.facebook_lead.psid;
+                                const fbMessage = new FbMessage({
+                                    message_id: messageModel._id,
+                                    request: {
+                                        messaging_type: 'RESPONSE',
+                                        recipient: {id: psid},
+                                        message: {text: messageBody}
+                                    }
+                                });
+                                const pageId = user.worker.facebook_lead.page_id;
+                                // Send asynchronously
+                                FbPageInfo.findOne({page_id: pageId}).then(fbpageInfo => {
+                                    if(fbpageInfo || fbpageInfo.page_access_token) {
+                                        logger.info(`[FB Service] User ${user._id.toString()} fb page ${pageId} has no access token.`);
+                                    }
+                                    else {
+                                        fbMessage.save().then(function(fbMessage) {
+                                            rp.post(`https://graph.facebook.com/v2.6/me/messages?access_token=${fbpageInfo.page_access_token}`, {
+                                                json: true,
+                                                body: fbMessage.request,
+                                                headers: {version: 1.9}
+                                            }).then(function(response) {
+                                                fbMessage.response = response;
+                                                fbMessage.save();
+                                            }).catch(function(err) {
+                                                fbMessage.exception = err;
+                                                fbMessage.save();
+                                            })
+                                        });
+                                    }
+                                });
+                            })(users[i]);
+                        }
+                        return [messageModel];
+                    });
+                }
+            });
         }
-      });
-    }
-  },
+    },
+
     processWebhook: (body) => {
         const fbwebhook = new FbWebhook({request: body});
         return fbwebhook.save().then((fbwebhook) => {
@@ -372,7 +381,9 @@ module.exports = {
                                 const job = o.job;
                                 if (user && job) {
                                     userIdUserMap.set(user._id.toString(), user);
-                                    unsavedMessages.push(createMessageModel(o.messageBody, user, job));
+                                    createMessageModel(o.messageBody, user, job).then((newMessage) => {
+                                        unsavedMessages.push(newMessage);
+                                    });
                                 }
                                 else {
                                     const event = o.event;
@@ -459,7 +470,9 @@ module.exports = {
                                 const job = o.job;
                                 if (user && job) {
                                     userIdUserMap.set(user._id.toString(), user);
-                                    unsavedMessages.push(createMessageModel(o.messageBody, user, job));
+                                    createMessageModel(o.messageBody, user, job).then((newMessage) => {
+                                        unsavedMessages.push(newMessage);
+                                    });
                                 }
                                 else {
                                     const event = o.event;
