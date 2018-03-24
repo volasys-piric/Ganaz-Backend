@@ -381,7 +381,11 @@ module.exports = {
                                 const job = o.job;
                                 if (user && job) {
                                     userIdUserMap.set(user._id.toString(), user);
-                                    unsavedMessages.push(createMessageModel(o.messageBody, user, job));
+                                    logger.info(`checkpoint - 1.0`);
+                                    createMessageModel(o.messageBody, user, job).then((newMessage) => {
+                                        logger.info('checkpoint - 1.1');
+                                        unsavedMessages.push(newMessage);
+                                    });
                                 }
                                 else {
                                     const event = o.event;
@@ -398,6 +402,7 @@ module.exports = {
                             return Promise.all(unsavedMessages);
                         });
                     }).then((unsavedMessages) => {
+                        logger.info(`checkpoint - 1.2`);
                         const adIdPromises = [];
                         for (let i = 0; i < messageEvents.length; i++) {
                             const event = messageEvents[i];
@@ -468,7 +473,12 @@ module.exports = {
                                 const job = o.job;
                                 if (user && job) {
                                     userIdUserMap.set(user._id.toString(), user);
-                                    unsavedMessages.push(createMessageModel(o.messageBody, user, job));
+                                    logger.info(`checkpoint - 2.0`);
+                                    createMessageModel(o.messageBody, user, job).then((newMessage) => {
+                                        logger.info('checkpoint - 2.1');
+                                        unsavedMessages.push(newMessage);
+                                    });
+                                    // unsavedMessages.push(createMessageModel(o.messageBody, user, job));
                                 }
                                 else {
                                     const event = o.event;
@@ -485,6 +495,7 @@ module.exports = {
                             return Promise.all(unsavedMessages);
                         });
                     }).then((unsavedMessages) => {
+                        logger.info(`checkpoint - 2.2`);
                         // Save all messages;
                         return Promise.all(unsavedMessages.map((unsavedMessage) => unsavedMessage.save()));
                     }).then(function(savedMessages) {
