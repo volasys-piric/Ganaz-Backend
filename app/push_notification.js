@@ -43,13 +43,12 @@ const sendNotification = function (device, notification) {
 
 const sendMessage = function (player_ids, savedMessage, preferES) {
   const o = savedMessage.toObject();
-  logger.info(`[Push Notification] Sending message ${JSON.stringify(savedMessage)}`);
   let messageString = null;
   let messageObject = null;
 
   var shouldSendSpanish = preferES;
   if (!shouldSendSpanish) {
-      if (!o.sender.company_id || o.sender.company_id.length === "") {
+      if (!o.sender.company_id || o.sender.company_id === "") {
           // Sender is Worker, Receiver is Company. Should send English contents
           shouldSendSpanish = false;
       }
