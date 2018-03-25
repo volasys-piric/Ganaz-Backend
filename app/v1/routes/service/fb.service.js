@@ -496,13 +496,13 @@ module.exports = {
                             return Promise.all(unsavedMessages);
                         });
                     }).then((unsavedMessages) => {
-                        logger.info(`checkpoint - 2.2`);
+                        logger.info(`checkpoint - 2.2: ${JSON.stringify(unsavedMessages)}`);
                         // Save all messages;
                         return Promise.all(unsavedMessages.map((unsavedMessage) => unsavedMessage.save()));
                     }).then(function(savedMessages) {
                         for (let i = 0; i < savedMessages.length; i++) {
                             const savedMessage = savedMessages[i];
-                            const user = userIdUserMap.get(savedMessage.sender.user_id);
+                            const user = userIdUserMap.get(savedMessage.receivers[0].user_id);
                             if (user.player_ids && user.player_ids.length > 0) {
                                 // Send push notification asynchronously
                                 pushNotification.sendMessage(user.player_ids, savedMessage);
