@@ -47,6 +47,10 @@ const sendMessage = function (player_ids, savedMessage, preferES) {
   let messageObject = null;
 
   var shouldSendSpanish = preferES;
+
+  logger.info(`=============`);
+  logger.info(`Checkpoint 1.1: shouldSendSpanish = ` + shouldSendSpanish);
+
   if (!shouldSendSpanish) {
       if (!o.sender.company_id || o.sender.company_id === "") {
           // Sender is Worker, Receiver is Company. Should send English contents
@@ -57,36 +61,35 @@ const sendMessage = function (player_ids, savedMessage, preferES) {
           shouldSendSpanish = true;
       }
   }
+  logger.info(`Checkpoint 1.2: shouldSendSpanish = ` + shouldSendSpanish);
 
-  if (o.sender.company_id && o.auto_translate === true) {
+  if (typeof o.message === 'object') {
       if (shouldSendSpanish == false) {
-          messageString = o.message.en;
-          messageObject = {en: messageString, es: messageString};
-      }
-      else {
-          messageString = o.message.es;
-          messageObject = {en: messageString, es: messageString};
-      }
-  } else if (typeof o.message === 'object') {
-      if (shouldSendSpanish == false) {
+          logger.info(`Checkpoint 1.3.1`);
           messageString = o.message.en ? o.message.en : o.message.es;
-          messageObject = {en: messageString};
+          messageObject = {en: messageString, es: messageString};
       }
       else {
+          logger.info(`Checkpoint 1.3.2`);
           messageString = o.message.es ? o.message.es : o.message.en;
-          messageObject = {en: messageString};
+          messageObject = {en: messageString, es: messageString};
       }
-  } else {
+  }
+  else {
       // Assumed to be string
       if (shouldSendSpanish == false) {
+          logger.info(`Checkpoint 1.3.3`);
           messageString = o.message;
           messageObject = {en: messageString};
       }
       else {
+          logger.info(`Checkpoint 1.3.4`);
           messageString = o.message;
           messageObject = {en: messageString};
       }
   }
+  logger.info(`Checkpoint 1.4: messageObject = ${JSON.stringify(messageObject)}`);
+
   const messageId = o._id.toString();
   const data = {type: o.type};
   data.contents = {
