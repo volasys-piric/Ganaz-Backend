@@ -228,6 +228,8 @@ module.exports = {
                                 'worker.facebook_lead.psid': event.psid,
                                 'worker.facebook_lead.job_id': job._id
                             }));
+
+                            findUserPromises.push(User.findById(job.company_user_id));
                         }
                         return Promise.all(findUserPromises).then((users) => {
                             const foundUsers = [];
