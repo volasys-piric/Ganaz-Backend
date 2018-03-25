@@ -228,8 +228,6 @@ module.exports = {
                                 'worker.facebook_lead.psid': event.psid,
                                 'worker.facebook_lead.job_id': job._id
                             }));
-
-                            findUserPromises.push(User.findById(job.company_user_id));
                         }
                         return Promise.all(findUserPromises).then((users) => {
                             const foundUsers = [];
@@ -489,10 +487,33 @@ module.exports = {
                         // Save all messages;
                         return Promise.all(unsavedMessages.map((unsavedMessage) => unsavedMessage.save()));
                     }).then(function(savedMessages) {
+                        // Search company users
+                        const findCompanyUserPromises = [];
+                        for (let i = 0; i < savedMessages.length; i++) {
+                            const savedMessage = savedMessages[i];
+                            const companyUserId = savedMessage.receivers[0].user_id;
+                            if (companyUserId) {
+                                findCompanyUserPromises.push(User.findById(companyUserId));
+                            }
+                        }
+
+                        return Promise.all(findCompanyUserPromises).then((users) => {
+                            for (let i = 0; i < users.length; i++) {
+                                const user = users[i];
+                                if (user) {
+                                    userIdUserMap.set(user._id.toString(), user);
+                                }
+                            }
+                            return savedMessages;
+                        });
+                    }).then(function(savedMessages) {
+                        logger.info(`================`);
+                        logger.info(`[FB Webhook] userIdUserMap = ${JSON.stringify(userIdUserMap)}`)
                         for (let i = 0; i < savedMessages.length; i++) {
                             const savedMessage = savedMessages[i];
                             const user = userIdUserMap.get(savedMessage.receivers[0].user_id);
-                            if (user.player_ids && user.player_ids.length > 0) {
+                            logger.info(`User Found: ${JSON.stringify(user)}`);
+                            if (user && user.player_ids && user.player_ids.length > 0) {
                                 // Send push notification asynchronously
                                 pushNotification.sendMessage(user.player_ids, savedMessage);
                             }
