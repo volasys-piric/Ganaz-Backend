@@ -32,60 +32,62 @@ const createMessageModel = (messageBody, user, job) => {
 };
 
 const findReferralAdId = (senderPsid) => {
-  return FbWebhook.findOne({
-    'request.entry.messaging.sender.id': senderPsid,
-    'request.entry.messaging.referral.ad_id': {$exists: true}
-  }).sort({datetime: -1}).then((o) => {
-    if (o) {
-      const jsonO = o.toObject();
-      const messaging = jsonO.request.entry[0].messaging[0];
-      const referral = messaging.referral;
-      return referral.ad_id
-    } else {
-      return null;
-    }
-  });
+    return FbWebhook.findOne({
+        'request.entry.messaging.sender.id': senderPsid,
+        'request.entry.messaging.referral.ad_id': {$exists: true}
+    }).sort({datetime: -1}).then((o) => {
+        if (o) {
+            const jsonO = o.toObject();
+            const messaging = jsonO.request.entry[0].messaging[0];
+            const referral = messaging.referral;
+            return referral.ad_id
+        }
+        else {
+            return null;
+        }
+    });
 };
 
 const findPostbackAdId = (senderPsid) => {
-  return FbWebhook.findOne({
-    'request.entry.messaging.sender.id': senderPsid,
-    'request.entry.messaging.postback.referral.ad_id': {$exists: true}
-  }).sort({datetime: -1}).then((o) => {
-    if (o) {
-      const jsonO = o.toObject();
-      const messaging = jsonO.request.entry[0].messaging[0];
-      const referral = messaging.postback.referral;
-      return referral.ad_id
-    } else {
-      return null;
-    }
-  })
+    return FbWebhook.findOne({
+        'request.entry.messaging.sender.id': senderPsid,
+        'request.entry.messaging.postback.referral.ad_id': {$exists: true}
+    }).sort({datetime: -1}).then((o) => {
+        if (o) {
+            const jsonO = o.toObject();
+            const messaging = jsonO.request.entry[0].messaging[0];
+            const referral = messaging.postback.referral;
+            return referral.ad_id
+        }
+        else {
+            return null;
+        }
+    });
 };
 
 const findUserByPsidAndAdIdAndJobId = (psid, adId, jobId) => {
-  return User.findOne({
-    'type': 'facebook-lead-worker',
-    'worker.facebook_lead.psid': psid,
-    'worker.facebook_lead.ad_id': adId,
-    'worker.facebook_lead.job_id': jobId
-  });
+    return User.findOne({
+        'type': 'facebook-lead-worker',
+        'worker.facebook_lead.psid': psid,
+        'worker.facebook_lead.ad_id': adId,
+        'worker.facebook_lead.job_id': jobId
+    });
 };
 
 const createFacebookLeadWorker = (psid, adId, pageId, job) => {
-  return new User({
-    type: 'facebook-lead-worker',
-    username: psid + adId,
-    worker: {
-      facebook_lead: {
-        psid: psid,
-        ad_id: adId,
-        page_id: pageId,
-        company_id: job.company_id,
-        job_id: job._id,
-      }
-    }
-  });
+    return new User({
+        type: 'facebook-lead-worker',
+        username: psid + adId,
+        worker: {
+            facebook_lead: {
+                psid: psid,
+                ad_id: adId,
+                page_id: pageId,
+                company_id: job.company_id,
+                job_id: job._id,
+            }
+        }
+    });
 }
 
 module.exports = {
@@ -131,8 +133,8 @@ module.exports = {
                                 });
                                 const pageId = user.worker.facebook_lead.page_id;
                                 // Send asynchronously
-                                FbPageInfo.findOne({page_id: pageId}).then(fbpageInfo => {
-                                    if(fbpageInfo || fbpageInfo.page_access_token) {
+                                FbPageInfo.findOne({"page_id": pageId}).then(fbpageInfo => {
+                                    if(!fbpageInfo || !fbpageInfo.page_access_token) {
                                         logger.info(`[FB Service] User ${user._id.toString()} fb page ${pageId} has no access token.`);
                                     }
                                     else {
@@ -507,12 +509,9 @@ module.exports = {
                             return savedMessages;
                         });
                     }).then(function(savedMessages) {
-                        logger.info(`================`);
-                        logger.info(`[FB Webhook] userIdUserMap = ${JSON.stringify(userIdUserMap)}`)
                         for (let i = 0; i < savedMessages.length; i++) {
                             const savedMessage = savedMessages[i];
                             const user = userIdUserMap.get(savedMessage.receivers[0].user_id);
-                            logger.info(`User Found: ${JSON.stringify(user)}`);
                             if (user && user.player_ids && user.player_ids.length > 0) {
                                 // Send push notification asynchronously
                                 pushNotification.sendMessage(user.player_ids, savedMessage);
