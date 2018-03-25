@@ -46,8 +46,21 @@ const sendMessage = function (player_ids, savedMessage, preferES) {
   logger.info(`[Push Notification] Sending message ${JSON.stringify(savedMessage)}`);
   let messageString = null;
   let messageObject = null;
+
+  var shouldSendSpanish = preferES;
+  if (!shouldSendSpanish) {
+      if (!o.sender.company_id || o.sender.company_id.length === "") {
+          // Sender is Worker, Receiver is Company. Should send English contents
+          shouldSendSpanish = false;
+      }
+      else {
+          // Sender is Company, Receiver is Worker.
+          shouldSendSpanish = true;
+      }
+  }
+
   if (o.sender.company_id && o.auto_translate === true) {
-      if (!preferES || preferES == false) {
+      if (shouldSendSpanish == false) {
           messageString = o.message.en;
           messageObject = {en: messageString, es: messageString};
       }
@@ -56,7 +69,7 @@ const sendMessage = function (player_ids, savedMessage, preferES) {
           messageObject = {en: messageString, es: messageString};
       }
   } else if (typeof o.message === 'object') {
-      if (!preferES || preferES == false) {
+      if (shouldSendSpanish == false) {
           messageString = o.message.en ? o.message.en : o.message.es;
           messageObject = {en: messageString};
       }
@@ -66,7 +79,7 @@ const sendMessage = function (player_ids, savedMessage, preferES) {
       }
   } else {
       // Assumed to be string
-      if (!preferES || preferES == false) {
+      if (shouldSendSpanish == false) {
           messageString = o.message;
           messageObject = {en: messageString};
       }
