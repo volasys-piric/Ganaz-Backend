@@ -309,9 +309,7 @@ function _createNewMessageForReceivingCompany(workerUser, myworker, smsContents,
         companyUserPlayerIds = [...companyUserPlayerIds, ...user.player_ids];
     });
 
-    logger.info(`[Checkpoint - 1]: Company Users > player ids: ${JSON.stringify(companyUserPlayerIds)}`);
     const autoTranslate = (latestMessage && latestMessage.auto_translate) ? true : false;
-
     const message = new Message({
       job_id: '',
       type: messageType ? messageType : 'message',
@@ -338,7 +336,6 @@ function _createNewMessageForReceivingCompany(workerUser, myworker, smsContents,
         message.auto_translate = true;
         return message.save().then((savedMessage) => {
           logger.info(`[SMS API Inbound] Sending push notifications to company ${companyId} users.`);
-          // pushNotification.sendMessage(workerUser.player_ids, savedMessage);
           pushNotification.sendMessage(companyUserPlayerIds, savedMessage);
           return savedMessage;
         });
@@ -347,7 +344,6 @@ function _createNewMessageForReceivingCompany(workerUser, myworker, smsContents,
       message.message = {en: smsContents, es: smsContents}
       return message.save().then((savedMessage) => {
         logger.info(`[SMS API Inbound] Sending push notifications to company ${companyId} users.`);
-        // pushNotification.sendMessage(workerUser.player_ids, savedMessage);
         pushNotification.sendMessage(companyUserPlayerIds, savedMessage);
         return savedMessage;
       });
