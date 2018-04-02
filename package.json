@@ -13,7 +13,7 @@
     "trace-sync": "node --trace-sync-io server.js",
     "dev": "nodemon server.js",
     "forever": "NODE_ENV=production forever start server.js",
-    "migrate": "cd mongo-data && migrate-mongo up && cd.."
+    "migrate": "cd mongo-data && migrate-mongo up && cd .."
   },
   "keywords": [
     "mobile",
