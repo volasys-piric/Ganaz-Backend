@@ -26,7 +26,7 @@ const _parseE164Number = (num) => {
   if (num.startsWith('+')) {
     num = num.substring(1);
     if (num.length > 10) {
-      o.country_code = num.charAt(0);
+      o.country_code = num.substring(0, num.length - 10);
       o.local_number = num.substr(num.length - 10);
     }
   }
@@ -387,10 +387,10 @@ router.post('/inbound', (req, res) => {
     inboundSms.save().then((savedInboundSms) => {
       const fromPhone = _parseE164Number(body.From);
       const toPhone = _parseE164Number(body.To);
-      logger.info('[SMS API Inbound] Processing From ' + fromPhone.local_number + ' and To ' + toPhone.local_number + ' with body "' + body.Body + '".');
+      logger.info('[SMS API Inbound] Processing From +' + fromPhone.country_code + ' ' + fromPhone.local_number + ' and To +' + toPhone.country_code + ' ' + toPhone.local_number + ' with body "' + body.Body + '".');
       const createPhoneQ = (phone) => {
         const q = {'phone_number.local_number': phone.local_number};
-        if (fromPhone.country_code) {
+        if (phone.country_code) {
           q['phone_number.country_code'] = phone.country_code;
         }
         return q;
