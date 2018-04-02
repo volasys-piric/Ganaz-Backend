@@ -303,6 +303,12 @@ function _createNewMessageForReceivingCompany(workerUser, myworker, smsContents,
     if (surveyId) {
       metadata.survey = {survey_id: surveyId};
     }
+    const companyUserPlayerIds = companyUsers.map((user) => {
+        return user.player_ids;
+    });
+    logger.info(`[Checkpoint - 1]: Company Users > player ids: ${JSON.stringify(companyUserPlayerIds)}`);
+    const autoTranslate = (latestMessage && latestMessage.auto_translate) ? true : false;
+
     const message = new Message({
       job_id: '',
       type: messageType ? messageType : 'message',
@@ -314,7 +320,7 @@ function _createNewMessageForReceivingCompany(workerUser, myworker, smsContents,
         }
       }),
       metadata: metadata,
-      auto_translate: false,
+      auto_translate: autoTranslate,
       datetime: datetime
     });
     /* If the receiving company and this worker exchanged any message before, we need to check the last message
@@ -322,14 +328,15 @@ function _createNewMessageForReceivingCompany(workerUser, myworker, smsContents,
     the worker's message from ES to EN. (ISSUE 39: Twilio Webhook should translate the worker's incoming
     message to English if needed)
      */
-    if (latestMessage && latestMessage.auto_translate) {
+    if (autoTranslate) {
       logger.info(`[SMS API Inbound] Translating ${smsContents} to english.`);
       return googleService.translate(smsContents).then((translations) => {
         message.message = {en: translations[0], es: smsContents}; // Get the first translation
         message.auto_translate = true;
         return message.save().then((savedMessage) => {
           logger.info(`[SMS API Inbound] Sending push notifications to company ${companyId} users.`);
-          pushNotification.sendMessage(workerUser.player_ids, savedMessage);
+          // pushNotification.sendMessage(workerUser.player_ids, savedMessage);
+          pushNotification.sendMessage(companyUserPlayerIds, savedMessage);
           return savedMessage;
         });
       });
@@ -337,7 +344,8 @@ function _createNewMessageForReceivingCompany(workerUser, myworker, smsContents,
       message.message = {en: smsContents, es: smsContents}
       return message.save().then((savedMessage) => {
         logger.info(`[SMS API Inbound] Sending push notifications to company ${companyId} users.`);
-        pushNotification.sendMessage(workerUser.player_ids, savedMessage);
+        // pushNotification.sendMessage(workerUser.player_ids, savedMessage);
+        pushNotification.sendMessage(companyUserPlayerIds, savedMessage);
         return savedMessage;
       });
     }
