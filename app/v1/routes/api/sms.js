@@ -303,9 +303,12 @@ function _createNewMessageForReceivingCompany(workerUser, myworker, smsContents,
     if (surveyId) {
       metadata.survey = {survey_id: surveyId};
     }
-    const companyUserPlayerIds = companyUsers.map((user) => {
-        return user.player_ids;
+
+    let companyUserPlayerIds = [];
+    companyUsers.forEach(function (user) {
+        companyUserPlayerIds = [...companyUserPlayerIds, ...user.player_ids];
     });
+
     logger.info(`[Checkpoint - 1]: Company Users > player ids: ${JSON.stringify(companyUserPlayerIds)}`);
     const autoTranslate = (latestMessage && latestMessage.auto_translate) ? true : false;
 
