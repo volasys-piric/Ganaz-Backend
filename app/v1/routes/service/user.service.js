@@ -242,14 +242,13 @@ const update = function (id, body) {
         return doSaveUser(user);
       } else {
         // isOnBoardingCompanyGroupLeader
-        return Invite.findOne({
-          receiver: {
-            type: 'company-group-leader',
-            company_group_leader: {
-              phone_number: user.phone_number
-            }
-          }
-        }).then((invite) => {
+        const {country_code, local_number} = user.phone_number;
+        const inviteQ = {
+          'receiver.type': 'company-group-leader',
+          'receiver.company_group_leader.phone_number.country_code': country_code,
+          'receiver.company_group_leader.phone_number.local_number': local_number
+        };
+        return Invite.findOne(inviteQ).then((invite) => {
           if (!invite) {
             const message = `Failed to update ${id}. Invite not found.`;
             logger.error(`[User Service] ${message}`);

@@ -6,6 +6,7 @@ const CrewSchema = new Schema({
   title: String,
   created_at: Date,
   group_leaders: [{
+    _id: false,
     company_id: {type: mongoose.Schema.Types.ObjectId, ref: 'Company'},
     user_id: {type: mongoose.Schema.Types.ObjectId, ref: 'User'},
   }],
