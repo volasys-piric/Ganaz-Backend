@@ -39,14 +39,22 @@ const upload = multer({storage: storage});
 router.post('/', function (req, res) {
   /** Expected req.body
    {
+       // ============= Deprecated Since v1.12 =============== //
        "company_id": "{sender's company object id}",
        "user_id": "{sender's user object id, optional}",        [optional]
-       "phone_number": {
-           "country": "US",
-           "country_code": "1",
-           "local_number": "{local phone number}"
+       "phone_number": {"country": "US","country_code": "1","local_number": "{local phone number}"},
+       // ============ Supported from v1.12 ================ //
+       "sender": {"company_id": "{sender's company object id}","user_id": "{sender's user object id}"},
+       "receiver": {
+           "type": "worker / company-group-leader",
+           "worker": {                                        // Optional
+               "phone_number": {"country": "US","country_code": "1","local_number": "{local phone number}"}
+           },
+           "company_group_leader": {                         // Optional
+               "phone_number": {"country": "US","country_code": "1","local_number": "{local phone number}"},
+               "crews": ["crew_id","crew_id"]
+           }
        },
-       "crew_name" : '', // optional
        "invite_only": true / false             // optional
    }
    */
@@ -57,19 +65,26 @@ router.post('/', function (req, res) {
       msg: 'Request body company_id and phone_number.local_number are required.'
     })
   } else {
-    const phoneNumber = body.phone_number;
-    if (!phoneNumber.country_code) {
-      phoneNumber.country = 'US';
-      phoneNumber.country_code = '1';
+    const setDefaultCountryCode = (phoneNumber) => {
+      if (!phoneNumber.country_code) {
+        phoneNumber.country = 'US';
+        phoneNumber.country_code = '1';
+      }
     }
     return Company.findById(body.company_id).then((company) => {
       if (!company) {
         return Promise.reject(`Company ${body.company_id} does not exists.`);
       } else {
-        return inviteService.bulkInvite([body], company, body.user_id, body.invite_only)
+        if(body.receiver.type === 'worker') {
+          setDefaultCountryCode(body.receiver.worker.phone_number);
+          return inviteService.bulkInvite([body.receiver.worker], company, body.user_id, body.invite_only)
+        } else {
+          setDefaultCountryCode(body.receiver.company_group_leader.phone_number);
+          return inviteService.inviteCompanyGroupLeader(body.receiver.company_group_leader, company, body.user_id)
+        }
       }
     }).then((result) => {
-      const invite = result[0].invite;
+      const invite = Array.isArray(result) ? result[0].invite : result;
       return res.json({success: true, invite: invite});
     }).catch(httpUtil.handleError(res));
   }
