@@ -35,13 +35,16 @@ const WorkerSchema = new Schema({
   }
 });
 
+const userTypes = ['worker', 'onboarding-worker', 'facebook-lead-worker',
+  'company-regular', 'company-admin', 'company-group-leader', 'onboarding-company-group-leader'];
+
 const UserSchema = new Schema({
   username: String,
   password: String,
   firstname: String,
   lastname: String,
   email_address: String,
-  type: {$type: String, required: true}, // worker/onboarding-worker/facebook-lead-worker/company-regular/company-admin
+  type: {$type: String, required: true, enum: userTypes},
   phone_number: {$type: PhoneNumberSchema},
   company: {$type: CompanySchema},
   worker: {$type: WorkerSchema},
