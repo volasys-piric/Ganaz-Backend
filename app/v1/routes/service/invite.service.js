@@ -107,6 +107,15 @@ module.exports = {
             user_id: companyUserId,
             company_id: companyId,
             phone_number: o.phone_number,
+            // Since 1.12
+            sender: {
+              company_id: companyId,
+              user_id: companyUserId,
+            },
+            receiver: {
+              type: 'worker',
+              worker: {phone_number: o.phone_number}
+            }
           });
           saveInvitePromises.push(invite.save());
         } else {
@@ -294,13 +303,22 @@ module.exports = {
           return new Invite({
             user_id: companyUserId,
             company_id: companyId,
-            phone_number: phoneNumber
+            phone_number: phoneNumber,
+            // Since 1.12
+            sender: {
+              company_id: companyId,
+              user_id: companyUserId,
+            },
+            receiver: {
+              type: 'company-group-leader',
+              company_group_leader: body
+            }
           }).save();
         } else {
           return Promise.resolve(invite);
         }
       });
-    }).then(() => {
+    }).then((invite) => {
       const messageBody = company.getInvitationMessage(phoneNumber.local_number);
       const smsLog = new Smslog({
         sender: {user_id: companyUserId, company_id: company._id},
@@ -308,10 +326,10 @@ module.exports = {
         billable: false,
         message: messageBody
       });
-      smsLog.save().then((savedSmsLog) => {
+      return smsLog.save().then((savedSmsLog) => {
         // Save asynchronously
         twiliophoneService.sendSmsLog(savedSmsLog);
-        return savedSmsLog;
+        return invite;
       });
     });
   }

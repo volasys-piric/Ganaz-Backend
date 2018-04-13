@@ -94,7 +94,16 @@ function _createWorkerRecords(twiliophone, body, fromPhone, worker) {
       company_id: companyId,
       user_id: companyUserId,
       phone_number: worker.phone_number,
-      created_at: now
+      created_at: now,
+      // Since 1.12
+      sender: {
+        company_id: companyId,
+        user_id: companyUserId,
+      },
+      receiver: {
+        type: 'worker',
+        worker: {phone_number: worker.phone_number}
+      }
     });
     const replyMessage = company.getInvitationMessage(worker.phone_number.local_number);
     logger.info('[SMS API Inbound] Creating smslog record for phone ' + fromPhone.local_number);

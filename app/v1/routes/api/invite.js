@@ -180,7 +180,16 @@ function _saveNoUserRows(now, companyId, companyUserId, company, noUserRows, sen
       company_id: companyId,
       user_id: companyUserId,
       phone_number: phoneNumber,
-      created_at: now
+      created_at: now,
+      // Since 1.12
+      sender: {
+        company_id: companyId,
+        user_id: companyUserId,
+      },
+      receiver: {
+        type: 'worker',
+        worker: {phone_number: phoneNumber}
+      }
     });
     const user = new User({
       type: 'onboarding-worker',

@@ -187,15 +187,16 @@ function _createMyworkerInviteMessageForOnboardingWorkers(userIdMap, body) {
    - 3) Message object will be created.
    - SMS will be sent to the onboarding-user. (will be done later since this is async)
    */
-  const companyId = body.sender.company_id;
+  const senderCompanyId = body.sender.company_id;
+  const senderUserId = body.sender.user_id;
   const promises = [];
   for (const [userId, user] of userIdMap) {
     if (user.type === 'onboarding-worker') {
       promises.push(Promise.resolve(user)); // Pass user object since we will be needing it later
-      promises.push(Myworker.findOne({company_id: companyId, worker_user_id: userId}));
+      promises.push(Myworker.findOne({company_id: senderCompanyId, worker_user_id: userId}));
       if (user.phone_number && user.phone_number.local_number) {
         promises.push(Invite.findOne({
-          company_id: companyId,
+          company_id: senderCompanyId,
           'phone_number.local_number': user.phone_number.local_number
         }));
       } else {
@@ -213,14 +214,27 @@ function _createMyworkerInviteMessageForOnboardingWorkers(userIdMap, body) {
       const models = {myworker: myworker, invite: null, message: null};
       if (!myworker) {
         // 1) Add the onboarding user to my-workers list of company if not added yet.
-        models.myworker = new Myworker({company_id: companyId, worker_user_id: userId});
+        models.myworker = new Myworker({company_id: senderCompanyId, worker_user_id: userId});
       } else {
-        logger.info('[Message Service][Onboarding users] Not creating myworker record. User ' + userId + ' company ' + companyId + ' myworker record already exists.')
+        logger.info('[Message Service][Onboarding users] Not creating myworker record. User ' + userId + ' company ' + senderCompanyId + ' myworker record already exists.')
       }
       if (!invite) {
         // 2) Invite object will be created if not yet.
         if (user.phone_number && user.phone_number.local_number) {
-          models.invite = new Invite({company_id: companyId, phone_number: user.phone_number});
+          models.invite = new Invite({
+            user_id: senderUserId,
+            company_id: senderCompanyId,
+            phone_number: user.phone_number,
+            // Since 1.12
+            sender: {
+              user_id: senderUserId,
+              company_id: senderCompanyId,
+            },
+            receiver: {
+              type: 'worker',
+              worker: {phone_number: user.phone_number}
+            }
+          });
         } else {
           logger.warn('[Message Service][Onboarding users] Not creating invite record. User ' + userId + ' has no phone_number.')
         }
@@ -248,6 +262,7 @@ function _createUserInviteMyworkerMessageForNotRegisteredUsers(noUserPhoneNumber
    */
   const modelsArr = [];
   const companyId = body.sender.company_id;
+  const senderUserId = body.sender.user_id;
   for (let i = 0; i < noUserPhoneNumbers.length; i++) {
     const models = {user: null, invite: null, myworker: null, message: null};
     // 1) New onboarding-user object will be created (Please refer to 1. User - Overview, Data Model)
@@ -273,7 +288,20 @@ function _createUserInviteMyworkerMessageForNotRegisteredUsers(noUserPhoneNumber
     });
     const userId = models.user._id.toString(); // Should not be null
     // 2) Invite object will be created.
-    models.invite = new Invite({company_id: companyId, phone_number: phoneNumber});
+    models.invite = new Invite({
+      user_id: senderUserId,
+      company_id: companyId,
+      phone_number: phoneNumber,
+      // Since 1.12
+      sender: {
+        user_id: senderUserId,
+        company_id: companyId,
+      },
+      receiver: {
+        type: 'worker',
+        worker: {phone_number: phoneNumber}
+      }
+    });
     // 3) Add the onboarding user to my-workers list of company.
     models.myworker = new Myworker({company_id: companyId, worker_user_id: userId});
     // 4) Message object will be created.
