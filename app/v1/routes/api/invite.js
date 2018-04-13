@@ -58,35 +58,80 @@ router.post('/', function (req, res) {
        "invite_only": true / false             // optional
    }
    */
-  const body = req.body;
-  if (!body.company_id || !(body.phone_number && body.phone_number.local_number)) {
-    res.json({
-      success: false,
-      msg: 'Request body company_id and phone_number.local_number are required.'
-    })
-  } else {
-    const setDefaultCountryCode = (phoneNumber) => {
-      if (!phoneNumber.country_code) {
-        phoneNumber.country = 'US';
-        phoneNumber.country_code = '1';
-      }
+  const setDefaultCountryCode = (phoneNumber) => {
+    if (!phoneNumber.country_code) {
+      phoneNumber.country = 'US';
+      phoneNumber.country_code = '1';
     }
-    return Company.findById(body.company_id).then((company) => {
+  };
+  const findCompany = (companyId) => {
+    return Company.findById(companyId).then((company) => {
       if (!company) {
-        return Promise.reject(`Company ${body.company_id} does not exists.`);
+        return Promise.reject(`Company ${companyId} does not exists.`);
       } else {
-        if(body.receiver.type === 'worker') {
-          setDefaultCountryCode(body.receiver.worker.phone_number);
-          return inviteService.bulkInvite([body.receiver.worker], company, body.user_id, body.invite_only)
-        } else {
-          setDefaultCountryCode(body.receiver.company_group_leader.phone_number);
-          return inviteService.inviteCompanyGroupLeader(body.receiver.company_group_leader, company, body.user_id)
-        }
+        return company;
       }
-    }).then((result) => {
-      const invite = Array.isArray(result) ? result[0].invite : result;
-      return res.json({success: true, invite: invite});
-    }).catch(httpUtil.handleError(res));
+    });
+  };
+  const isValidPhoneNumber = (phoneNumber) => {
+    return phoneNumber && phoneNumber.local_number;
+  };
+  
+  const body = req.body;
+  const inviteOnly = body.invite_only;
+  if(!body.receiver) {
+    if (!body.company_id || !isValidPhoneNumber(body.phone_number)) {
+      res.json({
+        success: false,
+        msg: 'Request body company_id and phone_number.local_number are required.'
+      })
+    } else {
+      setDefaultCountryCode(body.phone_number);
+      return findCompany(body.company_id).then((company) => {
+        return inviteService.bulkInvite([body], company, body.user_id, inviteOnly);
+      }).then((results) => {
+        return res.json({success: true, invite: results[0].invite});
+      });
+    }
+  } else {
+    const receiver = body.receiver;
+    const sender = body.sender;
+    if(receiver.type === 'worker') {
+      if (!sender || !sender.company_id || !sender.user_id ||
+        !receiver.worker || !isValidPhoneNumber(receiver.worker.phone_number)) {
+        res.json({
+          success: false,
+          msg: 'Request body sender.company_id, sender.user_id, receiver.worker.phone_number.local_number are required for receiver type worker.'
+        })
+      } else {
+        return findCompany(sender.company_id).then((company) => {
+          setDefaultCountryCode(receiver.worker.phone_number);
+          return inviteService.bulkInvite([receiver.worker], company, sender.user_id, inviteOnly);
+        }).then((results) => {
+          return res.json({success: true, invite: results[0].invite});
+        });
+      }
+    } else if(receiver.type === 'company-group-leader') {
+      if (!sender || !sender.company_id || !sender.user_id ||
+        !receiver.company_group_leader || !isValidPhoneNumber(receiver.company_group_leader.phone_number)) {
+        res.json({
+          success: false,
+          msg: 'Request body sender.company_id, sender.user_id, receiver.company_group_leader.phone_number.local_number are required for receiver type company-group-leader.'
+        })
+      } else {
+        return findCompany(sender.company_id).then((company) => {
+          setDefaultCountryCode(receiver.company_group_leader.phone_number);
+          return inviteService.inviteCompanyGroupLeader(receiver.company_group_leader, company, sender.user_id);
+        }).then((invite) => {
+          return res.json({success: true, invite});
+        })
+      }
+    } else {
+      res.json({
+        success: false,
+        msg: `Unknown receiver.type ${receiver.type}.`
+      })
+    }
   }
 });
 
