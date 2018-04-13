@@ -194,9 +194,11 @@ const update = function (id, body) {
     const isOnBoardingWorker = existingUser.type === 'onboarding-worker';
     const isOnBoardingCompanyGroupLeader = existingUser.type === 'onboarding-company-group-leader';
     if (isOnBoardingCompanyGroupLeader) {
+      deleteProperty('company');
       deleteProperty('external_id');
-    } else if (!isOnBoardingWorker) { // See https://bitbucket.org/volasys-ss/ganaz-backend/wiki/1.2.1%20User%20-%20Onboarding%20User%20Signup
+    } else if (!isOnBoardingWorker) {
       deleteProperty('type');
+      deleteProperty('company');
       deleteProperty('external_id');
     }
 
@@ -256,7 +258,7 @@ const update = function (id, body) {
             const inviteCrews = invite.receiver.company_group_leader.crews;
             if (inviteCrews && inviteCrews.length > 0) {
               return Crew.find({_id: {$in: inviteCrews}}).then((groupLeaderCrews) => {
-                const companyId = user.company ? user.company.company_id : invite.sender.company_id;
+                const companyId = invite.sender.company_id;
                 const saveCrewPromises = groupLeaderCrews.map((crew) => {
                   if (crew.group_leaders) {
                     const groupLeaders = crew.group_leaders;
