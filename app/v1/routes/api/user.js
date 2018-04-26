@@ -276,7 +276,7 @@ router.post('/bulksearch', function (req, res) {
 router.patch('/onboarding/:id', function (req, res) {
   /** Expected req.body is
    {
-       "type": "worker/company-regular/company-admin",
+       "type": "worker/company-regular/company-admin/company-group-leader",
        "firstname": "{first name}",
        "lastname": "{last name}",
        "username": "{user login name}",

@@ -8,9 +8,12 @@ const db = require('./../../db');
 const appConfig = require('./../../../app_config');
 const companyService = require('./company.service');
 const constants = require('./../../../utils/constants');
+const logger = require('./../../../utils/logger');
 
 const User = db.models.user;
 const Smslog = db.models.smslog;
+const Crew = db.models.crew;
+const Invite = db.models.invite;
 
 const validPhonePassword = function (password) {
   return /\d{4}$/.test(password);
@@ -189,15 +192,30 @@ const update = function (id, body) {
       }
     };
     const isOnBoardingWorker = existingUser.type === 'onboarding-worker';
-    if (!isOnBoardingWorker) { // See https://bitbucket.org/volasys-ss/ganaz-backend/wiki/1.2.1%20User%20-%20Onboarding%20User%20Signup
+    const isOnBoardingCompanyGroupLeader = existingUser.type === 'onboarding-company-group-leader';
+    if (isOnBoardingCompanyGroupLeader) {
+      deleteProperty('company');
+      deleteProperty('external_id');
+    } else if (!isOnBoardingWorker) {
       deleteProperty('type');
       deleteProperty('company');
       deleteProperty('external_id');
     }
+
     const newPassword = body.password;
     deleteProperty('password');
     const user = Object.assign(existingUser, User.adaptLocation(body));
-    if (isOnBoardingWorker) {
+    const doSaveUser = (user) => {
+      return user.save().then((user) => {
+        const o = toObject(user);
+        if (isOnBoardingWorker || isOnBoardingCompanyGroupLeader) {
+          o.access_token = _generateToken(o);
+        }
+        return populateCompany(o, true);
+      })
+    };
+    
+    if (isOnBoardingWorker || isOnBoardingCompanyGroupLeader) {
       /*
        See https://bitbucket.org/volasys-ss/ganaz-backend/wiki/1.2.1%20User%20-%20Onboarding%20User%20Signup
        Attention!*
@@ -220,14 +238,55 @@ const update = function (id, body) {
           user.worker.is_newjob_lock = true;
         }
       }
-    }
-    return user.save().then(function () {
-      const o = toObject(user);
       if (isOnBoardingWorker) {
-        o.access_token = _generateToken(o);
+        return doSaveUser(user);
+      } else {
+        // isOnBoardingCompanyGroupLeader
+        const {country_code, local_number} = user.phone_number;
+        const inviteQ = {
+          'receiver.type': 'company-group-leader',
+          'receiver.company_group_leader.phone_number.country_code': country_code,
+          'receiver.company_group_leader.phone_number.local_number': local_number
+        };
+        return Invite.findOne(inviteQ).then((invite) => {
+          if (!invite) {
+            const message = `Failed to update ${id}. Invite not found.`;
+            logger.error(`[User Service] ${message}`);
+            return Promise.reject(message);
+          } else {
+            const inviteCrews = invite.receiver.company_group_leader.crews;
+            if (inviteCrews && inviteCrews.length > 0) {
+              return Crew.find({_id: {$in: inviteCrews}}).then((groupLeaderCrews) => {
+                const companyId = invite.sender.company_id;
+                const saveCrewPromises = groupLeaderCrews.map((crew) => {
+                  if (crew.group_leaders) {
+                    const groupLeaders = crew.group_leaders;
+                    let exists = false;
+                    for (let i = 0; i < groupLeaders.length; i++) {
+                      if (groupLeaders.user_id === user._id) {
+                        exists = true;
+                        break;
+                      }
+                    }
+                    if (!exists) {
+                      groupLeaders.push({company_id: companyId, user_id: user._id})
+                    }
+                  } else {
+                    crew.group_leaders = [{company_id: companyId, user_id: user._id}];
+                  }
+                  return crew.save();
+                });
+                return Promise.all(saveCrewPromises).then(() => doSaveUser(user));
+              })
+            } else {
+              return doSaveUser(user);
+            }
+          }
+        });
       }
-      return populateCompany(o, true);
-    });
+    } else {
+      return doSaveUser(user);
+    }
   });
 };
 

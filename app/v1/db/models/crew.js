@@ -4,10 +4,15 @@ const Schema = mongoose.Schema;
 const CrewSchema = new Schema({
   company_id: {type: String, required: true},
   title: String,
-  created_at: Date
+  created_at: Date,
+  group_leaders: [{
+    _id: false,
+    company_id: {type: mongoose.Schema.Types.ObjectId, ref: 'Company'},
+    user_id: {type: mongoose.Schema.Types.ObjectId, ref: 'User'},
+  }],
 });
 
-CrewSchema.pre('save', function (next) {
+CrewSchema.pre('save', function(next) {
   if (!this.created_at) {
     this.created_at = Date.now();
   }

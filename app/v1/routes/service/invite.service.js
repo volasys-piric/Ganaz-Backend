@@ -41,6 +41,10 @@ module.exports = {
      B. invite_only = true
      - Create Invite object if needed
      - Regardless if invite was created or existing in DB, always Send SMS.
+    CHANGE LOG: v1.6
+    Whenever backend sends SMS, we need to automatically generate new sms-log object.
+    Please check WIKI: 18. SMS Log - Overview, Data Model for further information.
+    user_id is newly added to request payload (optional).
      */
     const findUserPromises = [];
     // 2) Create Onboarding worker object if needed. (Please refer to 1. User - Overview, Data Model)
@@ -78,7 +82,7 @@ module.exports = {
           saveUserPromises.push(Promise.resolve(user));
         }
         o.user = user.toObject();
-        o.user_id = user && user._id.toString();
+        o.user_id = user._id.toString();
       }
       return Promise.all(saveUserPromises);
     }).then(() => {
@@ -100,13 +104,19 @@ module.exports = {
         let invite = invites[i];
         if (invite === null) {
           invite = new Invite({
+            user_id: companyUserId,
             company_id: companyId,
-            phone_number: o.phone_number
+            phone_number: o.phone_number,
+            // Since 1.12
+            sender: {
+              company_id: companyId,
+              user_id: companyUserId,
+            },
+            receiver: {
+              type: 'worker',
+              worker: {phone_number: o.phone_number}
+            }
           });
-          invite.user_id = o.user_id;
-          saveInvitePromises.push(invite.save());
-        } else if (o.user_id) {
-          invite.user_id = o.user_id;
           saveInvitePromises.push(invite.save());
         } else {
           saveInvitePromises.push(Promise.resolve(invite));
@@ -205,7 +215,7 @@ module.exports = {
             }
             myworker.nickname = o.nickname;
             saveMyworkerPromises.push(myworker.save());
-
+            
             o.myworker = myworker.toObject();
           }
         }
@@ -254,6 +264,73 @@ module.exports = {
       return Promise.all(saveSmsLog);
     }).then(() => {
       return invitesJson;
+    });
+  },
+  /**
+   * @param body of form
+      {
+        "phone_number": {"country": "US","country_code": "1","local_number": "{local phone number}"},
+        "crews": ["crew_id","crew_id"]
+      }
+   * @param company company model who made the invites
+   * @param companyUserId company user who made the invites
+   * @returns {Promise|*|PromiseLike<T>|Promise<T>}
+   */
+  inviteCompanyGroupLeader: (body, company, companyUserId) => {
+    const companyId = company._id.toString();
+    const phoneNumber = body.phone_number;
+    return User.findOne({
+      'phone_number.country_code': phoneNumber.country_code,
+      'phone_number.local_number': phoneNumber.local_number
+    }).then((onboardingGroupLeader) => {
+      if (!onboardingGroupLeader) {
+        const basicUserInfo = {
+          type: 'onboarding-company-group-leader',
+          username: `${phoneNumber.country_code}${phoneNumber.local_number}`, // Since username is required and must be unique
+          phone_number: phoneNumber
+        };
+        return new User(basicUserInfo).save();
+      } else {
+        return Promise.resolve(onboardingGroupLeader);
+      }
+    }).then(() => {
+      return Invite.findOne({
+        company_id: companyId,
+        'phone_number.country_code': phoneNumber.country_code,
+        'phone_number.local_number': phoneNumber.local_number
+      }).then((invite) => {
+        if (invite === null) {
+          return new Invite({
+            user_id: companyUserId,
+            company_id: companyId,
+            phone_number: phoneNumber,
+            // Since 1.12
+            sender: {
+              company_id: companyId,
+              user_id: companyUserId,
+            },
+            receiver: {
+              type: 'company-group-leader',
+              company_group_leader: body
+            }
+          }).save();
+        } else {
+          return Promise.resolve(invite);
+        }
+      });
+    }).then((invite) => {
+      const messageBody = company.getInvitationMessage(phoneNumber.local_number);
+      const smsLog = new Smslog({
+        sender: {user_id: companyUserId, company_id: company._id},
+        receiver: {phone_number: phoneNumber},
+        billable: false,
+        message: messageBody
+      });
+      return smsLog.save().then((savedSmsLog) => {
+        // Save asynchronously
+        twiliophoneService.sendSmsLog(savedSmsLog);
+        return invite;
+      });
     });
   }
 };
