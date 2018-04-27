@@ -77,7 +77,7 @@ const findUserByPsidAndAdIdAndJobId = (psid, adId, jobId) => {
 const createFacebookLeadWorker = (psid, adId, pageId, job) => {
     return new User({
         type: 'facebook-lead-worker',
-        username: psid + adId,
+        username: psid + '_' + adId + '_' + job._id.toString(),
         worker: {
             facebook_lead: {
                 psid: psid,
